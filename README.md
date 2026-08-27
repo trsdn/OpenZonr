@@ -1,7 +1,9 @@
 # OpenZonr
 
-**Status: früher Konzeptstand (early concept).** Dieses Repository enthält bislang
-das Konzept, das Datenmodell und ein Skelett — noch keine lauffähige App.
+**Status: früher Konzeptstand (early concept).** Dieses Repository enthält das
+Konzept, das Datenmodell, den Konfigurationsspeicher und die rechnende Hälfte der
+Platzierung — aber noch keine lauffähige App: die Anbindung an die
+Accessibility-API und die Oberfläche fehlen.
 
 OpenZonr ist ein Fenstermanager für macOS mit Dropzones. Der Unterschied zu allem,
 was es sonst gibt, steckt in einem einzigen Satz:
@@ -58,18 +60,26 @@ Zwei Dinge sind der Kern:
 
 ```
 Package.swift                 SwiftPM-Manifest (macOS 14+)
-Sources/OpenZonrCore/         Datenmodell — Typen mit Doku, noch ohne Logik
+Sources/OpenZonrCore/
   Geometry/                   RelativeRect, Zone, Layout
   Display/                    DisplayIdentity, SetupFingerprint
   Roles/                      ZoneRole, RoleBinding
   Rules/                      WindowMatch, PlacementAction, PlacementRule
   Profiles/                   Profile
-  Configuration/              Configuration, GlobalDefaults, ConflictPolicy
-  Placement/                  Protokolle der Platzierungs-Pipeline
-Tests/OpenZonrCoreTests/      Prüft die Beispielkonfiguration gegen das Modell
+  Configuration/              Configuration, Speicher, atomares Schreiben
+    Migration/                Schrittkette zwischen Schemaversionen
+  Validation/                 Validierung mit Dokumentpfaden
+    Checks/                   Die einzelnen Prüfungen
+  Placement/                  Filter, Regel-Engine, Profil- und Zonenauflösung
+Tests/OpenZonrCoreTests/      Unit-Tests; Support/ enthält Fixtures
 Examples/                     Beispielkonfiguration (Büro / Home / Unterwegs)
 docs/                         Konzept, Konfigurationsreferenz, offene Fragen
 ```
+
+Der Stand umfasst das Datenmodell, den Konfigurationsspeicher (laden,
+validieren, atomar schreiben, migrieren) und die rein rechnende Hälfte der
+Platzierung. Alles darin ist ohne laufenden Fensterserver testbar; die Anbindung
+an die Accessibility-API und die Oberfläche fehlen noch.
 
 **Warum Swift Package Manager und (noch) kein Xcode-Projekt?** Das Manifest ist
 Text, also diff- und reviewbar, und es gibt keine `.pbxproj`-Merge-Konflikte.

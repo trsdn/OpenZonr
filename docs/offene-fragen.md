@@ -120,19 +120,30 @@ Optionen:
 
 ---
 
-## 6. Speicherort der Konfiguration und Migration
+## 6. Speicherort der Konfiguration und Migration — *entschieden*
 
 **Frage:** Wohin gehört die Datei?
 
-- `~/.config/openzonr/config.json` — sichtbar, gut versionierbar, entspricht der
-  Erwartung von Nutzern, die ihre Dotfiles pflegen.
-- `~/Library/Application Support/OpenZonr/config.json` — die von Apple erwartete
-  Ablage, aber unbequem für Git.
-- Beides: Standardablage in `Application Support`, mit optionalem Pfad-Override.
+**Entscheidung:** Standardablage in `~/Library/Application Support/OpenZonr/config.json`,
+mit einem Override über die Umgebungsvariable `OPENZONR_CONFIG` und, davor, über
+einen expliziten Pfad, den der Aufrufer übergibt.
 
-Offen ist außerdem, ob es einen expliziten Import/Export geben soll und wie
-Migrationen zwischen `version`-Ständen ablaufen — automatisch beim Laden, mit
-Backup der alten Datei, oder mit Rückfrage.
+Damit sind beide Nutzergruppen bedient: wer die Datei nie anfasst, findet sie
+dort, wo Apple sie erwartet, und wer seine Dotfiles versioniert, legt sie ins
+eigene Repository und setzt eine Variable. Der Preis ist eine einzige
+Umgebungsvariable — deutlich weniger als der Streit, den ein einzelner erzwungener
+Ort dauerhaft erzeugt. Umgesetzt in `ConfigurationLocation`; die Auflösung liest
+weder Umgebung noch Home-Verzeichnis selbst, beides wird übergeben.
+
+**Migration:** automatisch beim Laden, ohne Rückfrage, aber nie stillschweigend
+zerstörend. Eine ältere `version` wird schrittweise auf
+`Configuration.currentVersion` gehoben; vor einer *schreibenden* Migration wird
+die Ursprungsdatei als `config.json.v<alte Version>.backup` daneben gesichert.
+Eine **neuere** Version wird rundheraus abgelehnt statt halb interpretiert: ein
+neueres Schema kann Felder verschoben haben, und eine halb verstandene
+Konfiguration platziert Fenster dort, wo niemand sie haben wollte.
+
+Weiterhin offen ist ein expliziter Import/Export in der Oberfläche.
 
 ---
 
@@ -176,3 +187,9 @@ Zur Nachvollziehbarkeit festgehalten:
 | **JSON statt YAML** | Bewusst gewählt: `Codable` ohne externe Abhängigkeit. Der Preis sind fehlende Kommentare, weshalb die kommentierte Erklärung in `docs/konfiguration.md` liegt. |
 | **`share` nur als gleichmäßige Slot-Teilung** | Das Konzept nannte „optional Zone teilen", ohne die Ausdrucksstärke festzulegen. Alles über gleich große Slots hinaus gehört als eigene Zone ins Layout, sonst entsteht ein zweites, paralleles Layoutsystem in den Regeln. |
 | **Zonen dürfen sich überlappen** | Nicht explizit im Konzept. Überlappung wird zugelassen, weil eine große Fokuszone über zwei Hälften eine legitime Gestaltung ist. Mehrdeutigkeit löst die Rollenbindung, nicht die Geometrie. |
+| **`RuleEngine` nimmt einen vorbereiteten `CompiledRuleSet` statt `[PlacementRule]`** | Die Skizze übergab die Regeln je Fenster. Damit ließe sich die Forderung „reguläre Ausdrücke werden einmal übersetzt" nur über einen Cache erfüllen, der über Array-Gleichheit rät. Ein explizit vorbereiteter Regelsatz macht stattdessen sichtbar, dass die Übersetzung eines Musters fehlschlagen kann, und zwingt dazu, diesen Fall an einer definierten Stelle zu behandeln — statt mitten in der Auswertung. Eine Regel mit ungültigem Muster landet in `unusableRules` und wird übersprungen; der Durchlauf scheitert nie an einer kaputten Regel. |
+| **`ZoneResolver` rechnet in AppKit-Koordinaten, nicht in AX-Koordinaten** | Das Modell beschreibt Zonen von oben links, AppKit misst von unten links, die Accessibility-API wieder von oben links. Die Umrechnung Modell → AppKit passiert genau einmal, nämlich hier; die Rückrechnung nach AX gehört in die Schicht, die tatsächlich `kAXPositionAttribute` schreibt. Ein eigener Typ `VisibleFrame` macht die Konvention an jeder Aufrufstelle sichtbar, statt sie einem `WindowFrame` anzusehen zu versuchen. |
+| **Kantenweises Runden statt Runden von Ursprung und Größe** | Zwei nebeneinanderliegende Zonen müssen sich exakt berühren. Würden Ursprung und Größe getrennt gerundet, entstünde je nach Displaybreite eine Lücke oder eine Überlappung von einem Punkt. Stattdessen werden die vier Kanten gerundet und Breite und Höhe daraus abgeleitet. |
+| **`WindowFilter` kennt die Regeln, die `onlyFirstWindowAfterLaunch` abwählen** | Die Skizze sah den Filter als reinen Vorfilter vor globalen Vorgaben. Ein Filter, der die Vorgabe hart durchsetzt, macht aber genau die Regeln unerreichbar, die sie abwählen — das Outlook-Verfassen-Fenster der Beispielkonfiguration ist per Definition nie das erste Fenster. Der Filter leitet seine Ausnahmen deshalb einmalig aus dem Regelsatz ab: jede aktivierte Regel, die das Flag auf `false` setzt, nimmt die Fenster ihrer Bundle-ID aus (oder alle, wenn sie keine nennt). |
+| **`Displacement` und `SkipReason` als eigene Ergebnistypen** | `PlacementOutcome` beschreibt, was mit einem Fenster geschehen *ist*. Für die rein rechnende Hälfte fehlte ein Typ, der beschreibt, was geschehen *soll* — inklusive Begründung, wenn nichts geschieht. `PlacementDecision` füllt diese Lücke; ohne sie wäre „nicht platziert" eine Sammelantwort für sehr verschiedene Situationen. |
+| **`ZoneResolver.resolveFallback` neben der Auflösung über die Rolle** | Die Fallback-Bindung eines Profils über ihre Rolle aufzulösen wäre falsch: hat diese Rolle eine eigene Bindung, käme deren reguläre Zone heraus. Ein verdrängtes Fenster landete dann in genau der Zone, aus der es gerade weichen musste. |

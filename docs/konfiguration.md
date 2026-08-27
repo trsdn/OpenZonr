@@ -352,6 +352,65 @@ selbst heraus, darf die Regel es nicht zurückreißen.
 
 ## Speicherort
 
-Noch nicht entschieden — siehe [offene-fragen.md](offene-fragen.md). Das Feld
-`version` existiert bereits, damit Migrationen später deterministisch angewendet
-werden können.
+Gesucht wird in dieser Reihenfolge; die erste Angabe gewinnt:
+
+1. ein Pfad, den der Aufrufer ausdrücklich übergibt (Kommandozeilenschalter, Test),
+2. die Umgebungsvariable `OPENZONR_CONFIG`,
+3. `~/Library/Application Support/OpenZonr/config.json`.
+
+Ein führendes `~` wird in den ersten beiden Fällen aufgelöst. Wer seine
+Konfiguration im Dotfile-Repository pflegt, setzt also etwa:
+
+```sh
+export OPENZONR_CONFIG=~/dotfiles/openzonr.json
+```
+
+Fehlt die Datei, ist das kein Fehler, sondern der normale Zustand beim ersten
+Start — OpenZonr fragt dann nach, statt eine Fehlermeldung zu zeigen.
+
+### Schreiben
+
+Geschrieben wird atomar: zuerst eine Zwischendatei im Zielverzeichnis, dann wird
+die Zieldatei durch sie ersetzt. Bricht der Vorgang ab, bleibt die alte Datei
+unangetastet. Eine halb geschriebene Konfiguration wäre schlimmer als eine
+veraltete — die alte lässt sich wenigstens noch laden.
+
+Die Ausgabe ist stabil: Schlüssel alphabetisch sortiert, eingerückt, mit
+abschließendem Zeilenumbruch. Eine geänderte Zone erzeugt damit einen kurzen
+Diff und keine umsortierte Datei.
+
+### Migration
+
+Das Feld `version` steuert die Migration. Beim Laden wird eine ältere Version
+schrittweise auf den aktuellen Stand gehoben. Vor einer *schreibenden* Migration
+sichert OpenZonr die Ursprungsdatei daneben als
+`config.json.v<alte Version>.backup`.
+
+Eine **neuere** Version als die dem Programm bekannte wird abgelehnt, nicht
+teilweise gelesen: ein neueres Schema kann Felder verschoben haben, und eine halb
+verstandene Konfiguration platziert Fenster dort, wo niemand sie haben wollte.
+In diesem Fall hilft nur ein Update von OpenZonr.
+
+---
+
+## Fehler und Warnungen
+
+Beim Laden wird die gesamte Datei geprüft und **alle** Befunde werden zusammen
+gemeldet — nicht nur der erste. Wer drei Tippfehler in seiner Datei hat, soll sie
+in einem Durchgang beheben können und nicht dreimal neu starten.
+
+Jeder Befund nennt die Stelle im Dokument, an der er entstanden ist, etwa
+`profiles[office].roleBindings[2].zone`.
+
+Unterschieden wird zwischen:
+
+- **Fehlern** — die Konfiguration ist unbenutzbar. Beispiele: eine Regel verweist
+  auf eine Rolle, die es nicht gibt; eine Rollenbindung zeigt auf eine Zone, die
+  im gewählten Layout dieses Displays nicht existiert; zwei Profile haben denselben
+  Fingerprint; ein `titlePattern` ist kein übersetzbarer regulärer Ausdruck.
+- **Warnungen** — die Konfiguration ist benutzbar, aber vermutlich nicht so
+  gemeint. Beispiele: eine Rolle, die keine Regel verwendet; eine Regel, die von
+  einer höher priorisierten vollständig überdeckt wird und deshalb nie greifen
+  kann.
+
+Warnungen halten das Laden nicht auf.
