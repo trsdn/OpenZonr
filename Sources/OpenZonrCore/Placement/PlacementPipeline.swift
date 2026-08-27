@@ -120,6 +120,19 @@ public protocol ZoneResolver: Sendable {
         configuration: Configuration,
         visibleFrames: VisibleFrames
     ) -> Result<ResolvedPlacement, ZoneResolutionFailure>
+
+    /// Resolves the profile's ``Profile/fallback`` binding directly.
+    ///
+    /// Not the same as resolving `fallback.role`: that role may well have its
+    /// own binding in the profile, in which case a role lookup would return the
+    /// role's regular zone instead of the fallback zone. Displacing a window
+    /// into the zone it was just evicted from is exactly the bug this separate
+    /// entry point exists to prevent.
+    func resolveFallback(
+        profile: Profile,
+        configuration: Configuration,
+        visibleFrames: VisibleFrames
+    ) -> Result<ResolvedPlacement, ZoneResolutionFailure>
 }
 
 /// A fully resolved placement target, ready to be written to a window.

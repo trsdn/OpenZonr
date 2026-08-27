@@ -14,7 +14,39 @@ public struct DefaultZoneResolver: ZoneResolver {
         let binding = explicitBinding ?? profile.fallback
         let usedFallback = explicitBinding == nil
 
-        guard let display = configuration.displays.first(where: { $0.alias == binding.display }) else {
+        return resolve(
+            binding: binding,
+            share: share,
+            usedFallback: usedFallback,
+            configuration: configuration,
+            profile: profile,
+            visibleFrames: visibleFrames
+        )
+    }
+
+    public func resolveFallback(
+        profile: Profile,
+        configuration: Configuration,
+        visibleFrames: VisibleFrames
+    ) -> Result<ResolvedPlacement, ZoneResolutionFailure> {
+        resolve(
+            binding: profile.fallback,
+            share: nil,
+            usedFallback: true,
+            configuration: configuration,
+            profile: profile,
+            visibleFrames: visibleFrames
+        )
+    }
+
+    private func resolve(
+        binding: RoleBinding,
+        share: ZoneShare?,
+        usedFallback: Bool,
+        configuration: Configuration,
+        profile: Profile,
+        visibleFrames: VisibleFrames
+    ) -> Result<ResolvedPlacement, ZoneResolutionFailure> {        guard let display = configuration.displays.first(where: { $0.alias == binding.display }) else {
             return .failure(.unknownDisplay(binding.display))
         }
 
