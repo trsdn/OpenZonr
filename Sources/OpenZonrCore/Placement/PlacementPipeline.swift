@@ -77,14 +77,22 @@ public protocol WindowEventSource: AnyObject {
 /// Runs before the rule engine and applies the cheap, global filters: subrole,
 /// minimum size, and the "first window after launch" default. Anything rejected
 /// here never reaches rule evaluation.
+///
+/// The result carries the reason for a rejection rather than a bare boolean, so
+/// a diagnostics mode can explain why a window stayed where it was.
 public protocol WindowFilter: Sendable {
-    func accepts(_ window: WindowSnapshot, defaults: GlobalDefaults) -> Bool
+    func evaluate(_ window: WindowSnapshot, defaults: GlobalDefaults) -> WindowFilterResult
 }
 
 /// Picks the first matching rule for a window.
+///
+/// Takes a prepared ``CompiledRuleSet`` rather than the raw rules: title
+/// patterns are translated once when the set is built, not once per window, and
+/// a pattern that does not compile is reported at that single, defined point
+/// instead of failing somewhere in the middle of an evaluation.
 public protocol RuleEngine: Sendable {
     /// Returns the highest-priority enabled rule whose match applies, or `nil`.
-    func firstMatch(for window: WindowSnapshot, in rules: [PlacementRule], defaults: GlobalDefaults) -> PlacementRule?
+    func firstMatch(for window: WindowSnapshot, in rules: CompiledRuleSet, defaults: GlobalDefaults) -> PlacementRule?
 }
 
 /// Determines the currently active profile from the attached displays.
@@ -101,15 +109,24 @@ public protocol ZoneResolver: Sendable {
     /// Resolves `role` through `profile` to an absolute frame, applying the
     /// optional ``ZoneShare`` subdivision. Falls back to the profile's
     /// ``Profile/fallback`` binding when the role is unmapped.
+    ///
+    /// The visible frames are handed in rather than read from `NSScreen`, which
+    /// keeps the whole resolution path testable and puts display observation
+    /// into a layer of its own.
     func resolve(
         role: RoleID,
         share: ZoneShare?,
         profile: Profile,
-        configuration: Configuration
-    ) -> ResolvedPlacement?
+        configuration: Configuration,
+        visibleFrames: VisibleFrames
+    ) -> Result<ResolvedPlacement, ZoneResolutionFailure>
 }
 
 /// A fully resolved placement target, ready to be written to a window.
+///
+/// The frame is in AppKit screen coordinates (bottom-left origin); converting
+/// it into the top-left space the Accessibility API expects is the job of the
+/// layer that actually talks to `kAXPositionAttribute`.
 public struct ResolvedPlacement: Hashable, Sendable {
     /// Target frame in global screen points.
     public var frame: WindowFrame
