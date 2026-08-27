@@ -8,6 +8,13 @@ import Foundation
 /// reading the source.
 public enum WindowRejectionReason: Hashable, Sendable, CustomStringConvertible {
 
+    /// The window does not live on the application layer.
+    ///
+    /// Measured, not assumed: on the author's machine the Notification Centre
+    /// occupies a 5120×1440 window on layer 21 and would pass every other
+    /// filter. See ``WindowSnapshot/windowLayer``.
+    case notOnApplicationLayer(Int)
+
     /// The subrole is not in ``GlobalDefaults/allowedSubroles``.
     case disallowedSubrole(String?)
 
@@ -19,6 +26,8 @@ public enum WindowRejectionReason: Hashable, Sendable, CustomStringConvertible {
 
     public var description: String {
         switch self {
+        case let .notOnApplicationLayer(layer):
+            return "Fenster liegt auf Ebene \(layer) statt auf Ebene 0 und ist damit Systemoberfläche."
         case let .disallowedSubrole(subrole):
             return "Subrole \(subrole ?? "(keine)") ist nicht freigegeben."
         case let .tooSmall(actual, minimum):

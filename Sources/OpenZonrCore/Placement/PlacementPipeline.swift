@@ -22,6 +22,19 @@ public struct WindowSnapshot: Hashable, Sendable {
     public var isFirstWindowAfterLaunch: Bool
     /// When the window was observed.
     public var observedAt: Date
+    /// Window server layer, as reported by `kCGWindowLayer`.
+    ///
+    /// Only layer `0` holds ordinary application windows. Everything above it is
+    /// system surface: Dock (20), Notification Centre (21), menu bar (24) and
+    /// the roughly 130 Control Centre items (25). This is not a cosmetic detail
+    /// — measured on the author's machine, the Notification Centre window is
+    /// 5120×1440 and therefore passes any minimum-size check. The layer is the
+    /// only attribute that tells it apart from a real window.
+    ///
+    /// Defaults to `0` so that a caller which has no layer information — a test,
+    /// or a code path that already knows it holds an application window — is not
+    /// forced to invent one.
+    public var windowLayer: Int
 
     public init(
         bundleIdentifier: String?,
@@ -31,7 +44,8 @@ public struct WindowSnapshot: Hashable, Sendable {
         subrole: String?,
         frame: WindowFrame,
         isFirstWindowAfterLaunch: Bool,
-        observedAt: Date
+        observedAt: Date,
+        windowLayer: Int = 0
     ) {
         self.bundleIdentifier = bundleIdentifier
         self.processIdentifier = processIdentifier
@@ -41,6 +55,7 @@ public struct WindowSnapshot: Hashable, Sendable {
         self.frame = frame
         self.isFirstWindowAfterLaunch = isFirstWindowAfterLaunch
         self.observedAt = observedAt
+        self.windowLayer = windowLayer
     }
 }
 
@@ -156,14 +171,6 @@ public struct ResolvedPlacement: Hashable, Sendable {
         self.zone = zone
         self.usedFallback = usedFallback
     }
-}
-
-/// Writes position and size to a window.
-///
-/// Implemented via `kAXPositionAttribute` and `kAXSizeAttribute` on the window's
-/// `AXUIElement`, wrapped in the retry loop described by ``RetryPolicy``.
-public protocol WindowPlacer: Sendable {
-    func place(_ window: WindowSnapshot, at placement: ResolvedPlacement, retry: RetryPolicy) async -> PlacementOutcome
 }
 
 /// Result of a placement attempt, used for logging and for the diagnostics UI.

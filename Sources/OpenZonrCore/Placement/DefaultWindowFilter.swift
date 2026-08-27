@@ -27,6 +27,9 @@ import Foundation
 /// reject a window that a rule would have wanted.
 public struct DefaultWindowFilter: WindowFilter {
 
+    /// The window server layer ordinary application windows live on.
+    public static let applicationLayer = 0
+
     /// Bundle identifiers of applications that have at least one rule opting out
     /// of the "first window only" default.
     private let exemptBundleIdentifiers: Set<String>
@@ -61,7 +64,14 @@ public struct DefaultWindowFilter: WindowFilter {
     }
 
     public func evaluate(_ window: WindowSnapshot, defaults: GlobalDefaults) -> WindowFilterResult {
-        // Subrole first: one string comparison, and it removes sheets, dialogs
+        // The layer comes first and is deliberately not configurable. A window
+        // above layer 0 is system surface, never a placement candidate, and the
+        // Notification Centre proves that no size or subrole check catches it.
+        guard window.windowLayer == Self.applicationLayer else {
+            return .rejected(.notOnApplicationLayer(window.windowLayer))
+        }
+
+        // Subrole next: one string comparison, and it removes sheets, dialogs
         // and most popups without any configuration at all.
         guard let subrole = window.subrole, defaults.allowedSubroles.contains(subrole) else {
             return .rejected(.disallowedSubrole(window.subrole))

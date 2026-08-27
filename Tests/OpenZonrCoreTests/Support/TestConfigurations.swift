@@ -112,7 +112,8 @@ enum TestConfigurations {
         subrole: String? = "AXStandardWindow",
         frame: WindowFrame = WindowFrame(x: 0, y: 0, width: 1200, height: 800),
         isFirstWindowAfterLaunch: Bool = true,
-        observedAt: Date = Date(timeIntervalSince1970: 1_700_000_000)
+        observedAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
+        windowLayer: Int = 0
     ) -> WindowSnapshot {
         WindowSnapshot(
             bundleIdentifier: bundleIdentifier,
@@ -122,7 +123,8 @@ enum TestConfigurations {
             subrole: subrole,
             frame: frame,
             isFirstWindowAfterLaunch: isFirstWindowAfterLaunch,
-            observedAt: observedAt
+            observedAt: observedAt,
+            windowLayer: windowLayer
         )
     }
 
