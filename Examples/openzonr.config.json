@@ -1,0 +1,279 @@
+{
+  "version": 1,
+
+  "displays": [
+    {
+      "alias": "builtin",
+      "displayName": "MacBook Pro (integriert)",
+      "identity": { "kind": "builtin" },
+      "defaultLayoutID": "builtin-full",
+      "layouts": [
+        {
+          "id": "builtin-full",
+          "name": "Vollbild",
+          "zones": [
+            { "id": "full", "name": "Vollbild", "frame": { "x": 0.0, "y": 0.0, "width": 1.0, "height": 1.0 } }
+          ]
+        },
+        {
+          "id": "builtin-halves",
+          "name": "Zwei Hälften",
+          "zones": [
+            { "id": "left-half", "name": "Links", "frame": { "x": 0.0, "y": 0.0, "width": 0.5, "height": 1.0 } },
+            { "id": "right-half", "name": "Rechts", "frame": { "x": 0.5, "y": 0.0, "width": 0.5, "height": 1.0 } }
+          ]
+        }
+      ]
+    },
+    {
+      "alias": "dell-u2723",
+      "displayName": "Dell U2723QE (Büro)",
+      "identity": {
+        "kind": "edid",
+        "vendorNumber": 4268,
+        "modelNumber": 42145,
+        "serialNumber": 1194485571
+      },
+      "defaultLayoutID": "dell-two-columns",
+      "layouts": [
+        {
+          "id": "dell-two-columns",
+          "name": "Zwei Spalten",
+          "zones": [
+            { "id": "left-half", "name": "Links", "frame": { "x": 0.0, "y": 0.0, "width": 0.5, "height": 1.0 } },
+            { "id": "right-half", "name": "Rechts", "frame": { "x": 0.5, "y": 0.0, "width": 0.5, "height": 1.0 } }
+          ]
+        },
+        {
+          "id": "dell-focus",
+          "name": "Fokus mit Randspalte",
+          "zones": [
+            { "id": "main", "name": "Hauptfläche", "frame": { "x": 0.0, "y": 0.0, "width": 0.7, "height": 1.0 } },
+            { "id": "side", "name": "Randspalte", "frame": { "x": 0.7, "y": 0.0, "width": 0.3, "height": 1.0 } }
+          ]
+        }
+      ]
+    },
+    {
+      "alias": "lg-38",
+      "displayName": "LG 38WN95C (Home, Ultrawide)",
+      "identity": {
+        "kind": "edid",
+        "vendorNumber": 7789,
+        "modelNumber": 23847,
+        "serialNumber": 909876
+      },
+      "defaultLayoutID": "lg-three-columns",
+      "layouts": [
+        {
+          "id": "lg-three-columns",
+          "name": "Drei Spalten (25 / 50 / 25)",
+          "zones": [
+            { "id": "left-quarter", "name": "Links außen", "frame": { "x": 0.0, "y": 0.0, "width": 0.25, "height": 1.0 } },
+            { "id": "center-half", "name": "Mitte", "frame": { "x": 0.25, "y": 0.0, "width": 0.5, "height": 1.0 } },
+            { "id": "right-quarter", "name": "Rechts außen", "frame": { "x": 0.75, "y": 0.0, "width": 0.25, "height": 1.0 } }
+          ]
+        }
+      ]
+    }
+  ],
+
+  "roles": [
+    { "id": "communication", "name": "Kommunikation", "summary": "Mail und Chat — immer sichtbar, nie im Weg." },
+    { "id": "editor", "name": "Editor", "summary": "Die Fläche, auf der tatsächlich gearbeitet wird." },
+    { "id": "reference", "name": "Referenz", "summary": "Browser, Doku, alles zum Nachschlagen." },
+    { "id": "terminal", "name": "Terminal", "summary": "Shell und Logs." },
+    { "id": "compose", "name": "Verfassen", "summary": "Kurzlebige Schreibfenster, z. B. das Outlook-Compose-Fenster." }
+  ],
+
+  "profiles": [
+    {
+      "id": "office",
+      "name": "Büro",
+      "fingerprint": { "displays": ["builtin", "dell-u2723"] },
+      "layouts": {
+        "builtin": "builtin-full",
+        "dell-u2723": "dell-two-columns"
+      },
+      "roleBindings": [
+        { "role": "communication", "display": "dell-u2723", "zone": "right-half" },
+        { "role": "editor", "display": "dell-u2723", "zone": "left-half" },
+        { "role": "compose", "display": "dell-u2723", "zone": "left-half" },
+        { "role": "reference", "display": "builtin", "zone": "full" },
+        { "role": "terminal", "display": "builtin", "zone": "full" }
+      ],
+      "fallback": { "role": "communication", "display": "builtin", "zone": "full" }
+    },
+    {
+      "id": "home",
+      "name": "Home",
+      "fingerprint": { "displays": ["builtin", "lg-38"] },
+      "layouts": {
+        "builtin": "builtin-full",
+        "lg-38": "lg-three-columns"
+      },
+      "roleBindings": [
+        { "role": "communication", "display": "lg-38", "zone": "right-quarter" },
+        { "role": "editor", "display": "lg-38", "zone": "center-half" },
+        { "role": "compose", "display": "lg-38", "zone": "center-half" },
+        { "role": "reference", "display": "lg-38", "zone": "left-quarter" },
+        { "role": "terminal", "display": "builtin", "zone": "full" }
+      ],
+      "fallback": { "role": "editor", "display": "lg-38", "zone": "center-half" }
+    },
+    {
+      "id": "mobile",
+      "name": "Unterwegs",
+      "fingerprint": { "displays": ["builtin"] },
+      "layouts": {
+        "builtin": "builtin-halves"
+      },
+      "roleBindings": [
+        { "role": "communication", "display": "builtin", "zone": "right-half" },
+        { "role": "editor", "display": "builtin", "zone": "left-half" },
+        { "role": "compose", "display": "builtin", "zone": "right-half" },
+        { "role": "reference", "display": "builtin", "zone": "right-half" },
+        { "role": "terminal", "display": "builtin", "zone": "left-half" }
+      ],
+      "fallback": { "role": "editor", "display": "builtin", "zone": "left-half" }
+    }
+  ],
+
+  "rules": [
+    {
+      "id": "outlook-compose",
+      "name": "Outlook: Verfassen-Fenster",
+      "enabled": true,
+      "priority": 100,
+      "match": {
+        "bundleIdentifier": "com.microsoft.Outlook",
+        "titlePattern": "(Nachricht|Message|Verfassen|Compose|Termin|Meeting)",
+        "subroles": ["AXStandardWindow"],
+        "onlyFirstWindowAfterLaunch": false
+      },
+      "action": {
+        "role": "compose",
+        "focus": "activate",
+        "mode": "place"
+      }
+    },
+    {
+      "id": "outlook-main",
+      "name": "Outlook: Hauptfenster",
+      "enabled": true,
+      "priority": 50,
+      "match": {
+        "bundleIdentifier": "com.microsoft.Outlook",
+        "subroles": ["AXStandardWindow"],
+        "minimumSize": { "width": 800, "height": 600 },
+        "onlyFirstWindowAfterLaunch": true
+      },
+      "action": {
+        "role": "communication",
+        "share": { "axis": "vertical", "slots": 2, "slotIndex": 0 },
+        "focus": "leaveAsIs",
+        "mode": "place"
+      }
+    },
+    {
+      "id": "teams-main",
+      "name": "Teams: Hauptfenster",
+      "enabled": true,
+      "priority": 40,
+      "match": {
+        "bundleIdentifier": "com.microsoft.teams2",
+        "subroles": ["AXStandardWindow"],
+        "minimumSize": { "width": 700, "height": 500 },
+        "onlyFirstWindowAfterLaunch": true
+      },
+      "action": {
+        "role": "communication",
+        "share": { "axis": "vertical", "slots": 2, "slotIndex": 1 },
+        "focus": "leaveAsIs",
+        "mode": "place"
+      }
+    },
+    {
+      "id": "vscode",
+      "name": "Visual Studio Code",
+      "enabled": true,
+      "priority": 30,
+      "match": {
+        "bundleIdentifier": "com.microsoft.VSCode",
+        "subroles": ["AXStandardWindow"],
+        "onlyFirstWindowAfterLaunch": true
+      },
+      "action": {
+        "role": "editor",
+        "focus": "activate",
+        "mode": "place"
+      }
+    },
+    {
+      "id": "safari",
+      "name": "Safari",
+      "enabled": true,
+      "priority": 20,
+      "match": {
+        "bundleIdentifier": "com.apple.Safari",
+        "subroles": ["AXStandardWindow"],
+        "aspectRatio": { "minimum": 0.5, "maximum": 4.0 },
+        "onlyFirstWindowAfterLaunch": true
+      },
+      "action": {
+        "role": "reference",
+        "focus": "activate",
+        "mode": "place"
+      }
+    },
+    {
+      "id": "terminal",
+      "name": "Terminal",
+      "enabled": true,
+      "priority": 10,
+      "match": {
+        "bundleIdentifier": "com.apple.Terminal",
+        "subroles": ["AXStandardWindow"],
+        "onlyFirstWindowAfterLaunch": true
+      },
+      "action": {
+        "role": "terminal",
+        "focus": "leaveAsIs",
+        "mode": "place"
+      }
+    },
+    {
+      "id": "catch-all",
+      "name": "Alles Übrige (nur Vorschlag, standardmäßig aus)",
+      "enabled": false,
+      "priority": -100,
+      "match": {
+        "subroles": ["AXStandardWindow"],
+        "minimumSize": { "width": 600, "height": 400 },
+        "onlyFirstWindowAfterLaunch": true
+      },
+      "action": {
+        "role": "editor",
+        "focus": "leaveAsIs",
+        "mode": "suggest"
+      }
+    }
+  ],
+
+  "defaults": {
+    "onlyFirstWindowAfterLaunch": true,
+    "allowedSubroles": ["AXStandardWindow"],
+    "minimumWindowSize": { "width": 400, "height": 300 },
+    "retry": {
+      "attempts": 3,
+      "initialDelay": 0.05,
+      "interval": 0.2,
+      "tolerance": 4.0
+    },
+    "conflict": {
+      "occupiedZone": "stack",
+      "honorManualOverride": true,
+      "manualOverrideTimeout": null
+    }
+  }
+}
