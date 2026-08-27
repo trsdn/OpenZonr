@@ -8,6 +8,25 @@ Referenzdatei: [`Examples/openzonr.config.json`](../Examples/openzonr.config.jso
 Sie wird durch die Tests in `Tests/OpenZonrCoreTests/` gegen das Datenmodell
 geprüft und ist damit garantiert gültig.
 
+> **Die Beispielkonfiguration ist illustrativ, keine Vorlage zum Kopieren.**
+>
+> Sie zeigt die Struktur, nicht ein reales Setup. Konkret:
+>
+> - **Die EDID-Nummern sind frei erfunden.** `vendorNumber`, `modelNumber` und
+>   `serialNumber` für „Dell" und „LG" sind Platzhalter. Wer sie übernimmt,
+>   bekommt ein Profil, das nie greift.
+> - **Alle drei Profile stützen sich auf ein `builtin`-Display.** Auf einem
+>   Schreibtisch mit geschlossenem Deckel oder an einem Desktop-Mac ist
+>   `CGDisplayIsBuiltin` bei *keinem* Display wahr — der Alias läuft dort ins
+>   Leere. Real gemessen auf dem Setup des Autors: vier Displays, kein einziges
+>   integriertes.
+>
+> **Verbindliche Quelle für echte Identitäten ist `openzonr displays`.**
+> `openzonr displays --config-fragment` gibt ein fertiges `displays`-Fragment
+> aus, das direkt übernommen werden kann. Erst danach Layouts, Rollen, Profile
+> und Regeln ergänzen.
+
+
 ---
 
 ## Aufbau
@@ -16,6 +35,7 @@ geprüft und ist damit garantiert gültig.
 {
   "version":  1,     // Schemaversion, steuert Migrationen
   "displays": [],    // physische Bildschirme + ihre Layouts
+  "ignoredDisplays": [], // Displays, die den Fingerprint nicht beeinflussen
   "roles":    [],    // semantische Platzierungsziele
   "profiles": [],    // Setups: welche Rolle liegt wo?
   "rules":    [],    // Match → Aktion
@@ -74,9 +94,54 @@ Die `fallback`-Variante ist nicht global eindeutig: zwei baugleiche Monitore an
 getauschten Ports werden verwechselt. Sie ist deshalb ausdrücklich als solche
 markiert, damit die UI warnen kann.
 
+> **`serialNumber == 0` ist der Normalfall, nicht der Randfall.**
+>
+> Auf dem gemessenen Setup meldet ausgerechnet der Hauptmonitor — ein Samsung
+> C49RG9x — die Seriennummer 0. Der `fallback`-Pfad ist damit der *wichtigste*
+> Pfad, nicht die Ausnahme. Er ist entsprechend getestet und wird von
+> `openzonr displays --config-fragment` automatisch gewählt, wenn die
+> Seriennummer 0 ist.
+>
+> Beachte dabei: der Fallback enthält bewusst **auch die `modelNumber`**. Auf
+> demselben Setup teilen sich zwei Samsung-Monitore den `vendorNumber` 19501 und
+> unterscheiden sich nur über das Modell. Eine Identität aus Vendor plus
+> Auflösung allein würde hier kollidieren.
+
 **Nicht als Identität verwendet:** Position im Arrangement, Index in
 `NSScreen.screens`, Auflösung allein oder `CGDirectDisplayID`. Begründung in
 [konzept.md, Abschnitt 6](konzept.md#6-monitor-identität).
+
+## `ignoredDisplays`
+
+Eine Liste von `identity`-Objekten im selben Format wie oben. Displays, die
+darin auftauchen, werden **beim Bilden des Setup-Fingerprints übersprungen**.
+
+Der Grund ist ein Problem, das erst an echter Hardware sichtbar wurde:
+**virtuelle Displays kippen den Fingerprint.** Software wie OBS oder ein
+Teleprompter-Werkzeug meldet dem System vollwertige Displays. Sie kommen und
+gehen, während sich physisch nichts ändert — und nach dem ursprünglichen Konzept
+ändert sich damit jedes Mal der Fingerprint und das Profil springt um.
+
+Auf dem gemessenen Setup betrifft das zwei von vier Displays („AAA",
+„Teleprompter Source"). Mit `ignoredDisplays` bleibt der Fingerprint über beide
+physischen Monitore stabil, egal ob OBS gerade läuft.
+
+```jsonc
+"ignoredDisplays": [
+  { "kind": "fallback", "vendorNumber": 21252, "modelNumber": 0,
+    "pixelWidth": 1920, "pixelHeight": 1080, "portIndex": 2 },
+  { "kind": "edid", "vendorNumber": 21581, "modelNumber": 1, "serialNumber": 1 }
+]
+```
+
+**Bewusst eine explizite Liste und keine Heuristik.** `openzonr displays`
+markiert Verdachtsfälle mit `virtuell?`, trägt sie aber nicht selbst aus dem
+Fingerprint aus — die Erkennung ist unzuverlässig (siehe
+[offene-fragen.md](offene-fragen.md)), und ein Werkzeug, das Displays nach
+Bauchgefühl ignoriert, ist schlimmer als eines, das fragt.
+`openzonr displays --config-fragment` schlägt die Einträge vor; die Entscheidung
+trifft der Nutzer.
+
 
 ### `layouts` und `zones`
 
@@ -214,7 +279,7 @@ Fenster liegen in derselben Zone übereinander.
 | Feld | Typ | Zweck |
 |---|---|---|
 | `bundleIdentifier` | String | Der Basisfall. |
-| `titlePattern` | String (Regex, ICU) | Trennt Hauptfenster von Verfassen-Fenstern. Sparsam einsetzen: Titel sind lokalisiert und ändern sich. |
+| `titlePattern` | String (Regex, ICU) | Trennt Hauptfenster von Verfassen-Fenstern. **Sparsam einsetzen** — Titel sind lokalisiert und ändern sich zur Laufzeit, siehe die Warnung unten. |
 | `roles` | [String] | `kAXRoleAttribute`, z. B. `"AXWindow"`. |
 | `subroles` | [String] | `kAXSubroleAttribute`. `"AXStandardWindow"` filtert Dialoge und Popups. |
 | `minimumSize` / `maximumSize` | `{width, height}` in Punkten | Filtert Popups und Paletten. |
@@ -222,6 +287,72 @@ Fenster liegen in derselben Zone übereinander.
 | `onlyFirstWindowAfterLaunch` | Bool | Überschreibt die globale Voreinstellung. |
 
 Ein leeres `match` passt auf **jedes** Fenster.
+
+### Immer aktiv: der Ebenenfilter
+
+Unabhängig von `match` verwirft OpenZonr jedes Fenster, das nicht auf der
+Anwendungsebene liegt (`kCGWindowLayer == 0` bzw. das AX-Äquivalent). Das ist
+**keine Option und nicht abschaltbar**, sondern das erste Kriterium überhaupt.
+
+Der Grund ist eine Messung an der echten Fensterlandschaft:
+
+```
+Ebene 20            Dock
+Ebene 21            Mitteilungszentrale   5120×1440  ← besteht jeden Größenfilter
+Ebene 24            Menüleiste (4×, je Display)
+Ebene 25            ~130 Kontrollzentrum-Items
+Ebene 3             Overlay einer Fremd-App
+Ebene 2147483630    StatusIndicator des Window Servers
+Ebene 0             echte App-Fenster
+```
+
+Die Mitteilungszentrale ist **so groß wie der ganze Hauptmonitor**. Jede
+Mindestgrößen-Prüfung lässt sie durch; nur die Ebene unterscheidet sie von einem
+echten Fenster. Subrolle und Mindestgröße allein reichen also nicht.
+
+### Warum `titlePattern` bei Outlook und Browsern unbrauchbar ist
+
+Titel sind kein Identitätsmerkmal, sondern Zustandsanzeige. Zwei Messungen
+desselben Outlook-Hauptfensters, gleiche Sitzung, zwei Minuten Abstand:
+
+```
+com.microsoft.Outlook   1708×1344 @ 1706,31
+  t₀   "torstenmahr@microsoft.com" wird durchsucht
+  t₁   yesterbox • torstenmahr@microsoft.com
+```
+
+Gleiches Fenster, komplett anderer Titel — der erste ist ein *Suchzustand* und
+enthält obendrein verschachtelte Anführungszeichen. Bei Edge und Safari ist der
+Titel schlicht der Seitentitel und ändert sich mit jedem Klick.
+
+Dazu kommt: **die Systemsprache ist nicht garantiert Englisch.** Ein Muster wie
+`(Message|Compose)` greift auf einem deutschen System nicht. Die
+Beispielkonfiguration listet deshalb `(Nachricht|Message|Verfassen|Compose|Termin|Meeting)`
+— was das Problem lindert, aber nicht löst.
+
+**Der robustere Primärweg ist deshalb:**
+
+1. `bundleIdentifier` als Basis
+2. `onlyFirstWindowAfterLaunch: true` für das Hauptfenster
+3. `minimumSize` gegen Popups und Paletten
+4. `subroles: ["AXStandardWindow"]` gegen Dialoge
+
+`titlePattern` erst dann, wenn diese vier nicht ausreichen — und dann in dem
+Bewusstsein, dass die Regel bei einem Sprachwechsel oder einem UI-Update der App
+still aufhört zu greifen. `openzonr windows --bundle <id>` zeigt, womit man es
+tatsächlich zu tun hat.
+
+Warum `onlyFirstWindowAfterLaunch` und `minimumSize` beide gebraucht werden,
+zeigt derselbe Messlauf:
+
+```
+com.corecode.MacUpdater   4× deckungsgleich   420×206 @ 750,230   Titel ""
+```
+
+Vier identische Fenster derselben App, alle mit leerem Titel. Ohne
+Mindestgröße wären alle vier Kandidaten; ohne
+`onlyFirstWindowAfterLaunch` würden alle vier in dieselbe Zone geschoben.
+
 
 ### `action`
 

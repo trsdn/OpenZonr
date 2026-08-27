@@ -62,7 +62,7 @@ Zwei Dinge sind der Kern:
 Package.swift                 SwiftPM-Manifest (macOS 14+)
 Sources/OpenZonrCore/
   Geometry/                   RelativeRect, Zone, Layout
-  Display/                    DisplayIdentity, SetupFingerprint
+  Display/                    DisplayIdentity, SetupFingerprint, Anordnung
   Roles/                      ZoneRole, RoleBinding
   Rules/                      WindowMatch, PlacementAction, PlacementRule
   Profiles/                   Profile
@@ -70,16 +70,19 @@ Sources/OpenZonrCore/
     Migration/                Schrittkette zwischen Schemaversionen
   Validation/                 Validierung mit Dokumentpfaden
     Checks/                   Die einzelnen Prüfungen
-  Placement/                  Filter, Regel-Engine, Profil- und Zonenauflösung
+  Placement/                  Filter, Regel-Engine, Profil- und Zonenauflösung,
+                              Retry-Schleife
+Sources/openzonr/             Kommandozeilenwerkzeug (macOS-Anbindung)
 Tests/OpenZonrCoreTests/      Unit-Tests; Support/ enthält Fixtures
 Examples/                     Beispielkonfiguration (Büro / Home / Unterwegs)
-docs/                         Konzept, Konfigurationsreferenz, offene Fragen
+docs/                         Konzept, Konfiguration, Durchstich, offene Fragen
 ```
 
 Der Stand umfasst das Datenmodell, den Konfigurationsspeicher (laden,
-validieren, atomar schreiben, migrieren) und die rein rechnende Hälfte der
-Platzierung. Alles darin ist ohne laufenden Fensterserver testbar; die Anbindung
-an die Accessibility-API und die Oberfläche fehlen noch.
+validieren, atomar schreiben, migrieren), die rein rechnende Hälfte der
+Platzierung und den Durchstich `openzonr` — ein Kommandozeilenwerkzeug, das die
+Kette bis zum tatsächlich platzierten Fenster schließt. Die Oberfläche fehlt
+noch.
 
 **Warum Swift Package Manager und (noch) kein Xcode-Projekt?** Das Manifest ist
 Text, also diff- und reviewbar, und es gibt keine `.pbxproj`-Merge-Konflikte.
@@ -99,11 +102,122 @@ Mindestanforderung: macOS 14, Swift 6. Die verwendeten APIs (Accessibility,
 `CGDisplay*`, `NSWorkspace`) sind deutlich älter; macOS 14 ist für die spätere
 UI-Schicht (Observation, `MenuBarExtra`) gesetzt.
 
+## Das Kommandozeilenwerkzeug `openzonr`
+
+Drei Unterbefehle: zwei zur Diagnose, einer für den Durchstich.
+
+```bash
+swift run openzonr --help
+```
+
+### Accessibility freischalten
+
+Ohne Berechtigung kann kein Werkzeug Fenster lesen oder bewegen. Nach dem Bauen:
+
+1. Systemeinstellungen → Datenschutz & Sicherheit → **Bedienungshilfen**
+2. `.build/debug/openzonr` hinzufügen (Plus-Knopf, dann im Dateidialog mit
+   `⇧⌘G` den Pfad eingeben) und aktivieren
+3. Gegenprobe mit `swift run openzonr windows`
+
+Zwei Stolpersteine, beide real aufgetreten:
+
+- **Nach jedem `swift build` ändert sich die Prüfsumme der unsignierten
+  Binärdatei.** Der Haken bleibt gesetzt, die Berechtigung greift trotzdem nicht
+  mehr. Abhilfe: Eintrag entfernen und neu hinzufügen.
+- **`AXIsProcessTrusted()` kann `true` melden, ohne dass der Zugriff
+  funktioniert.** Dann liefert jede App auf `AXWindows` nur ein
+  Stellvertreter-Element der Rolle `AXApplication` ohne Position und Größe.
+  `openzonr` erkennt diesen Zustand und erklärt ihn, statt still nichts zu tun.
+  Details in [docs/tracer-bullet.md](docs/tracer-bullet.md).
+
+### `openzonr displays` — welche Monitore sind da?
+
+Zeigt jedes angeschlossene Display mit seiner stabilen Identität, Auflösung,
+Backing-Scale, `frame` und `visibleFrame` sowie den daraus berechneten
+Setup-Fingerprint.
+
+```bash
+swift run openzonr displays
+```
+
+```
+Display 1 von 4  — C49RG9x
+  Identität   fallback  vendor=19501 model=3996 5120×1440 port=1
+              ⚠ Seriennummer ist 0 — Identität über Vendor, Modell,
+                Auflösung und Port-Index
+  Auflösung   5120×1440 @1.0x
+  frame       (0, 0, 5120, 1440)
+  visibleFrame (0, 65, 5120, 1344)
+```
+
+Virtuelle Displays werden als solche gekennzeichnet. Mit
+`--config-fragment` gibt der Befehl stattdessen ein fertiges `displays`-Fragment
+im Konfigurationsformat aus, das sich direkt übernehmen lässt:
+
+```bash
+swift run openzonr displays --config-fragment
+```
+
+**Das ist der verbindliche Weg zu echten Identitäten.** Die Zahlen in
+`Examples/openzonr.config.json` sind erfunden.
+
+### `openzonr windows` — wie sehen die Fenster aus?
+
+Listet die Fenster der laufenden Apps mit Bundle ID, Titel, Subrolle, Position,
+Größe und belegtem Display. Damit findet man Match-Kriterien für Regeln — etwa
+wie sich Outlooks Haupt-, Verfassen- und Erinnerungsfenster unterscheiden.
+
+```bash
+swift run openzonr windows
+swift run openzonr windows --bundle com.microsoft.Outlook
+```
+
+### `openzonr watch` — der Durchstich
+
+Beobachtet neu geöffnete Fenster und platziert sie nach den Regeln der
+Konfiguration. Läuft im Vordergrund und protokolliert jeden Schritt.
+
+```bash
+swift run openzonr watch
+swift run openzonr watch --config ~/meine-config.json
+swift run openzonr watch --dry-run     # rechnet und protokolliert, bewegt nichts
+```
+
+Konfigurationspfad in dieser Reihenfolge: `--config`, dann `OPENZONR_CONFIG`,
+sonst `~/Library/Application Support/OpenZonr/config.json`.
+
+### Ein Durchlauf von Anfang bis Ende
+
+```bash
+# 1. Bauen und Berechtigung erteilen (siehe oben)
+swift build
+
+# 2. Die echten Displays ermitteln und als Fragment ausgeben
+swift run openzonr displays --config-fragment > /tmp/displays.json
+
+# 3. Konfiguration anlegen: Fragment übernehmen, Layouts, Rollen,
+#    Profile und Regeln ergänzen. Als Vorlage dient
+#    Examples/openzonr.config.json — aber mit den eigenen Identitäten.
+mkdir -p ~/Library/Application\ Support/OpenZonr
+$EDITOR ~/Library/Application\ Support/OpenZonr/config.json
+
+# 4. Trocken prüfen: Wird das richtige Profil gewählt?
+swift run openzonr watch --dry-run
+
+# 5. Match-Kriterien für die Regeln verifizieren
+swift run openzonr windows --bundle com.microsoft.Outlook
+
+# 6. Scharf schalten, dann die Ziel-App neu starten
+swift run openzonr watch
+```
+
 ## Weiterlesen
 
 - [docs/konzept.md](docs/konzept.md) — Architektur, Regelmodell, Monitor-Handling
 - [docs/konfiguration.md](docs/konfiguration.md) — Feldreferenz und kommentierte
   Erklärung der Beispielkonfiguration
+- [docs/tracer-bullet.md](docs/tracer-bullet.md) — was der Durchstich abdeckt,
+  was fehlt, und der Stand der Messung
 - [docs/offene-fragen.md](docs/offene-fragen.md) — was noch nicht entschieden ist
 
 ## Lizenz
