@@ -22,9 +22,12 @@ struct WatchCommand {
 
         // Trust alone is not enough: the permission can be attributed to the
         // launching terminal while this binary still receives stub elements.
-        // Placing windows would silently do nothing, so refuse loudly instead.
+        // Placing windows would silently do nothing, so refuse loudly instead —
+        // except under --dry-run, where nothing is placed anyway and the run is
+        // still useful for checking the configuration and the profile match.
         if Accessibility.probeWindowAccess() == .degraded {
-            throw CommandError(Accessibility.degradedAccessInstructions)
+            guard dryRun else { throw CommandError(Accessibility.degradedAccessInstructions) }
+            Log.warn(Accessibility.degradedAccessInstructions)
         }
 
         let configuration = try ConfigurationLoading.load(from: configurationURL)
