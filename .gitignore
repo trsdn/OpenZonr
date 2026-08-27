@@ -1,0 +1,38 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift
+*.o
+timeline.xctimeline
+playground.xcworkspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Local, machine specific configuration (never commit a real user config)
+openzonr.local.json
