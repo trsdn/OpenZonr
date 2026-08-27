@@ -66,6 +66,19 @@ public struct ZoneOccupancy: Sendable {
         manualOverrides[window] = date
     }
 
+    /// When the user moved this window by hand, if that is still on record.
+    ///
+    /// Unlike ``isManuallyOverridden(_:now:policy:)`` this reports the stored
+    /// state itself rather than the state as a policy interprets it, which is
+    /// the only way to observe whether ``pruneExpiredOverrides(now:policy:)``
+    /// actually dropped anything.
+    func manualOverrideDate(of window: WindowIdentifier) -> Date? {
+        manualOverrides[window]
+    }
+
+    /// Number of windows currently on record as manually overridden.
+    var manualOverrideCount: Int { manualOverrides.count }
+
     /// Whether the window is currently off limits because the user moved it.
     public func isManuallyOverridden(_ window: WindowIdentifier, now: Date, policy: ConflictPolicy) -> Bool {
         guard policy.honorManualOverride, let overriddenAt = manualOverrides[window] else {

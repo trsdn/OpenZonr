@@ -151,8 +151,53 @@ struct ZoneOccupancyTests {
         occupancy.markManuallyOverridden(live, at: Self.now.addingTimeInterval(30))
         occupancy.pruneExpiredOverrides(now: Self.now.addingTimeInterval(60.001), policy: policy)
 
-        #expect(!occupancy.isManuallyOverridden(expired, now: Self.now.addingTimeInterval(60.001), policy: policy))
-        #expect(occupancy.isManuallyOverridden(live, now: Self.now.addingTimeInterval(60.001), policy: policy))
+        // Geprüft wird der gespeicherte Zustand, nicht seine Auslegung durch die
+        // Richtlinie: `isManuallyOverridden` wendet die Frist ohnehin an und
+        // antwortete auch dann richtig, wenn gar nichts bereinigt worden wäre.
+        // Der eigentliche Zweck der Methode — die Tabelle wächst nicht ewig —
+        // lässt sich nur an der Tabelle selbst ablesen.
+        #expect(occupancy.manualOverrideDate(of: expired) == nil)
+        #expect(occupancy.manualOverrideDate(of: live) == Self.now.addingTimeInterval(30))
+        #expect(occupancy.manualOverrideCount == 1)
+    }
+
+    @Test("Ohne Ablaufgrenze wird nichts bereinigt")
+    func pruneKeepsEverythingWithoutATimeout() {
+        var occupancy = ZoneOccupancy()
+        let window = TestConfigurations.identifier("a")
+        let policy = ConflictPolicy(honorManualOverride: true, manualOverrideTimeout: nil)
+
+        occupancy.markManuallyOverridden(window, at: Self.now)
+        occupancy.pruneExpiredOverrides(now: Self.now.addingTimeInterval(86_400), policy: policy)
+
+        // Eine Übersteuerung ohne Frist gilt, solange das Fenster existiert.
+        #expect(occupancy.manualOverrideDate(of: window) == Self.now)
+    }
+
+    @Test("Ist die Übersteuerung abgeschaltet, bereinigt das Aufräumen nichts")
+    func pruneKeepsEverythingWhenOverridesAreIgnored() {
+        var occupancy = ZoneOccupancy()
+        let window = TestConfigurations.identifier("a")
+        let policy = ConflictPolicy(honorManualOverride: false, manualOverrideTimeout: 60)
+
+        occupancy.markManuallyOverridden(window, at: Self.now)
+        occupancy.pruneExpiredOverrides(now: Self.now.addingTimeInterval(600), policy: policy)
+
+        // Der Eintrag bleibt erhalten: die Richtlinie kann sich ändern, und dann
+        // wäre eine im Vorbeigehen gelöschte Übersteuerung nicht mehr zu retten.
+        #expect(occupancy.manualOverrideDate(of: window) == Self.now)
+    }
+
+    @Test("Ein vergessenes Fenster verliert auch seine Übersteuerung")
+    func forgettingAWindowClearsItsOverride() {
+        var occupancy = ZoneOccupancy()
+        let window = TestConfigurations.identifier("a")
+
+        occupancy.markManuallyOverridden(window, at: Self.now)
+        occupancy.forget(window)
+
+        #expect(occupancy.manualOverrideDate(of: window) == nil)
+        #expect(occupancy.manualOverrideCount == 0)
     }
 
     private static let now = Date(timeIntervalSince1970: 1_700_000_000)
