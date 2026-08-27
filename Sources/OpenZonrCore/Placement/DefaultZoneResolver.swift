@@ -1,0 +1,98 @@
+import Foundation
+
+public struct DefaultZoneResolver: ZoneResolver {
+    public init() {}
+
+    public func resolve(
+        role: RoleID,
+        share: ZoneShare?,
+        profile: Profile,
+        configuration: Configuration,
+        visibleFrames: VisibleFrames
+    ) -> Result<ResolvedPlacement, ZoneResolutionFailure> {
+        let explicitBinding = profile.roleBindings.first { $0.role == role }
+        let binding = explicitBinding ?? profile.fallback
+        let usedFallback = explicitBinding == nil
+
+        guard let display = configuration.displays.first(where: { $0.alias == binding.display }) else {
+            return .failure(.unknownDisplay(binding.display))
+        }
+
+        let layoutID = profile.layouts[binding.display] ?? display.defaultLayoutID
+        guard let layout = display.layouts.first(where: { $0.id == layoutID }) else {
+            return .failure(.unknownLayout(layoutID, display: binding.display))
+        }
+
+        guard let zone = layout.zones.first(where: { $0.id == binding.zone }) else {
+            return .failure(.unknownZone(binding.zone, layout: layoutID, display: binding.display))
+        }
+
+        guard let visibleFrame = visibleFrames[binding.display] else {
+            return .failure(.missingVisibleFrame(binding.display))
+        }
+
+        let relativeFrame: RelativeRect
+        if let share {
+            guard share.slots >= 2, (0..<share.slots).contains(share.slotIndex) else {
+                return .failure(.invalidShare(share))
+            }
+            relativeFrame = subdivide(zone.frame, by: share)
+        } else {
+            relativeFrame = zone.frame
+        }
+
+        return .success(
+            ResolvedPlacement(
+                frame: absoluteFrame(for: relativeFrame, in: visibleFrame),
+                display: binding.display,
+                zone: binding.zone,
+                usedFallback: usedFallback
+            )
+        )
+    }
+
+    private func subdivide(_ rect: RelativeRect, by share: ZoneShare) -> RelativeRect {
+        switch share.axis {
+        case .horizontal:
+            let width = rect.width / Double(share.slots)
+            return RelativeRect(
+                x: rect.x + Double(share.slotIndex) * width,
+                y: rect.y,
+                width: width,
+                height: rect.height
+            )
+        case .vertical:
+            let height = rect.height / Double(share.slots)
+            return RelativeRect(
+                x: rect.x,
+                y: rect.y + Double(share.slotIndex) * height,
+                width: rect.width,
+                height: height
+            )
+        }
+    }
+
+    /// Converts a zone rectangle from the configuration model's top-left origin
+    /// into AppKit's bottom-left coordinate space; this conversion belongs in the
+    /// resolver so every placement result leaves this layer in one coordinate system.
+    private func absoluteFrame(for rect: RelativeRect, in frame: VisibleFrame) -> WindowFrame {
+        let left = frame.x + rect.x * frame.width
+        let right = frame.x + (rect.x + rect.width) * frame.width
+        let top = frame.y + frame.height - rect.y * frame.height
+        let bottom = frame.y + frame.height - (rect.y + rect.height) * frame.height
+
+        let roundedLeft = left.rounded()
+        let roundedRight = right.rounded()
+        let roundedTop = top.rounded()
+        let roundedBottom = bottom.rounded()
+
+        // Round shared edges before deriving size so adjacent zones meet exactly
+        // instead of gaining overlaps or one-point gaps from independent rounding.
+        return WindowFrame(
+            x: roundedLeft,
+            y: roundedBottom,
+            width: roundedRight - roundedLeft,
+            height: roundedTop - roundedBottom
+        )
+    }
+}
