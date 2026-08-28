@@ -21,18 +21,53 @@ public struct GlobalDefaults: Codable, Hashable, Sendable {
     /// Behaviour on collisions and after manual moves.
     public var conflict: ConflictPolicy
 
+    /// How dragging a window into a zone behaves.
+    public var dropzones: DropzoneSettings
+
     public init(
         onlyFirstWindowAfterLaunch: Bool = true,
         allowedSubroles: [String] = ["AXStandardWindow"],
         minimumWindowSize: WindowSize = WindowSize(width: 400, height: 300),
         retry: RetryPolicy = RetryPolicy(),
-        conflict: ConflictPolicy = ConflictPolicy()
+        conflict: ConflictPolicy = ConflictPolicy(),
+        dropzones: DropzoneSettings = DropzoneSettings()
     ) {
         self.onlyFirstWindowAfterLaunch = onlyFirstWindowAfterLaunch
         self.allowedSubroles = allowedSubroles
         self.minimumWindowSize = minimumWindowSize
         self.retry = retry
         self.conflict = conflict
+        self.dropzones = dropzones
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case onlyFirstWindowAfterLaunch, allowedSubroles, minimumWindowSize, retry, conflict, dropzones
+    }
+
+    /// Decodes with every field omissible.
+    ///
+    /// Written by hand for the same reason ``Configuration`` is: a file that
+    /// predates a field must keep loading. Adding `dropzones` to a synthesised
+    /// decoder would have made every existing configuration fail — the whole
+    /// file, not the section — which is the loudest possible way to break
+    /// something that has nothing to do with dragging windows.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = GlobalDefaults()
+        self.onlyFirstWindowAfterLaunch = try container.decodeIfPresent(
+            Bool.self, forKey: .onlyFirstWindowAfterLaunch
+        ) ?? defaults.onlyFirstWindowAfterLaunch
+        self.allowedSubroles = try container.decodeIfPresent(
+            [String].self, forKey: .allowedSubroles
+        ) ?? defaults.allowedSubroles
+        self.minimumWindowSize = try container.decodeIfPresent(
+            WindowSize.self, forKey: .minimumWindowSize
+        ) ?? defaults.minimumWindowSize
+        self.retry = try container.decodeIfPresent(RetryPolicy.self, forKey: .retry) ?? defaults.retry
+        self.conflict = try container.decodeIfPresent(ConflictPolicy.self, forKey: .conflict) ?? defaults.conflict
+        self.dropzones = try container.decodeIfPresent(
+            DropzoneSettings.self, forKey: .dropzones
+        ) ?? defaults.dropzones
     }
 }
 

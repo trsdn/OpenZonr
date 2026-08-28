@@ -24,6 +24,7 @@ public enum OpenZonrCommandLine {
       openzonr windows  [--bundle <bundle-id>] [--all-apps] [--no-filter-verdict]
       openzonr watch    [--config <pfad>] [--dry-run]
       openzonr selftest [--out <pfad>] [--prompt]
+      openzonr dragprobe [--seconds <n>] [--out <pfad>] [--synthesize]
 
     UNTERBEFEHLE
       displays   Zeigt alle angeschlossenen Bildschirme mit ihrer stabilen
@@ -48,6 +49,15 @@ public enum OpenZonrCommandLine {
                  sonst verlorengeht:
                    open -n -a OpenZonr --args selftest --out /tmp/openzonr.txt
 
+      dragprobe  Misst beide Wege, eine Fensterbewegung zu erkennen —
+                 CGEventTap und kAXMovedNotification — nebeneinander:
+                 Einrichtung, Ereignisrate, Latenz, größte Lücke und ob das
+                 Loslassen ein Ereignis ist oder abgefragt werden muss.
+                 --seconds legt die Messdauer je Weg fest (Vorgabe 5),
+                 --synthesize erzeugt die Mausereignisse selbst, damit auch
+                 ohne Hand an der Maus Zahlen entstehen — sie werden im
+                 Bericht als synthetisch ausgewiesen.
+
     KONFIGURATION
       Standardpfad: ~/Library/Application Support/OpenZonr/config.json
       Überschreibbar mit --config <pfad> oder der Umgebungsvariablen
@@ -66,7 +76,7 @@ public enum OpenZonrCommandLine {
     /// which is why it is a list rather than "anything that is not a flag":
     /// LaunchServices passes arguments of its own, and mistaking one of them for
     /// a subcommand would keep the menu bar icon from ever appearing.
-    public static let subcommands = ["displays", "windows", "watch", "selftest", "help", "--help", "-h"]
+    public static let subcommands = ["displays", "windows", "watch", "selftest", "dragprobe", "help", "--help", "-h"]
 
     public static func isSubcommand(_ argument: String) -> Bool {
         subcommands.contains(argument)
@@ -112,6 +122,18 @@ public enum OpenZonrCommandLine {
                 let command = SelftestCommand(
                     outputPath: try arguments.consumeOption("--out"),
                     prompt: arguments.consumeFlag("--prompt")
+                )
+                try arguments.requireEmpty()
+                try MainActor.assumeIsolated { try command.run() }
+
+            case "dragprobe":
+                let secondsArgument = try arguments.consumeOption("--seconds")
+                let seconds = secondsArgument.flatMap(Double.init) ?? 5
+                guard seconds > 0 else { throw CommandError("--seconds erwartet eine positive Zahl.") }
+                let command = DragProbeCommand(
+                    seconds: seconds,
+                    outputPath: try arguments.consumeOption("--out"),
+                    synthesize: arguments.consumeFlag("--synthesize")
                 )
                 try arguments.requireEmpty()
                 try MainActor.assumeIsolated { try command.run() }
