@@ -1,9 +1,20 @@
 # OpenZonr
 
-**Status: früher Konzeptstand (early concept).** Dieses Repository enthält das
-Konzept, das Datenmodell, den Konfigurationsspeicher und die rechnende Hälfte der
-Platzierung — aber noch keine lauffähige App: die Anbindung an die
-Accessibility-API und die Oberfläche fehlen.
+**Status: lauffähiges Kommandozeilenwerkzeug, noch keine App.** Datenmodell,
+Konfigurationsspeicher, Regel-Engine und die Anbindung an Accessibility und
+CoreGraphics sind gebaut und getestet. `openzonr displays` und `openzonr windows`
+liefern am echten Schreibtisch verwertbare Daten.
+
+Zwei Einschränkungen, die man vor dem Ausprobieren kennen sollte:
+
+1. **Die Platzierung selbst ist gebaut, aber noch nie an einem echten Fenster
+   gemessen worden.** Sie hängt an einer Bedienungshilfen-Berechtigung, die eine
+   unsignierte Binärdatei nach jedem Neubau verliert. Siehe
+   [#6](https://github.com/trsdn/OpenZonr/issues/6) und
+   [`docs/tracer-bullet.md`](docs/tracer-bullet.md).
+2. **Es gibt keine Oberfläche.** Kein Menüleisten-Symbol, kein Autostart, keine
+   Dropzones zum Hineinziehen. `openzonr watch` läuft im Vordergrund eines
+   Terminals.
 
 OpenZonr ist ein Fenstermanager für macOS mit Dropzones. Der Unterschied zu allem,
 was es sonst gibt, steckt in einem einzigen Satz:
@@ -80,9 +91,10 @@ docs/                         Konzept, Konfiguration, Durchstich, offene Fragen
 
 Der Stand umfasst das Datenmodell, den Konfigurationsspeicher (laden,
 validieren, atomar schreiben, migrieren), die rein rechnende Hälfte der
-Platzierung und den Durchstich `openzonr` — ein Kommandozeilenwerkzeug, das die
-Kette bis zum tatsächlich platzierten Fenster schließt. Die Oberfläche fehlt
-noch.
+Platzierung und das Kommandozeilenwerkzeug `openzonr`, das die Kette bis zum
+Aufruf der Accessibility-API schließt. Ob das gestellte Fenster am Ende
+tatsächlich liegen bleibt, ist noch nicht gemessen — siehe Fahrplan unten.
+Die Oberfläche fehlt vollständig.
 
 **Warum Swift Package Manager und (noch) kein Xcode-Projekt?** Das Manifest ist
 Text, also diff- und reviewbar, und es gibt keine `.pbxproj`-Merge-Konflikte.
@@ -210,6 +222,26 @@ swift run openzonr windows --bundle com.microsoft.Outlook
 # 6. Scharf schalten, dann die Ziel-App neu starten
 swift run openzonr watch
 ```
+
+## Fahrplan
+
+| Was | Stand |
+|---|---|
+| Konfiguration: laden, validieren, atomar schreiben, migrieren | fertig |
+| Regel-Engine, Profil- und Zonenauflösung | fertig |
+| Display-Identität und Setup-Fingerprint | fertig, am echten Schreibtisch geprüft |
+| Fenstererkennung über `NSWorkspace` und `AXObserver` | fertig, gemessen: 37 ms bis zum Observer, 310 ms bis zum Fensterereignis |
+| Diagnose per Kommandozeile (`displays`, `windows`) | fertig |
+| Platzierung mit Retry-Schleife | gebaut und unit-getestet, [#6](https://github.com/trsdn/OpenZonr/issues/6) — **nicht am echten Fenster gemessen** |
+| Signierung, damit der Grant Neubauten übersteht | offen, [#11](https://github.com/trsdn/OpenZonr/issues/11) — blockiert #6 |
+| Menüleisten-App mit Autostart | offen, [#8](https://github.com/trsdn/OpenZonr/issues/8) |
+| Regeln bearbeiten ohne JSON | offen, [#9](https://github.com/trsdn/OpenZonr/issues/9) |
+| Dropzones zum Hineinziehen | offen, [#10](https://github.com/trsdn/OpenZonr/issues/10) |
+
+Die Reihenfolge ist bewusst gewählt: Erst muss [#11](https://github.com/trsdn/OpenZonr/issues/11)
+die Signierung klären, damit [#6](https://github.com/trsdn/OpenZonr/issues/6) belegen kann,
+dass die Platzierung real trägt. Eine Oberfläche auf eine unbewiesene Kernfunktion
+zu setzen wäre verfrüht.
 
 ## Weiterlesen
 
