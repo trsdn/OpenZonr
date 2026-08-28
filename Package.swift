@@ -10,6 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "OpenZonrCore", targets: ["OpenZonrCore"]),
+        .library(name: "OpenZonrMac", targets: ["OpenZonrMac"]),
         .executable(name: "openzonr", targets: ["openzonr"])
     ],
     targets: [
@@ -17,13 +18,24 @@ let package = Package(
             name: "OpenZonrCore",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
-        // The command line tool is the tracer bullet: it is the smallest shell
-        // around OpenZonrCore that can actually move a window. Argument parsing
-        // is done by hand — three subcommands do not justify a dependency, and
-        // a dependency-free package stays trivial to build and audit.
+        // Everything that talks to macOS: Accessibility, CoreGraphics displays,
+        // and the watch engine that ties them to OpenZonrCore. It is its own
+        // target because the observation and placement logic inside it was
+        // expensive to get right — three of its details were only found by
+        // measuring on real hardware (see docs/tracer-bullet.md) — and a second
+        // front end must inherit them rather than reimplement them.
+        .target(
+            name: "OpenZonrMac",
+            dependencies: ["OpenZonrCore"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // The command line tool is the tracer bullet and stays the diagnostic
+        // instrument. Argument parsing is done by hand — three subcommands do
+        // not justify a dependency, and a dependency-free package stays trivial
+        // to build and audit.
         .executableTarget(
             name: "openzonr",
-            dependencies: ["OpenZonrCore"],
+            dependencies: ["OpenZonrCore", "OpenZonrMac"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(

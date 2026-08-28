@@ -8,9 +8,9 @@ import OpenZonrCore
 /// once. A command line tool has to collapse that into "run" or "explain and
 /// stop", and this is the single place where that collapse happens, so the
 /// wording of the explanation is written once instead of per subcommand.
-enum ConfigurationLoading {
+public enum ConfigurationLoading {
 
-    static func load(from url: URL, store: ConfigurationStore = ConfigurationStore()) throws -> Configuration {
+    public static func load(from url: URL, store: ConfigurationStore = ConfigurationStore()) throws -> Configuration {
         switch store.load(at: url) {
         case let .loaded(configuration, report, _):
             // Warnings are printed but never block: the validator flags things

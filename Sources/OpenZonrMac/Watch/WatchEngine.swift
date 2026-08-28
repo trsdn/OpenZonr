@@ -3,58 +3,83 @@ import ApplicationServices
 import Foundation
 import OpenZonrCore
 
-/// `openzonr watch` — the tracer bullet.
+/// The running daemon: observers, profile, geometry, per-app counters.
 ///
-/// Runs in the foreground and logs every step, because the point of this stage
-/// is not convenience but evidence: does a newly opened window actually end up
-/// in its zone, and how many attempts does that take against an application that
-/// resizes itself after opening?
-struct WatchCommand {
-
-    var configurationURL: URL
-    var dryRun: Bool
-
-    @MainActor
-    func run() throws -> Never {
-        guard Accessibility.isTrusted(promptIfNeeded: true) else {
-            throw CommandError(Accessibility.permissionInstructions)
-        }
-
-        // Trust alone is not enough: the permission can be attributed to the
-        // launching terminal while this binary still receives stub elements.
-        // Placing windows would silently do nothing, so refuse loudly instead —
-        // except under --dry-run, where nothing is placed anyway and the run is
-        // still useful for checking the configuration and the profile match.
-        if Accessibility.probeWindowAccess() == .degraded {
-            guard dryRun else { throw CommandError(Accessibility.degradedAccessInstructions) }
-            Log.warn(Accessibility.degradedAccessInstructions)
-        }
-
-        let configuration = try ConfigurationLoading.load(from: configurationURL)
-        Log.info("Konfiguration geladen: \(configurationURL.path)")
-        Log.info("\(configuration.displays.count) Displays, \(configuration.profiles.count) Profile, \(configuration.rules.filter(\.enabled).count) aktive Regeln")
-
-        let session = try WatchSession(configuration: configuration, dryRun: dryRun)
-        session.start()
-
-        Log.info("Warte auf neue Fenster. Beenden mit Strg-C.")
-        CFRunLoopRun()
-        exit(0)
-    }
-}
-
-/// The running daemon state: observers, profile, geometry, per-app counters.
+/// Extracted from `openzonr watch`, unchanged in substance. Three details in
+/// here were bought with a day of measuring on real hardware and are the
+/// difference between a working tool and an empty log — they are marked
+/// individually below, and none of them may be simplified away:
+///
+/// 1. the strong capture of `NSRunningApplication` across the observer retry,
+/// 2. sweeping windows that already existed when the observer attached,
+/// 3. re-reading a frame that an application has not laid out yet.
+///
+/// See `docs/tracer-bullet.md`. The menu bar app hosts this type rather than
+/// reimplementing it, which is the whole reason it is a type at all.
 @MainActor
-final class WatchSession {
+public final class WatchEngine {
 
-    private let configuration: Configuration
-    private let dryRun: Bool
-    private let profile: Profile
+    /// Which profile the engine is placing against, and how it got there.
+    public enum ProfileState: Sendable {
+        /// The attached displays match this profile exactly.
+        case matched(Profile)
+        /// The user pinned this profile by hand. `automatic` is what the
+        /// hardware would have selected, when it selects anything.
+        case pinned(Profile, automatic: Profile?)
+        /// No profile matches, and OpenZonr does not guess. The string is the
+        /// full explanation, ready to be shown.
+        case unmatched(explanation: String)
+
+        public var profile: Profile? {
+            switch self {
+            case let .matched(profile), let .pinned(profile, _): return profile
+            case .unmatched: return nil
+            }
+        }
+
+        public var isPinned: Bool {
+            if case .pinned = self { return true }
+            return false
+        }
+    }
+
+    // MARK: - Observable state
+
+    public private(set) var configuration: Configuration
+    public private(set) var profileState: ProfileState
+    public private(set) var isRunning = false
+
+    /// While paused, windows are still observed but nothing is placed.
+    ///
+    /// Observers stay attached on purpose: detaching them would mean losing the
+    /// first window of every application launched while paused, and resuming
+    /// would be silently degraded for the rest of the session.
+    public var isPaused = false {
+        didSet {
+            guard isPaused != oldValue else { return }
+            Log.info(isPaused ? "Pausiert — es wird nichts mehr platziert." : "Fortgesetzt.")
+            notifyChange()
+        }
+    }
+
+    /// The most recent decisions, newest first.
+    public private(set) var records: [PlacementRecord] = []
+
+    /// Called after any of the published properties changed.
+    public var onChange: (@MainActor () -> Void)?
+
+    /// Whether windows are actually moved. `false` decides and logs only.
+    public var dryRun: Bool
+
+    private static let recordLimit = 100
+
+    // MARK: - Internals
+
     private var arrangement: ScreenArrangement
     private let rules: CompiledRuleSet
-    private let decider: PlacementDecider
+    private var decider: PlacementDecider
 
-    /// Which zone currently holds which window. Owned by the session because a
+    /// Which zone currently holds which window. Owned by the engine because a
     /// decision and the bookkeeping that follows it must not drift apart.
     private var occupancy = ZoneOccupancy()
 
@@ -73,6 +98,12 @@ final class WatchSession {
     /// Windows replayed by ``sweepExistingWindows(of:)``, with the time of replay.
     private var recentlySwept: [String: Date] = [:]
 
+    private var launchObservation: (any NSObjectProtocol)?
+    private var screenObservation: (any NSObjectProtocol)?
+
+    /// The profile the user pinned by hand, if any.
+    private var pinnedProfile: ProfileID?
+
     /// How often a swept window is re-read before it is given up on.
     ///
     /// Six attempts at one second cover the seven seconds Outlook needed on the
@@ -82,7 +113,15 @@ final class WatchSession {
     private static let frameReadAttempts = 6
     private static let frameReadDelay: TimeInterval = 1.0
 
-    init(configuration: Configuration, dryRun: Bool) throws {
+    // MARK: - Lifecycle
+
+    /// Builds the engine and reports the display situation.
+    ///
+    /// Deliberately does not fail when no profile matches. The command line
+    /// refuses to run in that state and says why, but the app has to survive it
+    /// — showing "kein Profil passt" in the menu with a way out is the entire
+    /// point of having a menu.
+    public init(configuration: Configuration, dryRun: Bool, announce: Bool = true) {
         self.configuration = configuration
         self.dryRun = dryRun
         self.rules = CompiledRuleSet(rules: configuration.rules)
@@ -90,24 +129,78 @@ final class WatchSession {
 
         let snapshots = SystemDisplays.snapshots()
         self.arrangement = ScreenArrangement(snapshots: snapshots)
+        self.profileState = .unmatched(explanation: "")
 
-        for unusable in rules.unusableRules {
-            Log.warn("Regel \"\(unusable.rule)\" wird übersprungen: \(unusable.reason) Muster: \(unusable.pattern)")
+        if announce {
+            for unusable in rules.unusableRules {
+                Log.warn("Regel \"\(unusable.rule)\" wird übersprungen: \(unusable.reason) Muster: \(unusable.pattern)")
+            }
+
+            let fingerprint = SetupFingerprint(snapshots: snapshots, ignoring: configuration.ignoredDisplays)
+            Log.info("Angeschlossene Displays: \(snapshots.count), davon \(fingerprint.displays.count) im Fingerprint")
+            for snapshot in snapshots {
+                let ignored = configuration.ignoredDisplays.contains(snapshot.identity)
+                Log.detail("\(snapshot.localizedName) — \(describe(snapshot.identity))\(ignored ? "  [ignoriert]" : "")")
+            }
         }
 
-        let fingerprint = SetupFingerprint(snapshots: snapshots, ignoring: configuration.ignoredDisplays)
-        Log.info("Angeschlossene Displays: \(snapshots.count), davon \(fingerprint.displays.count) im Fingerprint")
-        for snapshot in snapshots {
-            let ignored = configuration.ignoredDisplays.contains(snapshot.identity)
-            Log.detail("\(snapshot.localizedName) — \(describe(snapshot.identity))\(ignored ? "  [ignoriert]" : "")")
+        resolveProfile(announce: announce)
+    }
+
+    // No `deinit` teardown on purpose. The observations are main-actor state and
+    // a nonisolated `deinit` may not touch them; more to the point, an engine
+    // that is being deallocated while still observing is a bug in the caller,
+    // not something to paper over. Both front ends call ``stop()``.
+
+    /// The current fingerprint, recomputed from the attached displays.
+    public var setupFingerprint: SetupFingerprint {
+        SetupFingerprint(
+            snapshots: SystemDisplays.snapshots(),
+            ignoring: configuration.ignoredDisplays
+        )
+    }
+
+    /// All profiles the configuration offers, for the manual switch.
+    public var availableProfiles: [Profile] { configuration.profiles }
+
+    // MARK: - Profile
+
+    /// Determines the active profile and rebuilds the decider around it.
+    private func resolveProfile(announce: Bool) {
+        let fingerprint = setupFingerprint
+        let automatic = DefaultProfileResolver().activeProfile(for: fingerprint, in: configuration)
+
+        let previous = profileState.profile?.id
+
+        if let pinnedProfile, let profile = configuration.profiles.first(where: { $0.id == pinnedProfile }) {
+            profileState = .pinned(profile, automatic: automatic)
+        } else if let automatic {
+            profileState = .matched(automatic)
+        } else {
+            profileState = .unmatched(
+                explanation: Self.explainMissingProfile(fingerprint, configuration: configuration)
+            )
         }
 
-        guard let profile = DefaultProfileResolver().activeProfile(for: fingerprint, in: configuration) else {
-            throw CommandError(Self.explainMissingProfile(fingerprint, configuration: configuration))
-        }
-        self.profile = profile
-        Log.success("Aktives Profil: \(profile.name) (\(profile.id))")
+        decider = PlacementDecider(
+            filter: DefaultWindowFilter(rules: rules),
+            profileResolver: PinnedProfileResolver(pinned: pinnedProfile)
+        )
 
+        guard announce else { return }
+        switch profileState {
+        case let .matched(profile):
+            if previous != profile.id { Log.success("Aktives Profil: \(profile.name) (\(profile.id))") }
+            warnAboutMissingFrames(for: profile)
+        case let .pinned(profile, _):
+            if previous != profile.id { Log.success("Profil von Hand gewählt: \(profile.name) (\(profile.id))") }
+            warnAboutMissingFrames(for: profile)
+        case let .unmatched(explanation):
+            if previous != nil || !explanation.isEmpty { Log.warn(explanation) }
+        }
+    }
+
+    private func warnAboutMissingFrames(for profile: Profile) {
         let frames = arrangement.visibleFrames(for: configuration.displays)
         let missing = Set(profile.fingerprint.normalized).subtracting(frames.aliases)
         if !missing.isEmpty {
@@ -115,8 +208,27 @@ final class WatchSession {
         }
     }
 
+    /// Pins a profile by hand, or returns to the automatic match with `nil`.
+    public func pinProfile(_ id: ProfileID?) {
+        pinnedProfile = id
+        resolveProfile(announce: true)
+        notifyChange()
+    }
+
+    /// Re-reads the displays and re-determines the profile.
+    ///
+    /// Called on every screen parameter change, so that docking a laptop or
+    /// waking a monitor updates the menu instead of leaving a stale answer in
+    /// it. Windows already placed are left alone — that is a watching behaviour
+    /// the concept rules out.
+    public func refreshProfile() {
+        arrangement = ScreenArrangement(snapshots: SystemDisplays.snapshots())
+        resolveProfile(announce: true)
+        notifyChange()
+    }
+
     /// The loud, specific complaint that replaces silently guessing a profile.
-    private static func explainMissingProfile(
+    public static func explainMissingProfile(
         _ fingerprint: SetupFingerprint,
         configuration: Configuration
     ) -> String {
@@ -154,8 +266,11 @@ final class WatchSession {
 
     // MARK: - Observation
 
-    func start() {
-        NSWorkspace.shared.notificationCenter.addObserver(
+    public func start() {
+        guard !isRunning else { return }
+        isRunning = true
+
+        launchObservation = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification,
             object: nil,
             queue: .main
@@ -168,6 +283,16 @@ final class WatchSession {
             }
         }
 
+        screenObservation = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshProfile()
+            }
+        }
+
         for app in NSWorkspace.shared.runningApplications where isRelevant(app) {
             // Already running: their first window is long gone.
             windowsSeen[app.processIdentifier] = Int.max / 2
@@ -175,7 +300,40 @@ final class WatchSession {
         }
 
         Log.info("Beobachte \(observers.count) laufende Apps plus alle neu gestarteten.")
+        notifyChange()
     }
+
+    /// Detaches everything. The engine can be started again afterwards.
+    public func stop() {
+        guard isRunning else { return }
+        isRunning = false
+
+        if let launchObservation {
+            NSWorkspace.shared.notificationCenter.removeObserver(launchObservation)
+        }
+        launchObservation = nil
+        if let screenObservation {
+            NotificationCenter.default.removeObserver(screenObservation)
+        }
+        screenObservation = nil
+
+        for observer in observers.values {
+            CFRunLoopRemoveSource(
+                CFRunLoopGetMain(),
+                AXObserverGetRunLoopSource(observer),
+                .defaultMode
+            )
+        }
+        observers.removeAll()
+        windowsSeen.removeAll()
+        recentlySwept.removeAll()
+
+        Log.info("Beobachtung beendet.")
+        notifyChange()
+    }
+
+    /// How many applications currently carry an observer.
+    public var observedApplicationCount: Int { observers.count }
 
     /// Whether any enabled rule could ever apply to this application.
     ///
@@ -325,6 +483,32 @@ final class WatchSession {
             return
         }
 
+        // Pause stops here, before the per-process window counter, and not later
+        // where the frame is written.
+        //
+        // The counter is what makes `onlyFirstWindowAfterLaunch` work. If a
+        // window that appears during a pause were counted, it would consume the
+        // "first window after launch" slot, and after resuming the rule would
+        // silently skip exactly the window it was written for — a failure with
+        // no error message, which is the class of bug this project keeps
+        // running into. Pausing means the engine watches and reports; it does
+        // not mean it half-decides.
+        if isPaused {
+            Log.detail("pausiert — Fenster von \(app.bundleIdentifier ?? "pid \(pid)") wird nicht bewertet.")
+            record(
+                PlacementRecord(
+                    applicationName: app.localizedName ?? "pid \(pid)",
+                    bundleIdentifier: app.bundleIdentifier,
+                    windowTitle: Accessibility.string(element, kAXTitleAttribute as String),
+                    ruleID: nil,
+                    display: nil,
+                    zone: nil,
+                    outcome: .notExecuted("pausiert")
+                )
+            )
+            return
+        }
+
         // A window replayed by the sweep may belong to an application that is
         // still starting up and has not laid it out yet. Outlook made this
         // concrete: for roughly seven seconds after launch every attribute read
@@ -399,7 +583,18 @@ final class WatchSession {
 
         switch decision {
         case let .skip(_, reason):
-            log(reason)
+            Log.detail(Self.explain(reason))
+            // Only reasons that survived rule matching are worth a row: the
+            // filter rejects dozens of windows nobody ever asked about.
+            if Self.isWorthRecording(reason) {
+                record(
+                    application: app,
+                    snapshot: snapshot,
+                    ruleID: nil,
+                    placement: nil,
+                    outcome: .skipped(Self.explain(reason))
+                )
+            }
 
         case let .suggest(placement, rule):
             Log.warn("""
@@ -407,31 +602,47 @@ final class WatchSession {
             Es fehlt das Overlay, das den Vorschlag anzeigen würde. Ziel wäre gewesen:
             \(placement.display)/\(placement.zone) \(placement.frame.shortDescription)
             """)
+            record(
+                application: app,
+                snapshot: snapshot,
+                ruleID: rule.id,
+                placement: placement,
+                outcome: .suggested
+            )
 
         case let .place(placement, rule, displacing):
             for displacement in displacing {
                 Log.detail("verdrängt \(displacement.window) nach \(displacement.newPlacement.display)/\(displacement.newPlacement.zone)")
             }
-            place(element: element, snapshot: snapshot, rule: rule, placement: placement)
+            place(element: element, application: app, snapshot: snapshot, rule: rule, placement: placement)
         }
     }
 
     /// Explains a skipped window in one line, because "nothing happened" is the
     /// hardest state to debug from the outside.
-    private func log(_ reason: SkipReason) {
+    public static func explain(_ reason: SkipReason) -> String {
         switch reason {
         case let .filtered(rejection):
-            Log.detail("ignoriert — \(rejection)")
+            return "ignoriert — \(rejection)"
         case .noMatchingRule:
-            Log.detail("keine Regel trifft zu")
+            return "keine Regel trifft zu"
         case let .unknownSetup(fingerprint):
-            Log.warn("Setup passt zu keinem Profil (\(fingerprint.displays.count) Displays) — es wird nichts platziert.")
+            return "Setup passt zu keinem Profil (\(fingerprint.displays.count) Displays) — es wird nichts platziert."
         case .manuallyOverridden:
-            Log.detail("Fenster wurde von Hand bewegt — die Regel hält sich zurück.")
+            return "Fenster wurde von Hand bewegt — die Regel hält sich zurück."
         case let .unresolvableZone(failure):
-            Log.warn("Zone nicht auflösbar: \(failure)")
+            return "Zone nicht auflösbar: \(failure)"
         case let .zoneOccupied(display, zone):
-            Log.detail("Zone \(display)/\(zone) ist belegt, Policy sagt: stehen lassen.")
+            return "Zone \(display)/\(zone) ist belegt, Policy sagt: stehen lassen."
+        }
+    }
+
+    private static func isWorthRecording(_ reason: SkipReason) -> Bool {
+        switch reason {
+        case .filtered, .noMatchingRule:
+            return false
+        case .unknownSetup, .manuallyOverridden, .unresolvableZone, .zoneOccupied:
+            return true
         }
     }
 
@@ -446,6 +657,7 @@ final class WatchSession {
 
     private func place(
         element: AXUIElement,
+        application: NSRunningApplication,
         snapshot: WindowSnapshot,
         rule: PlacementRule,
         placement: ResolvedPlacement
@@ -469,6 +681,13 @@ final class WatchSession {
 
         guard !dryRun else {
             Log.detail("dry-run — es wird nichts gesetzt")
+            record(
+                application: application,
+                snapshot: snapshot,
+                ruleID: rule.id,
+                placement: placement,
+                outcome: .notExecuted("dry-run")
+            )
             return
         }
 
@@ -476,7 +695,10 @@ final class WatchSession {
         let retry = configuration.defaults.retry
 
         Task { @MainActor in
+            var lastDeviation: Double?
+
             let placer = RetryingWindowPlacer(record: { attempt in
+                lastDeviation = attempt.deviation
                 let actual = attempt.actual?.shortDescription ?? "nicht lesbar"
                 let deviation = attempt.deviation.map { String(format: "%.1f pt", $0) } ?? "—"
                 let verdict = attempt.accepted ? "innerhalb der Toleranz" : "Abweichung zu groß"
@@ -489,9 +711,11 @@ final class WatchSession {
 
             let outcome = await placer.place(window, at: target, retry: retry)
 
+            let recorded: PlacementRecord.Outcome
             switch outcome {
             case let .placed(attempts):
                 Log.success("Platziert nach \(attempts) Versuch\(attempts == 1 ? "" : "en").")
+                recorded = .placed(attempts: attempts, deviation: lastDeviation)
             case let .rejectedByApplication(actual, attempts):
                 Log.warn("""
                 Die App hat den Frame nach \(attempts) Versuchen nicht übernommen.
@@ -499,45 +723,92 @@ final class WatchSession {
                 Mögliche Ursachen: die App klemmt ihre Fenstergröße, oder ein zweiter
                 Fenstermanager (z. B. Magnet) hat gegengehalten.
                 """)
+                recorded = .rejected(actual: actual, attempts: attempts)
             case .missingPermission:
                 Log.warn(Accessibility.permissionInstructions)
+                recorded = .notExecuted("keine Berechtigung")
             case .suggested, .notApplicable, .skippedManualOverride:
                 Log.detail("Ergebnis: \(outcome)")
+                recorded = .notExecuted("\(outcome)")
             }
+
+            record(
+                application: application,
+                snapshot: snapshot,
+                ruleID: rule.id,
+                placement: placement,
+                outcome: recorded
+            )
 
             if rule.action.focus == .activate {
                 Accessibility.raise(window.element, pid: snapshot.processIdentifier)
             }
         }
     }
+
+    // MARK: - Records
+
+    private func record(
+        application: NSRunningApplication,
+        snapshot: WindowSnapshot,
+        ruleID: RuleID?,
+        placement: ResolvedPlacement?,
+        outcome: PlacementRecord.Outcome
+    ) {
+        record(
+            PlacementRecord(
+                applicationName: application.localizedName
+                    ?? snapshot.bundleIdentifier
+                    ?? "pid \(snapshot.processIdentifier)",
+                bundleIdentifier: snapshot.bundleIdentifier,
+                windowTitle: snapshot.title,
+                ruleID: ruleID,
+                display: placement?.display,
+                zone: placement?.zone,
+                outcome: outcome
+            )
+        )
+    }
+
+    /// Newest first — the menu shows the top of this list.
+    private func record(_ entry: PlacementRecord) {
+        records.insert(entry, at: 0)
+        if records.count > Self.recordLimit {
+            records.removeLast(records.count - Self.recordLimit)
+        }
+        notifyChange()
+    }
+
+    public func clearRecords() {
+        records.removeAll()
+        notifyChange()
+    }
+
+    private func notifyChange() {
+        onChange?()
+    }
 }
 
-/// Bridges the C callback back into the session.
+/// Bridges the C callback back into the engine.
 ///
 /// `AXObserverCallback` is a bare C function pointer and cannot capture context,
-/// so the session is handed through the `refcon`. The callback is delivered on
+/// so the engine is handed through the `refcon`. The callback is delivered on
 /// the run loop that the observer source was added to — the main one — which is
 /// why assuming main actor isolation here is sound rather than optimistic.
 private let windowCreatedCallback: AXObserverCallback = { _, element, _, refcon in
     guard let refcon else { return }
-    let session = Unmanaged<WatchSession>.fromOpaque(refcon).takeUnretainedValue()
+    let engine = Unmanaged<WatchEngine>.fromOpaque(refcon).takeUnretainedValue()
     // `AXUIElement` is a CoreFoundation type and therefore not `Sendable`.
     // Crossing into the main actor is nevertheless safe here because the
     // callback already runs on the main run loop — the box states that
     // explicitly instead of hiding it behind a compiler diagnostic.
     let box = UncheckedBox(element)
     MainActor.assumeIsolated {
-        session.handleWindowCreated(box.value)
+        engine.handleWindowCreated(box.value)
     }
 }
 
 private struct UncheckedBox<Value>: @unchecked Sendable {
     let value: Value
     init(_ value: Value) { self.value = value }
-}
-
-extension Duration {
-    var milliseconds: Int {
-        Int((Double(components.seconds) * 1000) + (Double(components.attoseconds) / 1e15))
-    }
 }
