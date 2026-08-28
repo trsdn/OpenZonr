@@ -196,4 +196,59 @@ struct WindowLayerFilterTests {
         #expect(filter.evaluate(first, defaults: defaults) == .accepted)
         #expect(filter.evaluate(second, defaults: defaults).rejectionReason == .notFirstWindowAfterLaunch)
     }
+
+    // MARK: - Structural verdict
+
+    @Test("Der Strukturteil kennt die Reihenfolge des Fensters nicht")
+    func structuralVerdictIgnoresLaunchOrder() {
+        // The whole point of the split: a caller that counts windows must be
+        // able to ask "is this a window at all?" before it decides whether this
+        // one is the first. Otherwise the answer depends on the question.
+        let later = TestConfigurations.window(isFirstWindowAfterLaunch: false)
+        #expect(DefaultWindowFilter.structuralVerdict(later, defaults: defaults) == .accepted)
+        #expect(filter.evaluate(later, defaults: defaults).rejectionReason == .notFirstWindowAfterLaunch)
+    }
+
+    @Test(
+        "Der Strukturteil lehnt dieselben Fenster ab wie der vollständige Filter",
+        arguments: [
+            TestConfigurations.window(subrole: "AXUnknown"),
+            TestConfigurations.window(subrole: nil),
+            TestConfigurations.window(windowLayer: 21),
+            TestConfigurations.window(frame: WindowFrame(x: 0, y: 0, width: 10, height: 10))
+        ]
+    )
+    func structuralVerdictMatchesFullFilter(window: WindowSnapshot) {
+        let structural = DefaultWindowFilter.structuralVerdict(window, defaults: defaults)
+        #expect(structural.rejectionReason != nil)
+        #expect(structural.rejectionReason == filter.evaluate(window, defaults: defaults).rejectionReason)
+    }
+
+    @Test("Outlooks AXUnknown-Fenster darf den Platz des ersten Fensters nicht verbrauchen")
+    func unknownSubroleDoesNotConsumeTheFirstWindowSlot() {
+        // Measured on 2026-08-28: Outlook exposes an AXUnknown window of the
+        // same size as its real one. Counting it made the mail window the
+        // second, and the rule asking for the first window never fired. The
+        // counter therefore has to run behind the structural verdict — this
+        // test pins the property that makes that possible.
+        let decoy = TestConfigurations.window(
+            bundleIdentifier: "com.microsoft.Outlook",
+            title: "",
+            subrole: "AXUnknown",
+            frame: WindowFrame(x: 1706, y: 31, width: 1708, height: 1344)
+        )
+        let real = TestConfigurations.window(
+            bundleIdentifier: "com.microsoft.Outlook",
+            title: "Posteingang • torstenmahr@microsoft.com",
+            frame: WindowFrame(x: 1706, y: 31, width: 1708, height: 1344)
+        )
+
+        var seen = 0
+        for window in [decoy, real] where DefaultWindowFilter.structuralVerdict(window, defaults: defaults).isAccepted {
+            seen += 1
+        }
+
+        #expect(seen == 1)
+        #expect(DefaultWindowFilter.structuralVerdict(decoy, defaults: defaults).rejectionReason == .disallowedSubrole("AXUnknown"))
+    }
 }

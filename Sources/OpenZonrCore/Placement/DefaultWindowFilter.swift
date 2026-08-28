@@ -64,10 +64,36 @@ public struct DefaultWindowFilter: WindowFilter {
     }
 
     public func evaluate(_ window: WindowSnapshot, defaults: GlobalDefaults) -> WindowFilterResult {
+        if case let .rejected(reason) = Self.structuralVerdict(window, defaults: defaults) {
+            return .rejected(reason)
+        }
+
+        // Whether this is the first window since launch is not decided here — it
+        // arrives on the snapshot. This layer only acts on it.
+        if defaults.onlyFirstWindowAfterLaunch,
+           !window.isFirstWindowAfterLaunch,
+           !isExempt(window) {
+            return .rejected(.notFirstWindowAfterLaunch)
+        }
+
+        return .accepted
+    }
+
+    /// The checks that depend only on the window itself, never on how many
+    /// windows the application opened before it.
+    ///
+    /// Separated so a caller can count windows *after* filtering. Outlook made
+    /// the difference concrete: it opens an `AXUnknown` window before its real
+    /// one, and counting that window burned the "first window after launch"
+    /// slot, so the rule for the actual mail window never fired.
+    public static func structuralVerdict(
+        _ window: WindowSnapshot,
+        defaults: GlobalDefaults
+    ) -> WindowFilterResult {
         // The layer comes first and is deliberately not configurable. A window
         // above layer 0 is system surface, never a placement candidate, and the
         // Notification Centre proves that no size or subrole check catches it.
-        guard window.windowLayer == Self.applicationLayer else {
+        guard window.windowLayer == applicationLayer else {
             return .rejected(.notOnApplicationLayer(window.windowLayer))
         }
 
@@ -85,14 +111,6 @@ public struct DefaultWindowFilter: WindowFilter {
                     minimum: minimum
                 )
             )
-        }
-
-        // Whether this is the first window since launch is not decided here — it
-        // arrives on the snapshot. This layer only acts on it.
-        if defaults.onlyFirstWindowAfterLaunch,
-           !window.isFirstWindowAfterLaunch,
-           !isExempt(window) {
-            return .rejected(.notFirstWindowAfterLaunch)
         }
 
         return .accepted
