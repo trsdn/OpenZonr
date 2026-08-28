@@ -51,8 +51,8 @@ die Schritt 1 bis 3 reine Ratearbeit wären.
 | Fehlt | Warum |
 |---|---|
 | `mode: "suggest"` | Braucht ein Overlay, das den Vorschlag anzeigt. `watch` protokolliert die Regel und den Ziel-Frame ausführlich, platziert aber nichts. |
-| Menüleisten-App, Regel-Editor, Zonen-Editor | Nicht Teil des Durchstichs. |
-| Reaktion auf Display-Änderungen zur Laufzeit | Die Anordnung wird bei jedem Fensterereignis neu gelesen, aber `CGDisplayRegisterReconfigurationCallback` wird nicht beobachtet und das Profil nicht neu bestimmt. |
+| Regel-Editor, Zonen-Editor | Nicht Teil des Durchstichs. Die Menüleisten-App gibt es inzwischen — [`menueleisten-app.md`](menueleisten-app.md). |
+| Reaktion auf Display-Änderungen zur Laufzeit | Teilweise gelöst: `WatchEngine` bestimmt das Profil bei `NSApplication.didChangeScreenParametersNotification` neu. Nicht gemessen. |
 | Dauerhafte Überwachung platzierter Fenster | Bewusst nicht: nach einer erfolgreichen Platzierung gehört das Fenster dem Nutzer. |
 | Notarisierung | Für den eigenen Rechner nicht nötig. Die Signierung ist es sehr wohl — siehe „Der Blocker und seine Auflösung". |
 
@@ -171,6 +171,27 @@ Praktische Folge, umgesetzt in `Scripts/bundle.sh`: das Bundle landet
 standardmäßig unter `~/Applications/OpenZonr.app` statt in `.build`. Dort
 überlebt die einmalige Freigabe `swift package clean`, einen zweiten Klon und
 jeden Neubau. In `.build` wäre sie bei der ersten Aufräumaktion verloren.
+
+**Nachtrag zum Nachtrag, 28.08.2026:** Dieser Befund ist inzwischen in einem
+Befehl reproduzierbar. `openzonr selftest` meldet neben Signatur und
+Fensterzugriff auch den *Startweg* — und beantwortet damit die Frage, die den
+Unterschied ausmacht. Zwei Läufe derselben Binärdatei aus
+`~/Applications/OpenZonr.app`, dieselbe Signatur, dieselbe Sekunde:
+
+```
+# open -n -a … --args selftest --out /tmp/openzonr.txt
+  Start:                  über LaunchServices (Elternprozess launchd)
+  AXIsProcessTrusted():   false
+  probeWindowAccess():    notTrusted — keine Freigabe für dieses Bundle
+
+# …/Contents/MacOS/OpenZonr selftest
+  Start:                  aus einer Shell — erbt fremdes Vertrauen
+  AXIsProcessTrusted():   true
+  probeWindowAccess():    degraded — Vertrauen gemeldet, aber nur Stellvertreter
+```
+
+`--out` ist dabei kein Komfort, sondern Notwendigkeit: LaunchServices verwirft die
+Standardausgabe, und ohne Datei bliebe genau der maßgebliche Fall unbeobachtbar.
 
 Bemerkenswert und für die spätere Fehlersuche wichtig: **Benachrichtigungen
 funktionieren auch im degradierten Zustand.** `AXObserverAddNotification`

@@ -1,8 +1,8 @@
 # OpenZonr
 
-**Status: lauffähiges Kommandozeilenwerkzeug, noch keine App.** Datenmodell,
-Konfigurationsspeicher, Regel-Engine und die Anbindung an Accessibility und
-CoreGraphics sind gebaut und getestet.
+**Status: lauffähiges Kommandozeilenwerkzeug und eine Menüleisten-App.**
+Datenmodell, Konfigurationsspeicher, Regel-Engine und die Anbindung an
+Accessibility und CoreGraphics sind gebaut und getestet.
 
 **Der Kern funktioniert und ist gemessen.** Am echten Vier-Display-Schreibtisch
 landen TextEdit und Outlook beim Start in ihrer Zone — jeweils beim ersten
@@ -15,9 +15,11 @@ Zwei Einschränkungen, die man vor dem Ausprobieren kennen sollte:
    unsignierte Binärdatei verliert die Bedienungshilfen-Berechtigung nach jedem
    Neubau — sie startet, sieht aber keine Fenster. Ohne Developer-ID-Zertifikat
    ist OpenZonr derzeit nicht benutzbar.
-2. **Es gibt keine Oberfläche.** Kein Menüleisten-Symbol, kein Autostart, keine
-   Dropzones zum Hineinziehen. `openzonr watch` läuft im Vordergrund eines
-   Terminals.
+2. **Die Oberfläche ist eine Menüleisten-App, mehr nicht.** Sie beherbergt den
+   Watcher, zeigt Zustand, Profil und die letzten Platzierungen und startet auf
+   Wunsch beim Anmelden mit — [`docs/menueleisten-app.md`](docs/menueleisten-app.md).
+   Regeln werden weiterhin als JSON bearbeitet, und Dropzones zum Hineinziehen
+   gibt es nicht.
 
 OpenZonr ist ein Fenstermanager für macOS mit Dropzones. Der Unterschied zu allem,
 was es sonst gibt, steckt in einem einzigen Satz:
@@ -86,24 +88,37 @@ Sources/OpenZonrCore/
     Checks/                   Die einzelnen Prüfungen
   Placement/                  Filter, Regel-Engine, Profil- und Zonenauflösung,
                               Retry-Schleife
-Sources/openzonr/             Kommandozeilenwerkzeug (macOS-Anbindung)
+Sources/OpenZonrMac/          Die macOS-Anbindung, von beiden Oberflächen genutzt
+  Accessibility/              AXObserver, Fensterinventar
+  Displays/                   CGDisplay, Bildschirmidentität
+  Watch/                      WatchEngine — Beobachtung und Platzierung
+  CommandLine/                Die Unterbefehle
+  Support/                    Protokoll, Konfigurationspfad, Signaturstatus
+Sources/OpenZonrApp/          Menüleisten-App (MenuBarExtra, LSUIElement)
+Sources/openzonr/             `swift run openzonr` für die Entwicklung
 Tests/OpenZonrCoreTests/      Unit-Tests; Support/ enthält Fixtures
+Tests/OpenZonrMacTests/       Die rein rechnenden Teile der macOS-Schicht
 Examples/                     Beispielkonfiguration (Büro / Home / Unterwegs)
 docs/                         Konzept, Konfiguration, Durchstich, offene Fragen
 ```
 
-Der Stand umfasst das Datenmodell, den Konfigurationsspeicher (laden,
-validieren, atomar schreiben, migrieren), die rein rechnende Hälfte der
-Platzierung und das Kommandozeilenwerkzeug `openzonr`, das die Kette bis zum
-Aufruf der Accessibility-API schließt und sie am echten Schreibtisch nachweislich
-schließt. Die Oberfläche fehlt vollständig.
+`OpenZonrCore` ist die plattformunabhängige, getestete Hälfte. `OpenZonrMac`
+enthält alles, was mit macOS spricht — und wird von beiden Oberflächen geteilt,
+statt von jeder neu geschrieben zu werden: die Beobachtungs- und
+Platzierungslogik darin ist am echten Schreibtisch gemessen, und drei ihrer
+Details waren nur durch Messen zu finden.
 
-**Warum Swift Package Manager und (noch) kein Xcode-Projekt?** Das Manifest ist
-Text, also diff- und reviewbar, und es gibt keine `.pbxproj`-Merge-Konflikte.
-Vor allem lässt sich der aktuelle Stand headless mit `swift build` und
-`swift test` prüfen. Das Bundle samt Signatur erzeugt `Scripts/bundle.sh` ohne
-Xcode. Die spätere App-Hülle — Menüleisten-App und Entitlements — kommt als
-separates Xcode-App-Target hinzu, das `OpenZonrCore` als lokales Package einbindet.
+**Warum Swift Package Manager und kein Xcode-Projekt?** Das Manifest ist Text,
+also diff- und reviewbar, und es gibt keine `.pbxproj`-Merge-Konflikte. Vor allem
+bleiben `swift build` und `swift test` die ganze Wahrheit — zwei Buildsysteme
+wären zwei Wahrheiten, von denen eine unbemerkt veraltet. Das Bundle samt Signatur
+erzeugt `Scripts/bundle.sh` ohne Xcode. Ausführlich in
+[docs/menueleisten-app.md](docs/menueleisten-app.md).
+
+**Im Bundle liegt genau eine Binärdatei**, und sie ist beides: ohne Argumente die
+Menüleisten-App, mit einem Unterbefehl das Kommandozeilenwerkzeug. Der Grund ist
+die Art, wie macOS die Berechtigung vergibt — sie gilt einem Programm an seinem
+Pfad, zwei Binärdateien wären zwei Freigaben.
 
 ## Bauen
 
@@ -118,7 +133,7 @@ UI-Schicht (Observation, `MenuBarExtra`) gesetzt.
 
 ## Das Kommandozeilenwerkzeug `openzonr`
 
-Drei Unterbefehle: zwei zur Diagnose, einer für den Durchstich.
+Vier Unterbefehle: drei zur Diagnose, einer für den Durchstich.
 
 ```bash
 swift run openzonr --help
@@ -134,14 +149,22 @@ Bauen dieses Werkzeugs die meiste Zeit gekostet hat.
 Scripts/bundle.sh
 ```
 
-Das Skript baut, packt `.build/OpenZonr.app` und signiert es mit dem ersten
-gefundenen Developer-ID-Zertifikat (überschreibbar per `CODESIGN_IDENTITY`).
-Danach einmalig:
+Das Skript baut, packt `~/Applications/OpenZonr.app` und signiert es mit dem
+ersten gefundenen Developer-ID-Zertifikat (überschreibbar per
+`CODESIGN_IDENTITY`). Danach einmalig:
 
 1. Systemeinstellungen → Datenschutz & Sicherheit → **Bedienungshilfen**
 2. `~/Applications/OpenZonr.app` hinzufügen und aktivieren
-3. Gegenprobe: `~/Applications/OpenZonr.app/Contents/MacOS/OpenZonr windows` muss
-   Fenster mit Subrolle `AXStandardWindow` und einer Größe ungleich `0x0` zeigen
+3. Gegenprobe — und zwar so, wie die App später wirklich startet:
+
+   ```bash
+   open -n -a ~/Applications/OpenZonr.app --args selftest --out /tmp/openzonr.txt
+   cat /tmp/openzonr.txt      # muss "granted" melden
+   ```
+
+   Aus der Shell gestartet misst dieselbe Binärdatei etwas anderes: dort erbt sie
+   das Vertrauen des Terminals, und `AXIsProcessTrusted()` meldet `true`, ohne
+   dass ein Fenster lesbar wäre. `selftest` weist den Startweg deshalb aus.
 
 Warum der Umweg über ein Bundle:
 
@@ -249,6 +272,32 @@ $EDITOR ~/Library/Application\ Support/OpenZonr/config.json
 "$OZ" watch
 ```
 
+## Die Menüleisten-App
+
+Dieselbe Binärdatei, ohne Argumente gestartet: ein Symbol in der Menüleiste, das
+den Watcher beherbergt, statt ihn im Vordergrund eines Terminals laufen zu lassen.
+
+```bash
+Scripts/bundle.sh
+open -n ~/Applications/OpenZonr.app
+```
+
+Im Menü:
+
+- **Zustand** — aktiv, pausiert, keine Berechtigung, keine Konfiguration oder
+  kein passendes Profil. Das Symbol unterscheidet die Fälle.
+- **Profil** — das erkannte Profil, und jedes konfigurierte zur Handauswahl. Die
+  Auswahl gilt für die Sitzung und wird bewusst nicht gespeichert.
+- **Pause** — hält die Platzierung an, ohne die App zu beenden.
+- **Letzte Platzierungen** — was zuletzt wohin ging, samt vollständigem
+  Protokollstrom in einem eigenen Fenster.
+- **Beim Anmelden starten** — über `SMAppService`.
+
+Fehlt die Berechtigung, öffnet sich beim Start einmal ein Fenster, das den
+konkreten Zustand erklärt und den Weg dorthin anbietet. Das ist die häufigste
+Hürde und in [docs/menueleisten-app.md](docs/menueleisten-app.md) im Detail
+beschrieben — dort steht auch, was von der App gemessen ist und was nicht.
+
 ## Fahrplan
 
 | Was | Stand |
@@ -260,7 +309,7 @@ $EDITOR ~/Library/Application\ Support/OpenZonr/config.json
 | Diagnose per Kommandozeile (`displays`, `windows`) | fertig |
 | Signierung, damit der Grant Neubauten übersteht | fertig, `Scripts/bundle.sh` |
 | Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit und Outlook je 1 Versuch, Abweichung 1,0 bzw. 0,0 pt |
-| Menüleisten-App mit Autostart | offen, [#8](https://github.com/trsdn/OpenZonr/issues/8) |
+| Menüleisten-App mit Autostart | gebaut, [#8](https://github.com/trsdn/OpenZonr/issues/8) — Zustand, Profilwahl, Pause, Autostart, letzte Platzierungen; Platzierung mit laufender App noch nicht nachgemessen, siehe [docs/menueleisten-app.md](docs/menueleisten-app.md) |
 | Regeln bearbeiten ohne JSON | offen, [#9](https://github.com/trsdn/OpenZonr/issues/9) |
 | Dropzones zum Hineinziehen | offen, [#10](https://github.com/trsdn/OpenZonr/issues/10) |
 
@@ -275,6 +324,8 @@ Sie sind in [docs/tracer-bullet.md](docs/tracer-bullet.md) beschrieben.
 - [docs/konzept.md](docs/konzept.md) — Architektur, Regelmodell, Monitor-Handling
 - [docs/konfiguration.md](docs/konfiguration.md) — Feldreferenz und kommentierte
   Erklärung der Beispielkonfiguration
+- [docs/menueleisten-app.md](docs/menueleisten-app.md) — die App: was sie kann,
+  warum sie so gebaut ist, und was daran gemessen ist
 - [docs/tracer-bullet.md](docs/tracer-bullet.md) — was der Durchstich abdeckt,
   was fehlt, und der Stand der Messung
 - [docs/offene-fragen.md](docs/offene-fragen.md) — was noch nicht entschieden ist
