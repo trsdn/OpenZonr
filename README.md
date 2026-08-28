@@ -310,7 +310,7 @@ beschrieben — dort steht auch, was von der App gemessen ist und was nicht.
 | Signierung, damit der Grant Neubauten übersteht | fertig, `Scripts/bundle.sh` |
 | Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit und Outlook je 1 Versuch, Abweichung 1,0 bzw. 0,0 pt |
 | Menüleisten-App mit Autostart | gebaut, [#8](https://github.com/trsdn/OpenZonr/issues/8) — Zustand, Profilwahl, Pause, Autostart, letzte Platzierungen; Platzierung mit laufender App noch nicht nachgemessen, siehe [docs/menueleisten-app.md](docs/menueleisten-app.md) |
-| Regeln bearbeiten ohne JSON | offen, [#9](https://github.com/trsdn/OpenZonr/issues/9) |
+| Regeln bearbeiten ohne JSON | gebaut, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster hier festhalten" plus Editor für Regeln, Rollen und Zonen; Kern headless gemessen, Oberfläche mangels Bedienungshilfen-Freigabe nicht nachgemessen, siehe [docs/regel-editor.md](docs/regel-editor.md) |
 | Dropzones zum Hineinziehen | offen, [#10](https://github.com/trsdn/OpenZonr/issues/10) |
 
 Die Reihenfolge war bewusst gewählt: erst die Signierung, damit die Platzierung
@@ -326,6 +326,8 @@ Sie sind in [docs/tracer-bullet.md](docs/tracer-bullet.md) beschrieben.
   Erklärung der Beispielkonfiguration
 - [docs/menueleisten-app.md](docs/menueleisten-app.md) — die App: was sie kann,
   warum sie so gebaut ist, und was daran gemessen ist
+- [docs/regel-editor.md](docs/regel-editor.md) — Regeln, Rollen und Zonen ohne
+  JSON bearbeiten; Entscheidungen, Abweichungen und der Stand der Messung
 - [docs/tracer-bullet.md](docs/tracer-bullet.md) — was der Durchstich abdeckt,
   was fehlt, und der Stand der Messung
 - [docs/offene-fragen.md](docs/offene-fragen.md) — was noch nicht entschieden ist

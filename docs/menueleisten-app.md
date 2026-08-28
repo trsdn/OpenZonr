@@ -18,6 +18,8 @@ getrennt davon — was von der App tatsächlich gemessen ist und was nicht.
 | **Autostart** | Über `SMAppService.mainApp`. |
 | **Berechtigung** | Ein eigenes Fenster, das den konkreten Zustand erklärt und die drei Wege dorthin anbietet. Siehe unten. |
 | **Letzte Platzierungen** | Die letzten Entscheidungen als Liste, dazu der vollständige Protokollstrom. |
+| **Festhalten** | „Aktuelles Fenster hier festhalten" schreibt Regel und Bindung für das vorderste Fenster. Siehe [docs/regel-editor.md](regel-editor.md). |
+| **Regeln bearbeiten** | Ein eigenes Fenster für Regeln, Rollen & Profile und Zonen. Siehe [docs/regel-editor.md](regel-editor.md). |
 
 ## Entscheidungen
 
