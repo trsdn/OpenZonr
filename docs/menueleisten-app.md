@@ -113,6 +113,44 @@ Pausiert heißt deshalb: beobachten und berichten, nicht halb entscheiden. Die
 Zeile „pausiert" erscheint weiterhin in der Liste, nur ohne Regel und Ziel — die
 wurden bewusst nicht ermittelt.
 
+### Beendete Apps werden vergessen
+
+Der Watcher hängt pro beobachteter App einen Observer an und merkt sich, wie
+viele Fenster sie seit dem Start gezeigt hat. Beides wurde bislang erst beim
+Beenden des Watchers wieder abgeräumt. Der Speicherzuwachs wäre das kleinere
+Übel gewesen.
+
+Das ernste Problem ist die Wiederverwendung von Prozessnummern. Startet eine
+beobachtete App unter der Nummer einer längst beendeten, findet `attachObserver`
+dort einen Eintrag vor und steigt sofort aus. Der hinterlegte Observer gehört
+einem toten Prozess und feuert nie wieder; das Nachholen bereits offener Fenster
+steht unterhalb dieser Stelle und entfällt damit ebenfalls. Kurz zuvor hat der
+Watcher aber notiert, dass diese App ihr erstes Fenster noch schuldet — und
+erfährt nie davon. Kein Protokolleintrag, kein Fehler, nur Stille. Es trifft
+genau `onlyFirstWindowAfterLaunch`.
+
+Der Watcher horcht deshalb auch auf das Beenden von Programmen und gleicht dabei
+gegen die tatsächlich laufenden Prozesse ab, statt der Nummer aus der Meldung zu
+glauben: `NSRunningApplication` liefert dort −1, sobald der Prozess wirklich weg
+ist. Der Abgleich heilt sich zudem selbst — eine verpasste Meldung wird bei der
+nächsten mit aufgeräumt. Vor dem Anhängen eines neuen Observers läuft er
+sicherheitshalber noch einmal.
+
+Das ist ohne Bedienungshilfen-Freigabe messbar, und es wurde gemessen: ein
+Wegwerf-Programm gegen `OpenZonrMac`, mit der echten Konfiguration, zählte
+`observedApplicationCount` vor dem Start von TextEdit, währenddessen und danach.
+Mit der Behebung 1 → 2 → 1, mit dem Stand davor 1 → 2 → **2**.
+
+### Regeln werden vollständig beobachtet, nicht nur das aktive Profil
+
+Ob eine App überhaupt beobachtet wird, entscheidet die Menge aller aktivierten
+Regeln der Konfiguration — nicht die des gerade aktiven Profils. Das sieht nach
+einer Unsauberkeit aus und ist keine: Regeln sind hardwareunabhängig, Profile
+übersetzen sie nur auf den vorliegenden Schreibtisch. Würde hier auf das aktive
+Profil eingeengt, liefe eine App nach einem Profilwechsel unbeobachtet weiter,
+gerade wenn sie wieder interessant wird. Im Code steht ein Kommentar dazu, damit
+es niemand später „aufräumt".
+
 ### Nicht jede Entscheidung wird zur Zeile
 
 Im Menü landen nur Entscheidungen, die eine Regel erreicht haben. Jedes Fenster
@@ -169,6 +207,8 @@ Was am 28.08.2026 auf der Zielmaschine (macOS 26.6.2, Mac16,11) belegt ist:
 | Das Statusfenster öffnet sich beim Start ohne Berechtigung von selbst | **gemessen** — Fenster „OpenZonr — Status und Berechtigung", 505×462 pt |
 | Die Kommandozeile funktioniert aus derselben Binärdatei | **gemessen** — `selftest` und `windows` liefern ihre Berichte |
 | Der Unterschied zwischen Shell- und LaunchServices-Start | **gemessen** — siehe unten |
+| Beendete Apps geben ihren Observer wieder frei | **gemessen** — `observedApplicationCount` 1 → 2 → 1; vor der Behebung 1 → 2 → 2 |
+| Der Autostart als Anmeldeobjekt überlebt eine Neuanmeldung | **nicht gemessen** — `SMAppService.register()` meldet Erfolg, ein echter Ab- und Anmeldevorgang stand nicht an |
 | **Ob TextEdit beim Start in seiner Zone landet, während die App läuft** | **nicht gemessen** — Begründung unten |
 
 Der Startweg-Unterschied, wörtlich aus zwei Läufen derselben Binärdatei:
