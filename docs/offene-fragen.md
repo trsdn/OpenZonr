@@ -346,6 +346,45 @@ verschieben.
 
 ---
 
+## 13. Keine Hysterese am Zonenrand — *offen, bewusst offen*
+
+`DropzoneOverlayPlan.plan(…)` entscheidet die hervorgehobene Zone allein aus dem
+aktuellen Zeigerpunkt; die Funktion hält keinen vorigen Zustand. In `Sources/`
+kommt das Wort „Hysterese" nicht vor.
+
+Die Zuordnung ist dadurch **eindeutig** — halboffene Rechtecke, jede geteilte
+Kante gehört genau einer Zone, das ist in
+[`dropzones.md`](dropzones.md) als bewiesen ausgewiesen. Eindeutigkeit ist aber
+nicht Stabilität: Sitzt der Zeiger genau auf einer Kante, kippt die
+Hervorhebung schon bei einem Punkt Zittern hin und her. Sichtbar wird das nur
+bei einem echten Zug mit der Hand.
+
+**Warum das offen bleibt und nicht gebaut wird.** Eine Stabilisierung lässt sich
+ohne echten Zug nicht beurteilen: Wie viele Punkte Totzone richtig sind, ob es
+eine Zeit- statt einer Wegschwelle braucht, ob das Problem überhaupt spürbar
+ist — dazu gibt es ohne die Bedienungshilfen-Freigabe keine Beobachtung,
+sondern nur eine Vermutung. Eine ungemessene Stabilisierung wäre genau die Art
+Zusicherung, die dieses Projekt sonst vermeidet, und sie wäre schlimmer als
+keine: Eine Totzone, die zu groß geraten ist, macht kleine Zonen unerreichbar,
+und niemand merkt, dass die Ursache eine Hilfsmaßnahme ist. **Zu entscheiden
+nach der ersten Sitzung mit echtem Ziehen, nicht vorher.**
+
+**Die Falle, falls es jemand baut.** Eine parallel gelaufene Sitzung an #10 hatte
+eine Hysterese bereits gebaut, und ihr eigener Test fand darin einen Denkfehler:
+Die Bedingung verlangte, dass die zuvor hervorgehobene Zone noch **unter den
+Kandidaten** des aktuellen Punktes ist — **beim Kantenübertritt ist sie das
+nie**. Die Hysterese griff also ausgerechnet in dem einzigen Fall nicht, für den
+sie existiert. Die Bedingung sieht dabei völlig plausibel aus; wer sie nachbaut,
+baut denselben Fehler wieder ein. Die richtige Form muss die vorige Zone
+*unabhängig* vom aktuellen Treffer festhalten und erst aufgeben, wenn der Zeiger
+die Kante um mehr als die Totzone überschritten hat.
+
+Herkunft: Die Arbeit dieser Sitzung ist nicht in `main` gelandet (#10 wurde in
+PR #15 aus dem anderen Zweig gemergt); der Befund und der Denkfehler stammen
+aus ihr und sind hier festgehalten, damit die Erfahrung nicht ein zweites Mal
+bezahlt wird.
+
+---
 
 Zur Nachvollziehbarkeit festgehalten:
 
