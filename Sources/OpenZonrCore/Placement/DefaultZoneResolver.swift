@@ -105,26 +105,12 @@ public struct DefaultZoneResolver: ZoneResolver {
     }
 
     /// Converts a zone rectangle from the configuration model's top-left origin
-    /// into AppKit's bottom-left coordinate space; this conversion belongs in the
-    /// resolver so every placement result leaves this layer in one coordinate system.
+    /// into AppKit's bottom-left coordinate space.
+    ///
+    /// Delegated to ``ZoneGeometry`` since the drag path resolves the same zones
+    /// from a pointer position: one arithmetic, two callers, no chance of the
+    /// two disagreeing by a point.
     private func absoluteFrame(for rect: RelativeRect, in frame: VisibleFrame) -> WindowFrame {
-        let left = frame.x + rect.x * frame.width
-        let right = frame.x + (rect.x + rect.width) * frame.width
-        let top = frame.y + frame.height - rect.y * frame.height
-        let bottom = frame.y + frame.height - (rect.y + rect.height) * frame.height
-
-        let roundedLeft = left.rounded()
-        let roundedRight = right.rounded()
-        let roundedTop = top.rounded()
-        let roundedBottom = bottom.rounded()
-
-        // Round shared edges before deriving size so adjacent zones meet exactly
-        // instead of gaining overlaps or one-point gaps from independent rounding.
-        return WindowFrame(
-            x: roundedLeft,
-            y: roundedBottom,
-            width: roundedRight - roundedLeft,
-            height: roundedTop - roundedBottom
-        )
+        ZoneGeometry.absoluteFrame(for: rect, in: frame)
     }
 }
