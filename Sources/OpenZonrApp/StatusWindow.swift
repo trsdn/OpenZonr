@@ -165,7 +165,7 @@ struct StatusWindow: View {
                     .foregroundStyle(.orange)
                     .textSelection(.enabled)
             } else if let profile = model.activeProfile {
-                Text("Aktives Profil: \(profile.name) (\(profile.id))")
+                Text("Aktives Profil: \(profile.name) (\(profile.id.rawValue))")
                     .foregroundStyle(.secondary)
             }
 

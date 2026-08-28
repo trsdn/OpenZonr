@@ -99,6 +99,7 @@ public final class WatchEngine {
     private var recentlySwept: [String: Date] = [:]
 
     private var launchObservation: (any NSObjectProtocol)?
+    private var terminationObservation: (any NSObjectProtocol)?
     private var screenObservation: (any NSObjectProtocol)?
 
     /// The profile the user pinned by hand, if any.
@@ -283,6 +284,16 @@ public final class WatchEngine {
             }
         }
 
+        terminationObservation = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.pruneTerminatedApplications()
+            }
+        }
+
         screenObservation = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
@@ -312,6 +323,10 @@ public final class WatchEngine {
             NSWorkspace.shared.notificationCenter.removeObserver(launchObservation)
         }
         launchObservation = nil
+        if let terminationObservation {
+            NSWorkspace.shared.notificationCenter.removeObserver(terminationObservation)
+        }
+        terminationObservation = nil
         if let screenObservation {
             NotificationCenter.default.removeObserver(screenObservation)
         }
@@ -335,11 +350,55 @@ public final class WatchEngine {
     /// How many applications currently carry an observer.
     public var observedApplicationCount: Int { observers.count }
 
+    /// Drops the bookkeeping of applications that are no longer running.
+    ///
+    /// Not a housekeeping nicety. macOS reuses process ids, and a stale entry
+    /// turns a live application into an invisible one: ``attachObserver`` bails
+    /// out on `observers[pid] == nil`, so the new application inherits an
+    /// observer belonging to a dead process that will never fire again, and the
+    /// sweep that would have caught its already-open windows sits below that
+    /// early return and never runs. Meanwhile ``applicationLaunched`` has just
+    /// recorded that this pid still owes its first window. The result is
+    /// silence — no placement, no log line, no error — and it hits exactly the
+    /// applications `onlyFirstWindowAfterLaunch` was written for.
+    ///
+    /// The live process list is consulted rather than the pid from the
+    /// termination notification, because `NSRunningApplication` reports -1 once
+    /// the process is gone. Reconciling is also self-healing: a notification
+    /// that was missed still gets cleaned up at the next one.
+    private func pruneTerminatedApplications() {
+        let live = Set(NSWorkspace.shared.runningApplications.map(\.processIdentifier))
+        let gone = observers.keys.filter { !live.contains($0) }
+        guard !gone.isEmpty else { return }
+
+        for pid in gone {
+            if let observer = observers.removeValue(forKey: pid) {
+                CFRunLoopRemoveSource(
+                    CFRunLoopGetMain(),
+                    AXObserverGetRunLoopSource(observer),
+                    .defaultMode
+                )
+            }
+            windowsSeen.removeValue(forKey: pid)
+            recentlySwept = recentlySwept.filter { !$0.key.hasPrefix("\(pid)|") }
+            Log.detail("App beendet (pid \(pid)) — Beobachtung aufgeräumt.")
+        }
+        notifyChange()
+    }
+
     /// Whether any enabled rule could ever apply to this application.
     ///
     /// A rule without a bundle identifier (the catch-all) forces observation of
     /// every regular application; otherwise only the named ones are watched,
     /// which keeps the number of observers small.
+    ///
+    /// Deliberately every enabled rule of the *configuration*, not only those
+    /// reachable from the active profile. Rules are hardware-independent;
+    /// profiles only translate them into the desk at hand. Narrowing this to the
+    /// active profile would look like a tidy-up and would in fact make the
+    /// observation lossy the moment the profile changes at runtime — the
+    /// application would already be running, unobserved, when it becomes
+    /// interesting again.
     private func isRelevant(_ app: NSRunningApplication) -> Bool {
         guard app.activationPolicy == .regular else { return false }
         guard app.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return false }
@@ -352,6 +411,9 @@ public final class WatchEngine {
 
     private func applicationLaunched(_ app: NSRunningApplication) {
         guard isRelevant(app) else { return }
+        // Belt and braces against a missed termination notification: a stale
+        // entry for this pid would make the launch below a no-op.
+        pruneTerminatedApplications()
         Log.info("App gestartet: \(app.bundleIdentifier ?? "?") (pid \(app.processIdentifier))")
         windowsSeen[app.processIdentifier] = 0
         attachObserver(to: app, retriesLeft: 20)
