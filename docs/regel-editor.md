@@ -255,6 +255,14 @@ Was nach der Freigabe zuerst zu prüfen wäre:
 3. Eine Zone im Editor ziehen, sichern, App neu starten — sitzt das Fenster an
    der neuen Stelle?
 
+Diese Schritte müssen aus dem Bundle laufen, dem die Freigabe erteilt wurde —
+`~/Applications/OpenZonr.app`, gebaut über `Scripts/bundle.sh`. Nicht aus
+`swift run`: die Freigabe bindet an das Bundle an seinem Pfad, und ein
+unsignierter Neubau bekommt eine neue Prüfsumme und wird nicht mehr erkannt.
+Der Haken bliebe gesetzt und wäre wirkungslos — das ist in
+[docs/menueleisten-app.md](menueleisten-app.md) gemessen. Wer das übersieht,
+misst eine Stunde lang nichts und hält es für einen Fehler im Editor.
+
 ## Grenze zu #10
 
 Der Zoneneditor zeichnet Zonen und lässt sie ziehen. Das ist **nicht** die
