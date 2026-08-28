@@ -23,6 +23,7 @@ public enum OpenZonrCommandLine {
       openzonr displays [--config-fragment]
       openzonr windows  [--bundle <bundle-id>] [--all-apps] [--no-filter-verdict]
       openzonr watch    [--config <pfad>] [--dry-run]
+      openzonr selftest [--out <pfad>] [--prompt]
 
     UNTERBEFEHLE
       displays   Zeigt alle angeschlossenen Bildschirme mit ihrer stabilen
@@ -39,6 +40,13 @@ public enum OpenZonrCommandLine {
       watch      Der Durchstich: beobachtet neu geöffnete Fenster und platziert
                  sie gemäß Konfiguration. Läuft im Vordergrund und protokolliert
                  jeden Schritt. --dry-run entscheidet, ohne Fenster zu bewegen.
+
+      selftest   Meldet, ob dieses Programm Fenster sehen kann — Signatur,
+                 Startweg und tatsächlicher Fensterzugriff. --out schreibt den
+                 Bericht zusätzlich in eine Datei; das ist der einzige Weg, den
+                 über LaunchServices gestarteten Fall zu messen, dessen Ausgabe
+                 sonst verlorengeht:
+                   open -n -a OpenZonr --args selftest --out /tmp/openzonr.txt
 
     KONFIGURATION
       Standardpfad: ~/Library/Application Support/OpenZonr/config.json
@@ -58,7 +66,7 @@ public enum OpenZonrCommandLine {
     /// which is why it is a list rather than "anything that is not a flag":
     /// LaunchServices passes arguments of its own, and mistaking one of them for
     /// a subcommand would keep the menu bar icon from ever appearing.
-    public static let subcommands = ["displays", "windows", "watch", "help", "--help", "-h"]
+    public static let subcommands = ["displays", "windows", "watch", "selftest", "help", "--help", "-h"]
 
     public static func isSubcommand(_ argument: String) -> Bool {
         subcommands.contains(argument)
@@ -96,6 +104,14 @@ public enum OpenZonrCommandLine {
                 let command = WatchCommand(
                     configurationURL: ConfigurationLocation.resolve(explicitPath: path),
                     dryRun: arguments.consumeFlag("--dry-run")
+                )
+                try arguments.requireEmpty()
+                try MainActor.assumeIsolated { try command.run() }
+
+            case "selftest":
+                let command = SelftestCommand(
+                    outputPath: try arguments.consumeOption("--out"),
+                    prompt: arguments.consumeFlag("--prompt")
                 )
                 try arguments.requireEmpty()
                 try MainActor.assumeIsolated { try command.run() }
