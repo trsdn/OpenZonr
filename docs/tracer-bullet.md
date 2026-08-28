@@ -123,12 +123,13 @@ noch Größe hatte. Ein separat kompiliertes Sondenprogramm, das nichts aus dies
 Repository verwendet, bekam exakt dieselben Stubs — die Ursache lag also nicht
 im Code.
 
-**Die Erklärung war fast richtig und die Schlussfolgerung falsch.** Vermutet
+**Die Erklärung war fast richtig und die Schlussfolgerung zu schnell.** Vermutet
 wurde, die Berechtigung hänge am *verantwortlichen* Prozess und sei deshalb
-nicht erreichbar. Tatsächlich hängt sie an der **Code-Signatur**. Eine
+nicht erreichbar. Der ausschlaggebende Hebel ist die **Code-Signatur**: eine
 unsignierte Binärdatei bekommt bei jedem Neubau eine andere Prüfsumme, und TCC
 erkennt sie nicht wieder — der Haken in den Systemeinstellungen bleibt gesetzt
-und meint ein anderes Programm.
+und meint ein anderes Programm. Dass der verantwortliche Prozess ebenfalls
+mitspielt, zeigt der Nachtrag weiter unten.
 
 Die Auflösung ist ein signiertes App-Bundle. Die Designated Requirement einer
 Developer-ID-Signatur bindet an Identifier und Team, nicht an die Prüfsumme:
@@ -140,13 +141,36 @@ designated => identifier "com.trsdn.openzonr" and anchor apple generic
   and certificate leaf[subject.OU] = G69Z5BNY97
 ```
 
-Damit überlebt die Freigabe jeden Neubau — und sogar einen Umzug des Bundles an
-einen anderen Pfad, was gegengeprüft wurde. `Scripts/bundle.sh` baut, packt und
+Damit überlebt die Freigabe jeden Neubau. `Scripts/bundle.sh` baut, packt und
 signiert in einem Schritt. Ein Ad-hoc-Zertifikat genügt nicht, es hat keine
 solche Kette.
 
 Nach der Signierung liefert derselbe Aufruf 19 echte `AXWindow` mit lesbarem
 Frame. Ein neuer manueller Grant war nicht nötig.
+
+**Nachtrag — eine Behauptung dieses Dokuments war zu weit gefasst.** Hier stand,
+die Freigabe überlebe „sogar einen Umzug des Bundles an einen anderen Pfad, was
+gegengeprüft wurde". Eine spätere, sorgfältigere Gegenprobe widerlegt das:
+
+```
+frischer Klon → Scripts/bundle.sh → identische Designated Requirement
+  Start aus der Shell        : "Zugriff degradiert"
+  Start über LaunchServices  : "Kein Zugriff — nicht vertraut"
+```
+
+Der zweite Befund ist der aussagekräftige. Aus der Shell gestartet erbt der
+Prozess das Vertrauen des Terminals, weshalb `AXIsProcessTrusted()` weiterhin
+`true` meldet — die Fensterzugriffe erben es nicht. Über LaunchServices ist die
+App für sich selbst verantwortlich, und dort zeigt sich die Wahrheit: dieses
+Bundle ist nicht freigegeben. **Die Freigabe gilt dem Programm an seinem Platz,
+nicht dem Identifier allein.** Die ursprüngliche Vermutung über den
+verantwortlichen Prozess war damit nicht falsch, sondern unvollständig; beide
+Mechanismen wirken.
+
+Praktische Folge, umgesetzt in `Scripts/bundle.sh`: das Bundle landet
+standardmäßig unter `~/Applications/OpenZonr.app` statt in `.build`. Dort
+überlebt die einmalige Freigabe `swift package clean`, einen zweiten Klon und
+jeden Neubau. In `.build` wäre sie bei der ersten Aufräumaktion verloren.
 
 Bemerkenswert und für die spätere Fehlersuche wichtig: **Benachrichtigungen
 funktionieren auch im degradierten Zustand.** `AXObserverAddNotification`

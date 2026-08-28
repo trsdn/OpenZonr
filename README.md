@@ -139,8 +139,8 @@ gefundenen Developer-ID-Zertifikat (überschreibbar per `CODESIGN_IDENTITY`).
 Danach einmalig:
 
 1. Systemeinstellungen → Datenschutz & Sicherheit → **Bedienungshilfen**
-2. `.build/OpenZonr.app` hinzufügen und aktivieren
-3. Gegenprobe: `.build/OpenZonr.app/Contents/MacOS/OpenZonr windows` muss
+2. `~/Applications/OpenZonr.app` hinzufügen und aktivieren
+3. Gegenprobe: `~/Applications/OpenZonr.app/Contents/MacOS/OpenZonr windows` muss
    Fenster mit Subrolle `AXStandardWindow` und einer Größe ungleich `0x0` zeigen
 
 Warum der Umweg über ein Bundle:
@@ -148,12 +148,19 @@ Warum der Umweg über ein Bundle:
 - **Eine unsignierte Binärdatei bekommt bei jedem `swift build` eine neue
   Prüfsumme.** Der Haken bleibt gesetzt und meint ein anderes Programm. Die
   Signatur bindet stattdessen an Bundle-Identifier und Team und überlebt jeden
-  Neubau — sogar einen Umzug an einen anderen Pfad.
+  Neubau.
+- **Die Freigabe gilt dem Bundle an seinem Pfad.** Deshalb legt
+  `Scripts/bundle.sh` es unter `~/Applications` ab und nicht in `.build`: dort
+  überlebt es `swift package clean`, einen zweiten Klon des Repos und den Umzug
+  des Arbeitsverzeichnisses. Ein Bundle an einem neuen Pfad ist erneut
+  freizugeben, auch bei identischer Signatur.
 - **`AXIsProcessTrusted()` kann dabei `true` melden, ohne dass der Zugriff
   funktioniert.** Dann liefert jede App auf `AXWindows` nur ein
   Stellvertreter-Element der Rolle `AXApplication` ohne Position und Größe.
-  `openzonr` erkennt diesen Zustand und erklärt ihn, statt still nichts zu tun.
-  Details in [docs/tracer-bullet.md](docs/tracer-bullet.md).
+  Aus der Shell gestartet erbt der Prozess das Vertrauen des Terminals, die
+  Fensterzugriffe erben es nicht. `openzonr` erkennt diesen Zustand und erklärt
+  ihn, statt still nichts zu tun. Details in
+  [docs/tracer-bullet.md](docs/tracer-bullet.md).
 - Bei einem vorhandenen Eintrag aus einem unsignierten Lauf: **entfernen und neu
   hinzufügen.** Den Haken nur neu zu setzen genügt nicht.
 
@@ -219,7 +226,7 @@ sonst `~/Library/Application Support/OpenZonr/config.json`.
 # 1. Bauen, signieren und freigeben (siehe oben — ohne Signatur sieht
 #    das Werkzeug keine Fenster)
 Scripts/bundle.sh
-OZ=.build/OpenZonr.app/Contents/MacOS/OpenZonr
+OZ=~/Applications/OpenZonr.app/Contents/MacOS/OpenZonr
 
 # 2. Die echten Displays ermitteln und als Fragment ausgeben
 "$OZ" displays --config-fragment > /tmp/displays.json

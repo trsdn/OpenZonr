@@ -170,9 +170,17 @@ designated => identifier "com.trsdn.openzonr" and anchor apple generic
   and certificate leaf[subject.OU] = <TEAM>
 ```
 
-Damit überlebt die Freigabe jeden Neubau und sogar einen Pfadwechsel des
-Bundles — beides gegengeprüft. Ein Ad-hoc-Zertifikat genügt nicht, es hat keine
-solche Kette. Praktische Folge für Mitwirkende: **ohne Developer-ID-Zertifikat
+Damit überlebt die Freigabe jeden Neubau. Ein Ad-hoc-Zertifikat genügt nicht, es
+hat keine solche Kette.
+
+**Der Pfad zählt trotzdem.** Ein frisch gebautes, identisch signiertes Bundle an
+einem neuen Ort ist nicht freigegeben — über LaunchServices gestartet meldet es
+„nicht vertraut". Die Freigabe gilt dem Programm an seinem Platz, nicht dem
+Identifier allein. `Scripts/bundle.sh` legt das Bundle deshalb unter
+`~/Applications/OpenZonr.app` ab statt in `.build`, wo die erste Aufräumaktion
+sie kosten würde.
+
+Praktische Folge für Mitwirkende: **ohne Developer-ID-Zertifikat
 lässt sich an der Platzierung nicht sinnvoll arbeiten.** Die rechnende Hälfte in
 `OpenZonrCore` bleibt headless testbar, die Anbindung nicht.
 
@@ -264,14 +272,15 @@ Die API meldet also durchgehend Erfolg, aber es kommen keine echten Fenster
 zurück. Reproduziert mit `openzonr` **und** mit einem unabhängig kompilierten
 Probe-Programm im selben Prozesskontext — es liegt nicht am Werkzeug.
 
-**Die Ursache ist inzwischen geklärt, und die erste Vermutung war falsch.**
-Angenommen wurde, die Berechtigung hänge am startenden Programm (Terminal,
-Editor, Agent-Prozess). Tatsächlich hängt sie an der Code-Signatur: eine
-unsignierte Binärdatei bekommt bei jedem Neubau eine neue Prüfsumme, und TCC
-erkennt sie nicht wieder. Der Haken bleibt gesetzt und meint ein anderes
-Programm. Mit einem per `Scripts/bundle.sh` signierten Bundle liefert derselbe
-Aufruf 19 echte `AXWindow` mit lesbarem Frame — ohne neuen manuellen Grant und
-über Neubauten wie Pfadwechsel hinweg. Einzelheiten in Frage 7.
+**Die Ursache ist inzwischen weitgehend geklärt, und die erste Vermutung war
+nicht falsch, sondern unvollständig.** Angenommen wurde, die Berechtigung hänge
+am startenden Programm (Terminal, Editor, Agent-Prozess). Hinzu kommt die
+Code-Signatur: eine unsignierte Binärdatei bekommt bei jedem Neubau eine neue
+Prüfsumme, und TCC erkennt sie nicht wieder. Beide Mechanismen wirken zusammen,
+und der degradierte Zustand ist genau ihr Zusammenspiel — `AXIsProcessTrusted()`
+erbt das Vertrauen des startenden Terminals, die Fensterzugriffe erben es nicht.
+Mit einem freigegebenen, signierten Bundle liefert derselbe Aufruf 19 echte
+`AXWindow` mit lesbarem Frame. Einzelheiten in Frage 7.
 
 **Konsequenz für die Implementierung:** `openzonr` verlässt sich nicht auf
 `AXIsProcessTrusted()`, sondern führt einen echten Selbsttest aus
