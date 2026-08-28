@@ -11,7 +11,8 @@ let package = Package(
     products: [
         .library(name: "OpenZonrCore", targets: ["OpenZonrCore"]),
         .library(name: "OpenZonrMac", targets: ["OpenZonrMac"]),
-        .executable(name: "openzonr", targets: ["openzonr"])
+        .executable(name: "openzonr", targets: ["openzonr"]),
+        .executable(name: "OpenZonrApp", targets: ["OpenZonrApp"])
     ],
     targets: [
         .target(
@@ -35,6 +36,15 @@ let package = Package(
         // to build and audit.
         .executableTarget(
             name: "openzonr",
+            dependencies: ["OpenZonrCore", "OpenZonrMac"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // The menu bar app. A SwiftPM executable rather than an Xcode target:
+        // Scripts/bundle.sh already produces the signed bundle whose identifier
+        // and team the Accessibility grant is bound to, and keeping one build
+        // system means `swift build` and `swift test` remain the whole story.
+        .executableTarget(
+            name: "OpenZonrApp",
             dependencies: ["OpenZonrCore", "OpenZonrMac"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

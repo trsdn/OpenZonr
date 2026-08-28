@@ -1,6 +1,12 @@
 #!/bin/bash
 #
-# Packt openzonr in ein signiertes App-Bundle an einem festen Ort.
+# Packt OpenZonr in ein signiertes App-Bundle an einem festen Ort.
+#
+# Im Bundle liegt genau eine Binärdatei, und sie ist beides: ohne Argumente die
+# Menüleisten-App, mit einem Unterbefehl das Kommandozeilenwerkzeug. Das ist
+# kein Kunststück, sondern Notwendigkeit — die Bedienungshilfen-Freigabe gilt
+# einem Programm an seinem Pfad. Zwei Binärdateien wären zwei Freigaben, und die
+# Gegenprobe würde etwas anderes messen als das, was tatsächlich läuft.
 #
 # Ohne Signatur kommt man an die Bedienungshilfen nicht heran. Eine unsignierte
 # Binärdatei bekommt zwar einen Haken in den Systemeinstellungen und
@@ -44,7 +50,7 @@ IDENTITY="${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev
 echo "==> Baue ($CONFIGURATION)"
 swift build -c "$CONFIGURATION" --package-path "$ROOT"
 
-BINARY="$ROOT/.build/$CONFIGURATION/openzonr"
+BINARY="$ROOT/.build/$CONFIGURATION/OpenZonrApp"
 [ -x "$BINARY" ] || { echo "Binärdatei fehlt: $BINARY" >&2; exit 1; }
 
 echo "==> Packe $APP"
@@ -67,9 +73,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
-	<!-- Kein Eintrag im Dock: das Werkzeug hat keine Oberfläche. -->
+	<!-- Kein Eintrag im Dock und kein eigenes Menü: die Oberfläche ist das
+	     Symbol in der Menüleiste. -->
 	<key>LSUIElement</key>
 	<true/>
 </dict>
@@ -109,8 +118,13 @@ Die Freigabe gilt diesem Pfad. Solange hierhin gebaut wird, überlebt sie
 jeden Neubau — auch aus einem anderen Klon des Repos. Wird das Bundle
 woandershin gelegt, ist es dort erneut freizugeben.
 
+Starten:
+  open -n "$APP"          # Menüleisten-App
 Gegenprobe — muss AXStandardWindow mit einer Größe ungleich 0x0 zeigen:
   "$APP/Contents/MacOS/OpenZonr" windows --bundle com.apple.Safari
+
+Dieselbe Binärdatei, einmal mit und einmal ohne Unterbefehl. Was die
+Gegenprobe misst, ist deshalb genau das Programm, das auch die App ist.
 
 Zeigt die Gegenprobe stattdessen "Zugriff degradiert", fehlt die Freigabe
 für dieses Bundle: AXIsProcessTrusted() erbt dann das Vertrauen vom
