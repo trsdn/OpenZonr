@@ -127,6 +127,33 @@ gemeldeten Elements sind leer. Ein Werkzeug, das sich auf
 `openzonr` prüft deshalb zusätzlich, ob irgendeine App ein Element mit der Rolle
 `AXWindow` liefert, und verweigert `watch` andernfalls mit Begründung.
 
+### Unabhängige Gegenprobe (bestätigt)
+
+Der Befund wurde mit einem separaten, minimalen Sondenprogramm nachgestellt, das
+nichts aus diesem Repository verwendet — nur `AXUIElementCreateApplication` und
+`AXUIElementCopyAttributeValue` über alle Apps mit `activationPolicy == .regular`.
+Ergebnis über 21 Apps:
+
+```
+trusted: true
+com.microsoft.Outlook   winErr=0  n=1  first=AXApplication  posErr=-25205
+com.apple.Safari        winErr=0  n=1  first=AXApplication  posErr=-25205
+com.microsoft.edgemac   winErr=0  n=3  first=AXApplication  posErr=-25205
+com.apple.finder        winErr=0  n=3  first=AXApplication  posErr=0
+…
+```
+
+`-25205` ist `kAXErrorAttributeUnsupported`. Keine einzige App liefert ein
+Element mit Rolle `AXWindow`; die Fensterliste ist zwar nicht leer, enthält aber
+durchgehend Stellvertreter mit Rolle `AXApplication`. Damit ist ausgeschlossen,
+dass die Ursache im Code von `openzonr` liegt.
+
+Die Berechtigung hängt am *verantwortlichen* Prozess (dem Programm, das die
+Prozesskette gestartet hat), nicht an der aufgerufenen Binärdatei. Sie lässt sich
+nicht programmatisch setzen — `AXIsProcessTrusted()` meldet deshalb „true",
+während der Lesezugriff degradiert bleibt. Der letzte Messschritt bleibt ein
+manueller Vorgang in den Systemeinstellungen.
+
 ### Was zur Verifikation noch aussteht
 
 Ein manueller Schritt, der Rechte am Prozess selbst voraussetzt:
