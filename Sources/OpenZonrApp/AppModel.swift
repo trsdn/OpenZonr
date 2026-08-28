@@ -293,6 +293,112 @@ final class AppModel {
 
     var availableProfiles: [Profile] { configuration?.profiles ?? [] }
 
+    // MARK: - Editor
+
+    /// The open editing session, so that reopening the window does not throw
+    /// away unsaved changes.
+    private(set) var document: ConfigurationDocument?
+
+    /// The result of the last quick pin, for the menu to show.
+    private(set) var lastPinMessage: String?
+    private(set) var lastPinFailed = false
+
+    /// The editing session for the loaded configuration, created on first use.
+    ///
+    /// Returns `nil` when there is nothing to edit. Offering an editor on a
+    /// configuration that failed to load would mean editing an invented one and
+    /// writing it over the user's file.
+    func editorDocument() -> ConfigurationDocument? {
+        if let document { return document }
+        guard let configuration else { return nil }
+        let document = ConfigurationDocument(configuration: configuration, url: configurationURL)
+        document.onSave = { [weak self] _ in
+            // Reload rather than adopting the in-memory copy: what the engine
+            // runs on should be what is on disk, migration and all.
+            self?.reloadConfiguration()
+        }
+        self.document = document
+        return document
+    }
+
+    /// „Aktuelles Fenster hier festhalten“ — the 90 % case.
+    ///
+    /// Reads the frontmost window, works out which zone it is sitting in, and
+    /// lets ``QuickPin`` derive rule, role and binding. The write goes through
+    /// the same ``ConfigurationStore`` as the editor's save button; there is no
+    /// second path.
+    ///
+    /// Unsaved editor changes are the base when the editor is open, so that the
+    /// pin does not silently discard them.
+    func pinFrontmostWindow() {
+        lastPinFailed = true
+
+        guard let base = document?.configuration ?? configuration else {
+            lastPinMessage = "Es ist keine Konfiguration geladen."
+            return
+        }
+        guard let profile = activeProfile else {
+            lastPinMessage = "Kein Profil ist aktiv — ohne Profil ist nicht bekannt, was „hier“ bedeutet."
+            return
+        }
+
+        let snapshots = SystemDisplays.snapshots()
+        let arrangement = ScreenArrangement(snapshots: snapshots)
+        let frames = arrangement.visibleFrames(for: base.displays)
+
+        let window: FrontmostWindow.Snapshot
+        switch FrontmostWindow.read(primaryTopY: arrangement.primaryTopY) {
+        case let .success(snapshot):
+            window = snapshot
+        case let .failure(failure):
+            lastPinMessage = failure.description
+            return
+        }
+
+        guard let target = PinTargetResolver.resolve(
+            windowFrame: window.frame,
+            configuration: base,
+            profile: profile.id,
+            visibleFrames: frames
+        ) else {
+            lastPinMessage = "Unter diesem Fenster liegt keine Zone des Profils „\(profile.name)“."
+            return
+        }
+
+        do {
+            let outcome = try QuickPin.pin(
+                QuickPin.Request(
+                    bundleIdentifier: window.bundleIdentifier,
+                    applicationName: window.applicationName,
+                    profile: profile.id,
+                    target: target
+                ),
+                into: base
+            )
+
+            if let document {
+                // The editor is open: put the change in front of the user
+                // instead of writing behind their back over their edits.
+                document.replace(with: outcome.configuration)
+                lastPinMessage = outcome.summary + " — im Editor eingetragen, noch nicht gesichert."
+                lastPinFailed = false
+                return
+            }
+
+            try ConfigurationStore().save(outcome.configuration, to: configurationURL)
+            Log.success(outcome.summary)
+            lastPinMessage = outcome.summary
+            lastPinFailed = false
+            reloadConfiguration()
+        } catch let error as QuickPin.Failure {
+            lastPinMessage = error.description
+        } catch let error as ConfigurationStoreError {
+            lastPinMessage = error.description
+        } catch {
+            lastPinMessage = "Festhalten fehlgeschlagen: \(error)"
+        }
+    }
+
     /// The active profile, when there is one.
     var activeProfile: Profile? { profileState?.profile }
 

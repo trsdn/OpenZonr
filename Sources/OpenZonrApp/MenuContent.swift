@@ -35,6 +35,13 @@ struct MenuContent: View {
 
         Divider()
 
+        pinEntry
+
+        Button("Regeln bearbeiten …") { showEditorWindow() }
+            .disabled(model.configuration == nil)
+
+        Divider()
+
         recentPlacements
 
         Divider()
@@ -86,6 +93,24 @@ struct MenuContent: View {
         active ? "✓ " : "   "
     }
 
+    // MARK: - Quick pin
+
+    /// The 90 % case: „diese App immer hier öffnen“.
+    ///
+    /// The issue asks for a right click on the placed window. That is not
+    /// reachable with public API — see ``FrontmostWindow`` for why — so the same
+    /// intent is expressed from the menu: the user has already put the window
+    /// where it belongs, this entry writes that down.
+    @ViewBuilder
+    private var pinEntry: some View {
+        Button("Aktuelles Fenster hier festhalten") { model.pinFrontmostWindow() }
+            .disabled(model.status == .needsPermission || model.configuration == nil)
+
+        if let message = model.lastPinMessage {
+            Text(message)
+        }
+    }
+
     // MARK: - Recent placements
 
     @ViewBuilder
@@ -124,6 +149,17 @@ struct MenuContent: View {
             size: NSSize(width: 720, height: 480)
         ) {
             ActivityWindow(model: model)
+        }
+    }
+
+    private func showEditorWindow() {
+        guard let document = model.editorDocument() else { return }
+        PanelPresenter.shared.show(
+            id: "editor",
+            title: "OpenZonr — Regeln bearbeiten",
+            size: NSSize(width: 900, height: 620)
+        ) {
+            EditorWindow(document: document)
         }
     }
 }
