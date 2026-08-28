@@ -33,6 +33,18 @@ struct MenuContent: View {
         Toggle("Platzierung pausieren", isOn: $model.isPaused)
             .disabled(model.status == .needsPermission || model.status == .needsConfiguration)
 
+        Toggle("Fenster in Zonen ziehen", isOn: Binding(
+            get: { model.dropzonesEnabled },
+            set: { model.dropzonesEnabled = $0 }
+        ))
+        .disabled(model.status == .needsPermission || model.configuration == nil)
+
+        if let problem = model.dropzones.problem {
+            Text("Ziehen ist nicht aktiv: \(problem)")
+        }
+
+        competingManagers
+
         Divider()
 
         pinEntry
@@ -101,6 +113,20 @@ struct MenuContent: View {
     /// reachable with public API — see ``FrontmostWindow`` for why — so the same
     /// intent is expressed from the menu: the user has already put the window
     /// where it belongs, this entry writes that down.
+    /// Says out loud that another window manager is running.
+    ///
+    /// OpenZonr does not try to win against it. Two tools that both show an
+    /// overlay while dragging produce a result the user cannot predict, and the
+    /// honest move is to say so once rather than to fight silently — see
+    /// docs/dropzones.md.
+    @ViewBuilder
+    private var competingManagers: some View {
+        let running = model.competingWindowManagers
+        if !running.isEmpty {
+            Text(CompetingWindowManagers.warning(for: running) ?? "")
+        }
+    }
+
     @ViewBuilder
     private var pinEntry: some View {
         Button("Aktuelles Fenster hier festhalten") { model.pinFrontmostWindow() }

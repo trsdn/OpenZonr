@@ -301,7 +301,7 @@ Apps fügen sich beim ersten Schreiben, siehe
 
 ---
 
-## 11. Konkurrierende Fenstermanager — *offen*
+## 11. Konkurrierende Fenstermanager — *entschieden: erkennen und warnen*
 
 Auf dem Messrechner läuft Magnet (`com.crowdcafe.windowmagnet`) parallel und
 platziert Fenster über dieselbe Accessibility-API.
@@ -318,10 +318,16 @@ Zwei Konsequenzen:
   eines aufgibt. OpenZonr gibt nach `RetryPolicy.maximumAttempts` auf und
   protokolliert das; ein Werkzeug ohne Obergrenze täte das nicht.
 
-**Offen:** Ob OpenZonr solche Werkzeuge erkennen und beim Start warnen sollte
-(die Bundle-IDs der verbreiteten Kandidaten sind bekannt und stabil), oder ob
-das übergriffig ist. Tendenz: eine einmalige Warnung beim Start von `watch` ist
-angemessen, ein Blockieren nicht.
+**Entschieden mit den Dropzones (#10), weil dort aus der Messstörung ein
+Entwurfsproblem wurde: Magnet und OpenZonr blendeten beide beim Ziehen ein
+Overlay ein.** OpenZonr erkennt 15 verbreitete Werkzeuge über ihre Bundle-ID
+(`CompetingWindowManagers`), meldet einen Treffer einmalig im Menü und
+unterscheidet dabei, ob das andere Werkzeug ebenfalls beim Ziehen zeichnet oder
+nur dieselbe API benutzt. Es kämpft nicht: kein zweites Setzen nach dem
+Loslassen, kein Beenden fremder Programme, kein stillschweigendes Abschalten.
+Die Warnung ist über `defaults.dropzones.warnAboutCompetingManagers`
+abschaltbar, das Ziehen bleibt davon unberührt. Begründung und die verworfenen
+Alternativen stehen in [dropzones.md](dropzones.md).
 
 ---
 

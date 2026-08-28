@@ -67,3 +67,14 @@ extension WindowFrame {
     /// Area of the frame, `0` when either dimension is negative.
     public var area: Double { max(0, width) * max(0, height) }
 }
+
+extension VisibleFrame {
+    /// Whether the point lies on this display's usable area.
+    ///
+    /// Same edge rule as ``WindowFrame/contains(_:)``: left and bottom
+    /// inclusive, right and top exclusive, so two displays that touch never both
+    /// claim the same point.
+    public func contains(_ point: ScreenPoint) -> Bool {
+        point.x >= x && point.x < maxX && point.y >= y && point.y < maxY
+    }
+}

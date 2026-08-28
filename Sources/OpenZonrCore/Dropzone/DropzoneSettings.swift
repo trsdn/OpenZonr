@@ -37,13 +37,21 @@ public struct ModifierState: OptionSet, Hashable, Sendable {
     public static let option = ModifierState(rawValue: 1 << 2)
     public static let command = ModifierState(rawValue: 1 << 3)
 
-    public func contains(_ modifier: DropzoneModifier) -> Bool {
+    /// Whether the configured suppression key is among the keys held.
+    ///
+    /// Named `holds` rather than `contains` after the first version overloaded
+    /// `contains` and called `contains(.shift)` inside it: the compiler resolved
+    /// that to the new overload rather than to `OptionSet.contains`, and every
+    /// call recursed until the stack ran out. The tests died with SIGBUS, which
+    /// says nothing about the cause. A distinct name makes the mistake
+    /// unavailable.
+    public func holds(_ modifier: DropzoneModifier) -> Bool {
         switch modifier {
         case .none: return false
-        case .shift: return contains(.shift)
-        case .control: return contains(.control)
-        case .option: return contains(.option)
-        case .command: return contains(.command)
+        case .shift: return contains(ModifierState.shift)
+        case .control: return contains(ModifierState.control)
+        case .option: return contains(ModifierState.option)
+        case .command: return contains(ModifierState.command)
         }
     }
 }
@@ -170,7 +178,7 @@ public enum DropzoneActivator {
         travelled: Double
     ) -> DropzoneActivation {
         guard settings.enabled else { return .disabled }
-        if settings.suppressionModifier != .none, modifiers.contains(settings.suppressionModifier) {
+        if settings.suppressionModifier != .none, modifiers.holds(settings.suppressionModifier) {
             return .suppressed(settings.suppressionModifier)
         }
         guard travelled >= settings.minimumDragDistance else {

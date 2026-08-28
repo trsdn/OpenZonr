@@ -271,3 +271,10 @@ Dropzone-Funktion aus
 Fenster mit der Maus in eine eingeblendete Zone zu ziehen. Hier wird nur die
 Konfiguration bearbeitet, es wird kein Fenster bewegt und nichts eingeblendet.
 An #10 wurde nichts vorweggenommen.
+
+**Nachtrag:** #10 ist inzwischen gebaut — [dropzones.md](dropzones.md). Es
+benutzt `QuickPin` aus diesem Issue unverändert weiter: Das Angebot „Diese App
+immer hier öffnen?" nach einem Ablegen leitet seine Regel über dieselbe
+`QuickPin.Request`, die auch der Menüpunkt „Aktuelles Fenster hier festhalten"
+erzeugt. Damit gibt es weiterhin genau einen Weg, aus einem Fenster eine Regel
+zu machen.
