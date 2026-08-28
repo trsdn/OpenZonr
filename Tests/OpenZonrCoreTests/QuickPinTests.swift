@@ -168,6 +168,237 @@ struct QuickPinTests {
         #expect(rule.priority == Configuration.rulePriorityStep)
     }
 
+    // MARK: - Retargeting has to keep the same promise
+
+    /// The case found in review: pinning an app a second time used to set the
+    /// role and leave the priority alone. If a catch-all rule had appeared above
+    /// it in the meantime, the retargeted rule never fired — and the user was
+    /// told it now points at the new zone.
+    @Test("Eine umgehängte Regel steigt über eine dazugekommene Auffangregel")
+    func retargetedRuleOutranksACatchAllAddedLater() throws {
+        let configuration = TestConfigurations.minimal {
+            $0.rules = [
+                PlacementRule(
+                    id: "editor-rule",
+                    name: "Editor",
+                    priority: 10,
+                    match: WindowMatch(bundleIdentifier: "com.example.editor"),
+                    action: PlacementAction(role: "editor")
+                ),
+                PlacementRule(
+                    id: "catch-all",
+                    name: "Alles Übrige",
+                    priority: 500,
+                    match: WindowMatch(),
+                    action: PlacementAction(role: "editor")
+                )
+            ]
+        }
+
+        // Gegenprobe vorher: die Auffangregel gewinnt, die App-Regel ist tot.
+        let before = DefaultRuleEngine().firstMatch(
+            for: TestConfigurations.window(bundleIdentifier: "com.example.editor"),
+            in: CompiledRuleSet(rules: configuration.rules),
+            defaults: configuration.defaults
+        )
+        #expect(before?.id == "catch-all")
+
+        let outcome = try QuickPin.pin(
+            request(bundle: "com.example.editor", name: "Editor", zone: "right"),
+            into: configuration
+        )
+        #expect(outcome.reusedRule)
+
+        let rule = try #require(outcome.configuration.rules.first { $0.id == outcome.rule })
+        #expect(rule.priority > 500)
+
+        // Und die Gegenprobe an der Engine: die Zusage stimmt jetzt.
+        let after = DefaultRuleEngine().firstMatch(
+            for: TestConfigurations.window(bundleIdentifier: "com.example.editor"),
+            in: CompiledRuleSet(rules: outcome.configuration.rules),
+            defaults: outcome.configuration.defaults
+        )
+        #expect(after?.id == outcome.rule)
+
+        // Und der Validator hat nichts mehr zu melden.
+        let shadowed = ConfigurationValidator().validate(outcome.configuration).findings
+            .filter { $0.code == .shadowedRule && $0.path == ConfigurationPath.rule(outcome.rule) }
+        #expect(shadowed.isEmpty)
+    }
+
+    @Test("Auch bei Gleichstand steigt die umgehängte Regel, weil sonst die Dateireihenfolge entscheidet")
+    func retargetedRuleAlsoClimbsOnEqualPriority() throws {
+        let configuration = TestConfigurations.minimal {
+            $0.rules = [
+                PlacementRule(
+                    id: "catch-all",
+                    name: "Alles Übrige",
+                    priority: 10,
+                    match: WindowMatch(),
+                    action: PlacementAction(role: "editor")
+                ),
+                PlacementRule(
+                    id: "editor-rule",
+                    name: "Editor",
+                    priority: 10,
+                    match: WindowMatch(bundleIdentifier: "com.example.editor"),
+                    action: PlacementAction(role: "editor")
+                )
+            ]
+        }
+
+        let outcome = try QuickPin.pin(
+            request(bundle: "com.example.editor", name: "Editor", zone: "right"),
+            into: configuration
+        )
+
+        let match = DefaultRuleEngine().firstMatch(
+            for: TestConfigurations.window(bundleIdentifier: "com.example.editor"),
+            in: CompiledRuleSet(rules: outcome.configuration.rules),
+            defaults: outcome.configuration.defaults
+        )
+        #expect(match?.id == outcome.rule)
+    }
+
+    @Test("Eine wiedereingeschaltete Regel, die überdeckt war, greift danach wirklich")
+    func revivedRuleActuallyFires() throws {
+        let configuration = TestConfigurations.minimal {
+            $0.rules = [
+                PlacementRule(
+                    id: "editor-rule",
+                    name: "Editor",
+                    enabled: false,
+                    priority: 10,
+                    match: WindowMatch(bundleIdentifier: "com.example.editor"),
+                    action: PlacementAction(role: "editor")
+                ),
+                PlacementRule(
+                    id: "catch-all",
+                    name: "Alles Übrige",
+                    priority: 300,
+                    match: WindowMatch(),
+                    action: PlacementAction(role: "editor")
+                )
+            ]
+        }
+
+        let outcome = try QuickPin.pin(
+            request(bundle: "com.example.editor", name: "Editor", zone: "right"),
+            into: configuration
+        )
+
+        let rule = try #require(outcome.configuration.rules.first { $0.id == outcome.rule })
+        #expect(rule.enabled)
+
+        let match = DefaultRuleEngine().firstMatch(
+            for: TestConfigurations.window(bundleIdentifier: "com.example.editor"),
+            in: CompiledRuleSet(rules: outcome.configuration.rules),
+            defaults: outcome.configuration.defaults
+        )
+        #expect(match?.id == outcome.rule)
+    }
+
+    /// The counterweight to the three tests above: climbing must happen only
+    /// when it is needed, or the numbers grow by ten on every single click.
+    @Test("Ohne Konkurrenz bleibt die Priorität beim Umhängen unverändert")
+    func retargetingWithoutCompetitionLeavesPriorityAlone() throws {
+        let configuration = TestConfigurations.minimal {
+            $0.rules = [
+                PlacementRule(
+                    id: "editor-rule",
+                    name: "Editor",
+                    priority: 40,
+                    match: WindowMatch(bundleIdentifier: "com.example.editor"),
+                    action: PlacementAction(role: "editor")
+                )
+            ]
+        }
+
+        var current = configuration
+        for _ in 0..<3 {
+            current = try QuickPin.pin(
+                request(bundle: "com.example.editor", name: "Editor", zone: "right"),
+                into: current
+            ).configuration
+        }
+
+        #expect(current.rules.first { $0.id == "editor-rule" }?.priority == 40)
+    }
+
+    // MARK: - The pin refusing to promise an effect
+
+    /// The pin has no field to hang a finding under, so its only honest answer
+    /// to a blocking finding is to refuse. These tests pin down which findings
+    /// count — refusing on every warning would make the feature unusable.
+    @Test("Ohne Befund gibt es keinen Einwand")
+    func cleanOutcomeHasNoObjection() throws {
+        let outcome = try QuickPin.pin(request(), into: TestConfigurations.minimal())
+        let report = ConfigurationValidator().validate(outcome.configuration)
+
+        #expect(QuickPin.objection(to: outcome, report: report) == nil)
+    }
+
+    @Test("Eine überdeckte Regel führt zum Einwand statt zur Erfolgsmeldung")
+    func shadowedRuleObjects() throws {
+        let outcome = try QuickPin.pin(request(), into: TestConfigurations.minimal())
+        // Eine Auffangregel, die genau diese Regel überdeckt, nachträglich davor.
+        var configuration = outcome.configuration
+        configuration.rules.insert(
+            PlacementRule(
+                id: "catch-all",
+                name: "Alles Übrige",
+                priority: 10_000,
+                match: WindowMatch(),
+                action: PlacementAction(role: "editor")
+            ),
+            at: 0
+        )
+        let report = ConfigurationValidator().validate(configuration)
+
+        let objection = try #require(QuickPin.objection(to: outcome, report: report))
+        #expect(objection.contains("überdeckt"))
+    }
+
+    @Test("Eine Überdeckung an einer fremden Regel geht den Vorgang nichts an")
+    func shadowedOtherRuleDoesNotObject() throws {
+        let outcome = try QuickPin.pin(request(), into: TestConfigurations.minimal())
+        var configuration = outcome.configuration
+        configuration.rules.insert(
+            PlacementRule(
+                id: "fremd-oben",
+                name: "Fremd oben",
+                priority: 10_000,
+                match: WindowMatch(bundleIdentifier: "com.example.editor"),
+                action: PlacementAction(role: "editor")
+            ),
+            at: 0
+        )
+        let report = ConfigurationValidator().validate(configuration)
+
+        // „editor-rule" ist jetzt überdeckt — aber nicht die festgehaltene Regel.
+        #expect(report.findings.contains { $0.code == .shadowedRule })
+        #expect(QuickPin.objection(to: outcome, report: report) == nil)
+    }
+
+    @Test("Ein Fehler irgendwo im Dokument führt zum Einwand")
+    func anyErrorObjects() throws {
+        let outcome = try QuickPin.pin(request(), into: TestConfigurations.minimal())
+        var configuration = outcome.configuration
+        configuration.rules.append(
+            PlacementRule(
+                id: "kaputt",
+                name: "Kaputt",
+                priority: 1,
+                match: WindowMatch(bundleIdentifier: "com.example.x"),
+                action: PlacementAction(role: "gibt-es-nicht")
+            )
+        )
+        let report = ConfigurationValidator().validate(configuration)
+
+        #expect(report.errors.isEmpty == false)
+        #expect(QuickPin.objection(to: outcome, report: report) != nil)
+    }
+
     // MARK: - Refusals
 
     @Test("Ohne Bundle-Kennung wird abgelehnt, nicht geraten")
