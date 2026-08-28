@@ -195,7 +195,21 @@ final class AppModel {
     /// find a bundle in `.build` on its own. Dragging is the reliable path, and
     /// for that the bundle has to be visible.
     func revealInFinder() {
-        NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
+        NSWorkspace.shared.activateFileViewerSelecting([bundleURL])
+    }
+
+    /// The bundle this app runs from, or the bare executable if there is none.
+    ///
+    /// Shown verbatim, because the grant is bound to the bundle at its path: a
+    /// second copy elsewhere looks identical in the settings list and does
+    /// nothing. Naming the path turns "add OpenZonr" into an unambiguous
+    /// instruction.
+    var bundlePath: String? {
+        Accessibility.enclosingApplicationBundle()?.path
+    }
+
+    private var bundleURL: URL {
+        Accessibility.enclosingApplicationBundle() ?? Bundle.main.bundleURL
     }
 
     // MARK: - Configuration
