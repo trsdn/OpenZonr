@@ -725,9 +725,29 @@ public final class WatchEngine {
     /// with no rule. Everything the automatic path learned the hard way — the
     /// coordinate flip, the retry policy, the tolerance, the record — applies
     /// unchanged, because it is literally the same code.
+    ///
+    /// Two things it refuses to do, both of them for the same reason: not to
+    /// report something that did not happen.
+    ///
+    /// - While paused it places nothing. The menu says "es wird nichts mehr
+    ///   platziert" and the log says the same; a drop that placed anyway would
+    ///   make both untrue. The controller already stops listening when the pause
+    ///   goes on, so this is the second lock rather than the first — but the
+    ///   promise belongs to the engine that makes it, not to a caller that has
+    ///   to remember.
+    /// - Without a readable frame it places nothing either. The first version
+    ///   substituted `0×0 bei 0,0` here, and that value travelled straight into
+    ///   the rejection message as "Ist:" — a measurement that was never taken.
     @MainActor
     public func place(dropped element: AXUIElement, application: NSRunningApplication, into placement: ResolvedPlacement) {
-        let frame = Accessibility.frame(of: element) ?? WindowFrame(x: 0, y: 0, width: 0, height: 0)
+        guard !isPaused else {
+            Log.info("pausiert — das abgelegte Fenster bleibt, wo es ist.")
+            return
+        }
+        guard let frame = Accessibility.frame(of: element) else {
+            Log.warn("Der Rahmen des abgelegten Fensters ist nicht lesbar; es wird nichts gesetzt.")
+            return
+        }
         let snapshot = WindowInventory.snapshot(
             of: element,
             application: application,

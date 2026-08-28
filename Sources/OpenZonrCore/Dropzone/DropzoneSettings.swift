@@ -194,3 +194,44 @@ public enum DropzoneActivator {
         return (dx * dx + dy * dy).squareRoot()
     }
 }
+
+/// Why the drag half is not listening at all.
+///
+/// Different from ``DropzoneActivation``, which decides within a running drag.
+/// This decides whether there is anything to run — and it exists as its own type
+/// because the first version answered the question in two places that disagreed:
+/// the controller started listening whenever the feature was switched on, while
+/// the menu and the log announced that a pause stopped everything. Both cannot
+/// be true, and the one that was wrong was the silent one.
+public enum DropzoneSuspension: Hashable, Sendable {
+    case switchedOff
+    case paused
+
+    /// One German sentence, shown in the menu under the toggle.
+    public var explanation: String {
+        switch self {
+        case .switchedOff:
+            return "Dropzones sind in der Konfiguration abgeschaltet."
+        case .paused:
+            return "Die Platzierung ist pausiert."
+        }
+    }
+}
+
+extension DropzoneActivator {
+
+    /// Whether the tracker should be listening, or why it should not.
+    ///
+    /// The pause takes the drag half with it. Letting an explicit mouse gesture
+    /// through while the automatic half rests would be defensible on its own —
+    /// but not while the menu entry is called "Platzierung pausieren" and the
+    /// log says "es wird nichts mehr platziert". Of the two ways to make those
+    /// agree, this is the one that also helps in the situation that usually
+    /// causes a pause: a second window manager pulling the other way, which is
+    /// exactly when a second overlay during a drag is worst.
+    public static func suspension(settings: DropzoneSettings, isPaused: Bool) -> DropzoneSuspension? {
+        guard settings.enabled else { return .switchedOff }
+        guard !isPaused else { return .paused }
+        return nil
+    }
+}
