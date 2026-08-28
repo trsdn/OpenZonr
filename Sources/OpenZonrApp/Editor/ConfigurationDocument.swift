@@ -68,9 +68,11 @@ final class ConfigurationDocument {
 
     /// Applies one edit and revalidates.
     ///
-    /// Every change goes through here — the rule list, the zone editor, the
-    /// quick pin — so that "validated after every change" is a property of the
-    /// document rather than something each view has to remember.
+    /// Every change to the working copy goes through here or through
+    /// ``replace(with:)``, and both end in the same private `update` — the rule
+    /// list, the zone editor and the quick pin alike. That is what makes "the
+    /// configuration is validated after every change" a property of this type
+    /// rather than something each caller has to remember.
     func apply(_ edit: (Configuration) -> Configuration) {
         update(edit(configuration))
     }
@@ -120,6 +122,12 @@ final class ConfigurationDocument {
         }
     }
 
+    /// The reason the last write failed, if it did.
+    var saveProblem: String? {
+        if case let .failed(message) = saveState { return message }
+        return nil
+    }
+
     // MARK: - Findings
 
     /// Findings that no field in the editor claims.
@@ -135,5 +143,14 @@ final class ConfigurationDocument {
         covered += configuration.profiles.map { ConfigurationPath.profile($0.id) }
         covered += configuration.displays.map { ConfigurationPath.display($0.alias) }
         return findings.findings(notUnder: covered)
+    }
+
+    /// Why the working copy must not be written on behalf of `outcome`, if so.
+    ///
+    /// A thin pass-through to ``QuickPin/objection(to:report:)`` with this
+    /// session's report — the rule itself lives in the core, where it can be
+    /// proven without any permission.
+    func objection(to outcome: QuickPin.Outcome) -> String? {
+        QuickPin.objection(to: outcome, report: report)
     }
 }

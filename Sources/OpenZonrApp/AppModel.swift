@@ -311,13 +311,19 @@ final class AppModel {
     func editorDocument() -> ConfigurationDocument? {
         if let document { return document }
         guard let configuration else { return nil }
+        let document = makeDocument(for: configuration)
+        self.document = document
+        return document
+    }
+
+    /// An editing session wired up to reload the engine after a successful write.
+    private func makeDocument(for configuration: Configuration) -> ConfigurationDocument {
         let document = ConfigurationDocument(configuration: configuration, url: configurationURL)
         document.onSave = { [weak self] _ in
             // Reload rather than adopting the in-memory copy: what the engine
             // runs on should be what is on disk, migration and all.
             self?.reloadConfiguration()
         }
-        self.document = document
         return document
     }
 
@@ -376,23 +382,43 @@ final class AppModel {
                 into: base
             )
 
-            if let document {
+            // Always through a document, open editor or not. It is the only
+            // place that validates, and this menu entry is precisely what gets
+            // used *without* opening the editor — so routing around it would
+            // leave the most common path as the only unchecked one.
+            let hasEditorSession = document != nil
+            let session = document ?? makeDocument(for: base)
+            session.replace(with: outcome.configuration)
+
+            if let objection = session.objection(to: outcome) {
+                // Reporting success here would be the failure this project keeps
+                // paying for: a sentence promising an effect that does not happen.
+                // With the editor open the change stays in the working copy, so
+                // the finding is visible at the field; without it the short-lived
+                // document is simply dropped.
+                lastPinMessage = objection + (hasEditorSession
+                    ? " Die Änderung steht im Editor, ist aber nicht gesichert."
+                    : " Nichts wurde geändert.")
+                Log.warn(objection)
+                return
+            }
+
+            if hasEditorSession {
                 // The editor is open: put the change in front of the user
                 // instead of writing behind their back over their edits.
-                document.replace(with: outcome.configuration)
                 lastPinMessage = outcome.summary + " — im Editor eingetragen, noch nicht gesichert."
                 lastPinFailed = false
                 return
             }
 
-            try ConfigurationStore().save(outcome.configuration, to: configurationURL)
+            guard session.save() else {
+                lastPinMessage = session.saveProblem ?? "Speichern fehlgeschlagen."
+                return
+            }
             Log.success(outcome.summary)
             lastPinMessage = outcome.summary
             lastPinFailed = false
-            reloadConfiguration()
         } catch let error as QuickPin.Failure {
-            lastPinMessage = error.description
-        } catch let error as ConfigurationStoreError {
             lastPinMessage = error.description
         } catch {
             lastPinMessage = "Festhalten fehlgeschlagen: \(error)"
