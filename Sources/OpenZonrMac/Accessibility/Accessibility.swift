@@ -8,14 +8,14 @@ import OpenZonrCore
 /// Everything that talks to `AXUIElement` lives here so the rest of the tool
 /// stays plain Swift values. The API is untyped and pointer based; keeping it in
 /// one file makes the unsafe surface reviewable.
-enum Accessibility {
+public enum Accessibility {
 
     /// Whether this process may read and control other applications' windows.
     ///
     /// - Parameter prompt: when `true`, macOS shows the system dialog that
     ///   deep-links into the settings pane. Only `watch` asks for it — the
     ///   diagnostic subcommands should not pop dialogs.
-    static func isTrusted(promptIfNeeded prompt: Bool = false) -> Bool {
+    public static func isTrusted(promptIfNeeded prompt: Bool = false) -> Bool {
         // The constant is a global `var` in the SDK and therefore not
         // concurrency-safe to reference; its value is fixed API.
         let options = ["AXTrustedCheckOptionPrompt": prompt]
@@ -30,7 +30,7 @@ enum Accessibility {
     /// the permission is attributed to the launching terminal, not to this
     /// binary. Reporting "trusted" and then placing nothing would be the worst
     /// possible failure mode, so the tool probes for real data instead.
-    enum WindowAccess {
+    public enum WindowAccess {
         /// Real window elements are readable.
         case granted
         /// `AXIsProcessTrusted()` is false — the permission was never given.
@@ -40,7 +40,7 @@ enum Accessibility {
         /// No application was reachable to probe against.
         case inconclusive
 
-        var isUsable: Bool { self == .granted || self == .inconclusive }
+        public var isUsable: Bool { self == .granted || self == .inconclusive }
     }
 
     /// Probes running applications until one yields a genuine window element.
@@ -49,7 +49,7 @@ enum Accessibility {
     /// looking and only reports `.degraded` when *every* candidate answers with
     /// something that is not a window.
     @MainActor
-    static func probeWindowAccess() -> WindowAccess {
+    public static func probeWindowAccess() -> WindowAccess {
         guard isTrusted() else { return .notTrusted }
 
         var sawApplication = false
@@ -71,7 +71,7 @@ enum Accessibility {
     }
 
     /// German explanation of the degraded state, including how to escape it.
-    static let degradedAccessInstructions = """
+    public static let degradedAccessInstructions = """
     Die Bedienungshilfen melden Vertrauen (AXIsProcessTrusted == true), liefern
     aber keine echten Fenster: jede App antwortet auf AXWindows nur mit einem
     Stellvertreter-Element der Rolle AXApplication.
@@ -94,7 +94,7 @@ enum Accessibility {
     ///
     /// Spelled out rather than "permission denied", because the setting is four
     /// clicks deep and the tool is useless without it.
-    static let permissionInstructions = """
+    public static let permissionInstructions = """
     Zugriff auf die Bedienungshilfen fehlt.
 
     OpenZonr kann Fenster nur bewegen, wenn der Prozess als vertrauenswürdig
@@ -119,7 +119,7 @@ enum Accessibility {
 
     // MARK: - Attribute access
 
-    static func copyAttribute(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
+    public static func copyAttribute(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else {
             return nil
@@ -127,11 +127,11 @@ enum Accessibility {
         return value
     }
 
-    static func string(_ element: AXUIElement, _ attribute: String) -> String? {
+    public static func string(_ element: AXUIElement, _ attribute: String) -> String? {
         copyAttribute(element, attribute) as? String
     }
 
-    static func windows(of application: AXUIElement) -> [AXUIElement] {
+    public static func windows(of application: AXUIElement) -> [AXUIElement] {
         copyAttribute(application, kAXWindowsAttribute as String) as? [AXUIElement] ?? []
     }
 
@@ -139,7 +139,7 @@ enum Accessibility {
     ///
     /// Accessibility keeps the two apart, and both are `AXValue` boxes rather
     /// than plain types — hence the unwrapping dance.
-    static func frame(of window: AXUIElement) -> WindowFrame? {
+    public static func frame(of window: AXUIElement) -> WindowFrame? {
         guard
             let positionValue = copyAttribute(window, kAXPositionAttribute as String),
             let sizeValue = copyAttribute(window, kAXSizeAttribute as String)
@@ -166,7 +166,7 @@ enum Accessibility {
     /// position when the size changes. Writing position twice around the size
     /// makes the common case converge in a single attempt.
     @discardableResult
-    static func setFrame(_ frame: WindowFrame, on window: AXUIElement) -> Bool {
+    public static func setFrame(_ frame: WindowFrame, on window: AXUIElement) -> Bool {
         var point = CGPoint(x: frame.x, y: frame.y)
         var size = CGSize(width: frame.width, height: frame.height)
 
@@ -182,7 +182,7 @@ enum Accessibility {
         return first == .success && second == .success && third == .success
     }
 
-    static func raise(_ window: AXUIElement, pid: pid_t) {
+    public static func raise(_ window: AXUIElement, pid: pid_t) {
         AXUIElementPerformAction(window, kAXRaiseAction as CFString)
         NSRunningApplication(processIdentifier: pid)?.activate()
     }
@@ -193,22 +193,22 @@ enum Accessibility {
 /// The class is the only implementation of ``PlaceableWindow`` that touches the
 /// system; the tests use a fake that mimics self-resizing applications.
 @MainActor
-final class AccessibilityWindow: PlaceableWindow {
+public final class AccessibilityWindow: PlaceableWindow {
 
-    let element: AXUIElement
-    private(set) var snapshot: WindowSnapshot
+    public let element: AXUIElement
+    public private(set) var snapshot: WindowSnapshot
 
-    init(element: AXUIElement, snapshot: WindowSnapshot) {
+    public init(element: AXUIElement, snapshot: WindowSnapshot) {
         self.element = element
         self.snapshot = snapshot
     }
 
-    func readFrame() -> WindowFrame? {
+    public func readFrame() -> WindowFrame? {
         Accessibility.frame(of: element)
     }
 
     @discardableResult
-    func write(frame: WindowFrame) -> Bool {
+    public func write(frame: WindowFrame) -> Bool {
         Accessibility.setFrame(frame, on: element)
     }
 }

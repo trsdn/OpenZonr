@@ -1,16 +1,22 @@
 import Foundation
 import OpenZonrCore
 
-/// Entry point and hand-written argument parsing.
+/// The command line surface, and hand-written argument parsing.
 ///
 /// Three subcommands with a handful of flags do not justify a dependency, and a
 /// package without external dependencies stays trivial to build, audit and
 /// vendor. If the surface grows past this, swift-argument-parser is the obvious
 /// replacement.
-@main
-struct OpenZonrCLI {
+///
+/// It lives in the shared library rather than in the `openzonr` target for one
+/// concrete reason. The Accessibility grant is bound to a bundle at a path, and
+/// the two front ends have to share it: the menu bar app dispatches to exactly
+/// this code when it is invoked with a subcommand, so
+/// `OpenZonr.app/Contents/MacOS/OpenZonr windows` is the *same signed binary*
+/// the user granted, not a second one that would need its own approval.
+public enum OpenZonrCommandLine {
 
-    static let usage = """
+    public static let usage = """
     openzonr — Fenster landen dort, wo sie hingehören.
 
     AUFRUF
@@ -46,8 +52,20 @@ struct OpenZonrCLI {
       (Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen).
     """
 
-    static func main() {
-        var arguments = Array(CommandLine.arguments.dropFirst())
+    /// Subcommands this tool answers to.
+    ///
+    /// Used by the app to decide whether it was started as a tool or as an app,
+    /// which is why it is a list rather than "anything that is not a flag":
+    /// LaunchServices passes arguments of its own, and mistaking one of them for
+    /// a subcommand would keep the menu bar icon from ever appearing.
+    public static let subcommands = ["displays", "windows", "watch", "help", "--help", "-h"]
+
+    public static func isSubcommand(_ argument: String) -> Bool {
+        subcommands.contains(argument)
+    }
+
+    public static func run(_ argumentList: [String]) -> Never {
+        var arguments = argumentList
 
         guard let subcommand = arguments.first else {
             print(usage)
@@ -99,6 +117,7 @@ struct OpenZonrCLI {
             FileHandle.standardError.write(Data(("Fehler: \(error)\n").utf8))
             exit(1)
         }
+        exit(0)
     }
 }
 

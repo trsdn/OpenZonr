@@ -193,18 +193,3 @@ struct DisplaysCommand {
     }
 }
 
-/// Human readable rendering of a display identity, used in every subcommand.
-func describe(_ identity: DisplayIdentity) -> String {
-    switch identity {
-    case .builtin:
-        return "builtin (integriertes Display)"
-    case let .edid(vendor, model, serial):
-        return "edid vendor=\(vendor) model=\(model) serial=\(serial)"
-    case let .fallback(vendor, model, width, height, port):
-        return "fallback vendor=\(vendor) model=\(model) \(width)×\(height) port=\(port)"
-    }
-}
-
-func format(_ value: Double) -> String {
-    value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
-}

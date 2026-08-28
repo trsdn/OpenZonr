@@ -9,7 +9,7 @@ import OpenZonrCore
 /// AppKit owns the geometry (`frame`, `visibleFrame`, backing scale). The two
 /// are joined over `NSScreenNumber`, which is the `CGDirectDisplayID` of a
 /// screen — the only officially supported bridge between the two worlds.
-enum SystemDisplays {
+public enum SystemDisplays {
 
     /// Every attached display.
     ///
@@ -19,7 +19,7 @@ enum SystemDisplays {
     /// needed anyway. The `CGDirectDisplayID` is recovered from each screen's
     /// `NSScreenNumber`, which is the officially supported bridge into the
     /// CoreGraphics identity functions.
-    static func snapshots() -> [DisplaySnapshot] {
+    public static func snapshots() -> [DisplaySnapshot] {
         NSScreen.screens.compactMap { screen -> DisplaySnapshot? in
             guard let number = screen.deviceDescription[
                 NSDeviceDescriptionKey("NSScreenNumber")
@@ -96,7 +96,7 @@ enum SystemDisplays {
     /// That is a plausible tell, not a proof — which is exactly why this only
     /// produces a warning and never an automatic exclusion. The decision belongs
     /// in ``Configuration/ignoredDisplays``, where the user made it on purpose.
-    static func looksVirtual(isBuiltin: Bool, model: UInt32, serial: UInt32, physical: CGSize) -> Bool {
+    public static func looksVirtual(isBuiltin: Bool, model: UInt32, serial: UInt32, physical: CGSize) -> Bool {
         guard !isBuiltin else { return false }
         if physical.width == 0 || physical.height == 0 { return true }
         return model <= 1
@@ -104,7 +104,7 @@ enum SystemDisplays {
 }
 
 extension WindowFrame {
-    init(_ rect: CGRect) {
+    public init(_ rect: CGRect) {
         self.init(
             x: Double(rect.origin.x),
             y: Double(rect.origin.y),
@@ -113,12 +113,12 @@ extension WindowFrame {
         )
     }
 
-    var cgRect: CGRect {
+    public var cgRect: CGRect {
         CGRect(x: x, y: y, width: width, height: height)
     }
 
     /// Compact `x,y wxh` rendering used throughout the CLI output.
-    var shortDescription: String {
+    public var shortDescription: String {
         String(format: "%.0f,%.0f %.0fx%.0f", x, y, width, height)
     }
 }

@@ -11,20 +11,20 @@ import OpenZonrCore
 /// index is built from `CGWindowListCopyWindowInfo` and joined to Accessibility
 /// windows over process id plus bounds — both APIs report bounds in the same
 /// top-left based global space, so the join is exact rather than fuzzy.
-struct CoreGraphicsWindowIndex {
+public struct CoreGraphicsWindowIndex {
 
-    struct Entry {
-        var layer: Int
-        var bounds: CGRect
-        var title: String?
-        var ownerName: String?
-        var ownerPID: pid_t
+    public struct Entry {
+        public var layer: Int
+        public var bounds: CGRect
+        public var title: String?
+        public var ownerName: String?
+        public var ownerPID: pid_t
     }
 
-    private(set) var entries: [Entry] = []
+    public private(set) var entries: [Entry] = []
     private var byPID: [pid_t: [Entry]] = [:]
 
-    init(onScreenOnly: Bool = true) {
+    public init(onScreenOnly: Bool = true) {
         let options: CGWindowListOption = onScreenOnly
             ? [.optionOnScreenOnly, .excludeDesktopElements]
             : [.optionAll]
@@ -58,7 +58,7 @@ struct CoreGraphicsWindowIndex {
     /// found: a window may have been resized between the two API calls, and
     /// guessing "the app's usual layer" is far better than treating an unmatched
     /// window as system furniture.
-    func layer(forPID pid: pid_t, frame: WindowFrame) -> Int? {
+    public func layer(forPID pid: pid_t, frame: WindowFrame) -> Int? {
         guard let candidates = byPID[pid], !candidates.isEmpty else { return nil }
 
         let target = frame.cgRect
@@ -70,13 +70,13 @@ struct CoreGraphicsWindowIndex {
 }
 
 /// Builds ``WindowSnapshot`` values from live Accessibility elements.
-enum WindowInventory {
+public enum WindowInventory {
 
     /// One window, paired with the element it came from.
-    struct Item {
-        var application: NSRunningApplication
-        var element: AXUIElement
-        var snapshot: WindowSnapshot
+    public struct Item {
+        public var application: NSRunningApplication
+        public var element: AXUIElement
+        public var snapshot: WindowSnapshot
     }
 
     /// Every window of every running application, optionally filtered.
@@ -87,7 +87,7 @@ enum WindowInventory {
     ///     by default; their windows are exactly the layer noise that the filter
     ///     rejects anyway.
     @MainActor
-    static func allWindows(
+    public static func allWindows(
         bundleIdentifier: String? = nil,
         includeAccessoryApps: Bool = false
     ) -> [Item] {
@@ -106,7 +106,7 @@ enum WindowInventory {
     }
 
     @MainActor
-    static func items(
+    public static func items(
         for application: NSRunningApplication,
         index: CoreGraphicsWindowIndex,
         isFirstWindowAfterLaunch: Bool = false
@@ -133,7 +133,7 @@ enum WindowInventory {
     }
 
     @MainActor
-    static func snapshot(
+    public static func snapshot(
         of window: AXUIElement,
         application: NSRunningApplication,
         frame: WindowFrame,
