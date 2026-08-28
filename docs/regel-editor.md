@@ -106,6 +106,34 @@ deaktivierte Regel als „nichts passiert" zu beantworten wäre ein stiller Fehl
 
 Eine Regel, die der Nutzer von Hand verfeinert hat, wird nie überschrieben.
 
+**Und sie steigt, wenn sie sonst überdeckt bliebe.** Aus einer Durchsicht kam
+der Befund, dass das Umhängen die Priorität unangetastet ließ. Kam nach dem
+ersten Festhalten eine Auffangregel mit höherer Priorität dazu, war die
+angeheftete Regel überdeckt und feuerte nie — der Nutzer las „zeigt jetzt auf
+Zone 2", das Fenster ging weiter woanders auf. Dasselbe beim Wiedereinschalten
+einer abgeschalteten Regel. Beim Umhängen wird die Priorität deshalb angehoben,
+wenn eine konkurrierende Regel gleich hoch oder höher steht.
+
+Gleichstand zählt mit Absicht als Konkurrenz: bei gleicher Priorität entscheidet
+die Reihenfolge in der Datei, und die kann der Nutzer über einen Menüeintrag
+weder sehen noch beeinflussen. Ohne Konkurrenz bleibt die Zahl unverändert —
+sonst wüchse sie bei jedem Klick um 10.
+
+### Auch der Schnellbefehl validiert
+
+Der Menüeintrag lief zunächst am `ConfigurationDocument` vorbei in den Store,
+wenn das Editor-Fenster geschlossen war — also lief der häufigste Fall über den
+einzigen ungeprüften Pfad und meldete trotzdem Erfolg. Er läuft jetzt **immer**
+über ein Dokument; ist der Editor zu, ist es ein kurzlebiges.
+
+Anders als der Editor hat der Schnellbefehl kein Feld, unter das er einen Befund
+hängen könnte: er sagt einen Satz und verschwindet. Also muss er ablehnen können.
+`QuickPin.objection(to:report:)` entscheidet das, und zwar im Kern statt in der
+Oberfläche — dadurch ist die Ablehnung ohne Bedienungshilfen-Freigabe beweisbar.
+Es widersprechen genau zwei Dinge: jeder Fehler irgendwo, und eine
+`shadowedRule`-Warnung an genau dieser Regel. Auf jede Warnung abzulehnen würde
+die Funktion unbenutzbar machen.
+
 ### Fehler stehen am Feld
 
 `ConfigurationValidator` liefert jeden Befund mit `ConfigurationPath` und
@@ -142,8 +170,11 @@ ist, und der Editor muss auch für einen abgezogenen Monitor funktionieren.
 
 | Behauptung | Stand |
 |---|---|
-| `swift build` und `swift test` sind grün | **gemessen** — 199 Tests in 21 Suites, headless (vorher 156 in 17) |
-| Die Editier-Funktionen tun, was sie sollen | **gemessen** — 43 neue Tests in 4 Suites, darunter Reihenfolge, Löschsemantik, Bezeichner-Eindeutigkeit |
+| `swift build` und `swift test` sind grün | **gemessen** — 207 Tests in 21 Suites, headless (vorher 156 in 17) |
+| Die Editier-Funktionen tun, was sie sollen | **gemessen** — 51 neue Tests in 4 Suites, darunter Reihenfolge, Löschsemantik, Bezeichner-Eindeutigkeit |
+| Eine umgehängte Regel gewinnt gegen eine später dazugekommene Auffangregel | **gemessen** — Gegenprobe an `DefaultRuleEngine`, und der Fehlerfall vorher bewusst reproduziert (siehe unten) |
+| Der Schnellbefehl lehnt ab, statt Wirkung zuzusagen, die ausbleibt | **gemessen** — 4 Tests an `QuickPin.objection(to:report:)`, headless |
+| **Ob der Schnellbefehl am echten Menü ablehnt** | **nicht gemessen** — `AppModel` braucht die Freigabe; geprüft ist die Entscheidung, nicht ihre Anzeige |
 | `PinTargetResolver` ist die Umkehrung von `DefaultZoneResolver` | **gemessen** — Rundlauftest gegen den echten Resolver, nicht gegen handgerechnete Zahlen |
 | Der 90-Prozent-Fall erzeugt eine Regel, die die Engine auch wählt | **gemessen** — Gegenprobe an `DefaultRuleEngine` im Test und am echten Konfigurationsstand, siehe unten |
 | Rundlauf gegen die **echte** Konfiguration des Nutzers | **gemessen** — auf einer Kopie, Original unverändert; Zahlen unten |
@@ -151,6 +182,25 @@ ist, und der Editor muss auch für einen abgezogenen Monitor funktionieren.
 | **Ob der Editor auf dem Bildschirm bedienbar ist** | **nicht gemessen** — Begründung unten |
 | **Ob „Aktuelles Fenster hier festhalten" am echten Fenster funktioniert** | **nicht gemessen** — Begründung unten |
 | **Ob eine gezogene Zone am echten Bildschirm richtig sitzt** | **nicht gemessen** — dieselbe Begründung |
+
+### Der reproduzierte Fehlerfall
+
+Ein grüner Test beweist wenig, wenn er auch ohne die Korrektur grün wäre. Für den
+Befund aus der Durchsicht wurde die Korrektur in `QuickPin` deshalb einmal
+vorübergehend außer Kraft gesetzt. Ergebnis, bevor sie zurückkam:
+
+```
+✘ Eine umgehängte Regel steigt über eine dazugekommene Auffangregel
+    (rule.priority → 10) > 500
+    (after?.id → catch-all) == (outcome.rule → editor-rule)
+    (shadowed → [warning shadowedRule at rules[editor-rule]:
+     Die Regel editor-rule wird vollständig von Regel catch-all überdeckt.])
+✘ Auch bei Gleichstand steigt die umgehängte Regel
+✘ Eine wiedereingeschaltete Regel, die überdeckt war, greift danach wirklich
+```
+
+Die dritte Zeile ist der Kern: `RuleHygieneCheck` kannte den Befund die ganze
+Zeit, er wurde auf diesem Pfad nur nie erhoben.
 
 ### Der gemessene Rundlauf
 
