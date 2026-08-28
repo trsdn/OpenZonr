@@ -48,6 +48,15 @@ let package = Package(
             dependencies: ["OpenZonrCore", "OpenZonrMac"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // The macOS layer is mostly untestable without a screen and a granted
+        // Accessibility permission, and pretending otherwise would produce tests
+        // that prove nothing. What is testable are the pure decisions the menu
+        // bar app added on top of it, and those are what this target covers.
+        .testTarget(
+            name: "OpenZonrMacTests",
+            dependencies: ["OpenZonrCore", "OpenZonrMac"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .testTarget(
             name: "OpenZonrCoreTests",
             dependencies: ["OpenZonrCore"],
