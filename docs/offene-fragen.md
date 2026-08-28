@@ -2,7 +2,11 @@
 
 Entscheidungen, die für den Konzeptstand bewusst offen geblieben sind, sowie
 Abweichungen vom ursprünglich diskutierten Modell. Jede Frage nennt die Optionen
-und, wo vorhanden, eine Tendenz — aber keine Festlegung.
+und, wo vorhanden, eine Tendenz.
+
+Fragen, die die Praxis inzwischen beantwortet hat, tragen den Vermerk
+*entschieden* oder *geklärt* in der Überschrift. Sie bleiben stehen statt gelöscht
+zu werden — die widerlegten Annahmen sind aufschlussreicher als die richtigen.
 
 ---
 
@@ -147,19 +151,44 @@ Weiterhin offen ist ein expliziter Import/Export in der Oberfläche.
 
 ---
 
-## 7. Verteilung und Signierung
+## 7. Verteilung und Signierung — *teilweise entschieden*
 
-Der Accessibility-Grant hängt an der Code-Signatur. Eine unsignierte App verliert
-ihn bei jedem Update, was in der Praxis unbenutzbar ist.
+**Der Verdacht hat sich bestätigt, und zwar deutlicher als erwartet.** Der
+Accessibility-Grant hängt an der Code-Signatur, und ohne sie ist das Werkzeug
+nicht bloß unbequem, sondern unbrauchbar: `AXIsProcessTrusted()` meldet `true`,
+aber jede App liefert auf `AXWindows` nur Stellvertreter mit Rolle
+`AXApplication`, und `AXPosition` scheitert mit `-25205`. Der Haken in den
+Systemeinstellungen bleibt gesetzt und meint nach jedem Neubau ein anderes
+Programm.
 
-- **Notarisierte Direktverteilung** (Developer ID) — funktioniert, setzt aber eine
-  kostenpflichtige Entwicklermitgliedschaft voraus.
+**Entschieden ist die Entwicklungsseite.** `Scripts/bundle.sh` baut, packt und
+signiert mit Developer ID. Die Designated Requirement bindet an Identifier und
+Team statt an die Prüfsumme:
+
+```
+designated => identifier "com.trsdn.openzonr" and anchor apple generic
+  and certificate leaf[subject.OU] = <TEAM>
+```
+
+Damit überlebt die Freigabe jeden Neubau und sogar einen Pfadwechsel des
+Bundles — beides gegengeprüft. Ein Ad-hoc-Zertifikat genügt nicht, es hat keine
+solche Kette. Praktische Folge für Mitwirkende: **ohne Developer-ID-Zertifikat
+lässt sich an der Platzierung nicht sinnvoll arbeiten.** Die rechnende Hälfte in
+`OpenZonrCore` bleibt headless testbar, die Anbindung nicht.
+
+**Offen bleibt die Verteilung an andere:**
+
+- **Notarisierte Direktverteilung** (Developer ID) — der naheliegende Weg, setzt
+  die kostenpflichtige Entwicklermitgliedschaft voraus, die hier ohnehin
+  vorhanden ist. Notarisierung ist noch nicht eingerichtet.
 - **App Store** — scheidet praktisch aus: die Accessibility-API ist mit dem
   App-Sandbox nicht vereinbar.
-- **Selbst gebaut aus dem Quellcode** — für Entwickler in Ordnung, aber jeder
-  Neubau erfordert eine neue Erteilung der Berechtigung.
+- **Selbst gebaut aus dem Quellcode** — funktioniert nur mit eigenem
+  Zertifikat, siehe oben.
 
 Damit verbunden: ob und wie ein automatischer Update-Mechanismus eingebaut wird.
+Da die Requirement an Identifier und Team bindet, sollte ein Update den Grant
+nicht kosten — geprüft ist das noch nicht.
 
 ---
 
@@ -218,7 +247,7 @@ weiterhin offen — die naheliegenden Kandidaten sind widerlegt.
 
 ---
 
-## 10. `AXIsProcessTrusted()` ist kein verlässlicher Berechtigungstest — *neu*
+## 10. `AXIsProcessTrusted()` ist kein verlässlicher Berechtigungstest — *geklärt*
 
 **Der Befund.** Beim Bauen des Durchstichs trat ein Zustand auf, den das Konzept
 nicht vorsah:
@@ -233,10 +262,16 @@ AXObserverAddNotification(kAXWindowCreatedNotification)  → .success
 
 Die API meldet also durchgehend Erfolg, aber es kommen keine echten Fenster
 zurück. Reproduziert mit `openzonr` **und** mit einem unabhängig kompilierten
-Probe-Programm im selben Prozesskontext — es liegt nicht am Werkzeug. Vermutete
-Ursache: die Berechtigung hängt am startenden Programm (Terminal, Editor,
-Agent-Prozess) und nicht an der unsignierten Binärdatei, deren Prüfsumme sich bei
-jedem Build ändert.
+Probe-Programm im selben Prozesskontext — es liegt nicht am Werkzeug.
+
+**Die Ursache ist inzwischen geklärt, und die erste Vermutung war falsch.**
+Angenommen wurde, die Berechtigung hänge am startenden Programm (Terminal,
+Editor, Agent-Prozess). Tatsächlich hängt sie an der Code-Signatur: eine
+unsignierte Binärdatei bekommt bei jedem Neubau eine neue Prüfsumme, und TCC
+erkennt sie nicht wieder. Der Haken bleibt gesetzt und meint ein anderes
+Programm. Mit einem per `Scripts/bundle.sh` signierten Bundle liefert derselbe
+Aufruf 19 echte `AXWindow` mit lesbarem Frame — ohne neuen manuellen Grant und
+über Neubauten wie Pfadwechsel hinweg. Einzelheiten in Frage 7.
 
 **Konsequenz für die Implementierung:** `openzonr` verlässt sich nicht auf
 `AXIsProcessTrusted()`, sondern führt einen echten Selbsttest aus
@@ -246,10 +281,13 @@ funktionsfähig. Die drei Ergebnisse — gewährt, nicht vertraut, degradiert �
 je eine eigene deutschsprachige Anleitung. Unter `--dry-run` ist „degradiert" nur
 eine Warnung, damit Konfiguration und Profilwahl trotzdem prüfbar bleiben.
 
-**Offen:** Ob eine ordentlich signierte App-Hülle das Problem vollständig löst.
-Das ist die Erwartung — der Grant hängt dann an einer stabilen Code-Signatur
-statt an einer wechselnden Prüfsumme — aber ungeprüft, weil die Hülle noch nicht
-existiert. Bis dahin bleibt die Messung des Retry-Verhaltens ausstehend, siehe
+**Dieser Selbsttest bleibt trotzdem richtig.** Der degradierte Zustand tritt bei
+jedem unsignierten Build auf, also bei jedem Mitwirkenden ohne Zertifikat. Ein
+Werkzeug, das nur `AXIsProcessTrusted()` prüft, täte dort stumm gar nichts und
+gäbe keinen Hinweis darauf, woran es liegt.
+
+**Nachgetragen:** Das Retry-Verhalten ist inzwischen gemessen — beide getesteten
+Apps fügen sich beim ersten Schreiben, siehe
 [tracer-bullet.md](tracer-bullet.md).
 
 ---
@@ -298,7 +336,7 @@ Zur Nachvollziehbarkeit festgehalten:
 
 | Abweichung | Begründung |
 |---|---|
-| **SwiftPM-Package statt Xcode-Projekt** | Der aktuelle Stand ist reines Datenmodell und lässt sich so headless mit `swift build` / `swift test` prüfen; das Manifest ist Text und damit reviewbar. Die App-Hülle mit Entitlements und Signierung kommt später als Xcode-Target hinzu, das `OpenZonrCore` einbindet. |
+| **SwiftPM-Package statt Xcode-Projekt** | Der Anfangsstand war reines Datenmodell und ließ sich so headless mit `swift build` / `swift test` prüfen; das Manifest ist Text und damit reviewbar. Die damalige Annahme, Signierung erfordere ein Xcode-Target, hat sich als falsch erwiesen: `Scripts/bundle.sh` baut aus dem Package ein signiertes `.app`, und der Accessibility-Grant hält. Ein Xcode-Projekt wird damit erst nötig, wenn das Menüleisten-Target mehr braucht als SwiftPM liefert. |
 | **Profil „Unterwegs" ohne Space 2** | Spaces sind über die öffentliche API nicht adressierbar, siehe Frage 1. Die Rolle `communication` liegt im Beispiel stattdessen auf der rechten Hälfte des integrierten Displays. |
 | **`fallback` ist Pflichtfeld im Profil** | Das Konzept forderte eine definierte Default-Zone für nicht gemappte Rollen. Als optionales Feld wäre sie in der Praxis leer geblieben — genau der Zustand, den sie verhindern soll. |
 | **JSON statt YAML** | Bewusst gewählt: `Codable` ohne externe Abhängigkeit. Der Preis sind fehlende Kommentare, weshalb die kommentierte Erklärung in `docs/konfiguration.md` liegt. |
