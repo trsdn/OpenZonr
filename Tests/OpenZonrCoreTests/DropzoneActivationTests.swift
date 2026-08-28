@@ -140,4 +140,33 @@ struct DropzoneSettingsDecodingTests {
         // "none" is not a key; nothing can hold it down.
         #expect(state.holds(.none) == false)
     }
+
+    @Test("Die Pause hält auch das Ziehen an")
+    func pauseStopsTheDragHalfToo() {
+        // The review found the two halves disagreeing: the tracker kept
+        // listening during a pause while the menu and the log said nothing
+        // would be placed any more. Whichever way it is answered, it has to be
+        // answered once — and this is that one place.
+        var settings = DropzoneSettings()
+        settings.enabled = true
+        #expect(DropzoneActivator.suspension(settings: settings, isPaused: true) == .paused)
+        #expect(DropzoneActivator.suspension(settings: settings, isPaused: false) == nil)
+    }
+
+    @Test("Abgeschaltet bleibt abgeschaltet, auch ohne Pause")
+    func switchedOffBeatsEverything() {
+        var settings = DropzoneSettings()
+        settings.enabled = false
+        #expect(DropzoneActivator.suspension(settings: settings, isPaused: false) == .switchedOff)
+        // Both at once still names the setting, because that is what the user
+        // has to change to get the feature back after resuming.
+        #expect(DropzoneActivator.suspension(settings: settings, isPaused: true) == .switchedOff)
+    }
+
+    @Test("Jeder Grund zu schweigen sagt, warum")
+    func everySuspensionExplainsItself() {
+        for suspension in [DropzoneSuspension.switchedOff, .paused] {
+            #expect(suspension.explanation.isEmpty == false)
+        }
+    }
 }

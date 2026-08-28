@@ -25,6 +25,8 @@ public enum DropRuleOffer {
     public enum Refusal: Error, Hashable, Sendable, CustomStringConvertible {
         case missingBundleIdentifier(applicationName: String)
         case offerSwitchedOff
+        case alreadyPinned(applicationName: String, zoneName: String)
+        case pinImpossible(reason: String)
 
         public var description: String {
             switch self {
@@ -32,29 +34,59 @@ public enum DropRuleOffer {
                 return "„\(name)“ meldet keine Bundle-Kennung; ohne sie lässt sich keine Regel schreiben."
             case .offerSwitchedOff:
                 return "Das Angebot nach dem Ablegen ist in der Konfiguration abgeschaltet."
+            case let .alreadyPinned(name, zone):
+                return "„\(name)“ zeigt bereits auf \(zone); es gibt nichts zu entscheiden."
+            case let .pinImpossible(reason):
+                return "Aus dem Ablegen ließe sich keine Regel schreiben: \(reason)"
             }
         }
     }
 
     /// The request ``QuickPin/pin(_:into:)`` needs, or the reason there is none.
+    ///
+    /// The last two checks are the interesting ones, and they are why this takes
+    /// the whole configuration rather than just a profile ID.
+    ///
+    /// An offer is only worth making when a yes would change something.
+    /// Dropping Outlook into the zone its rule already points at and being asked
+    /// anyway ends with a saved-but-identical configuration and a `Log.success`
+    /// reporting a change that did not happen — the silent-success failure this
+    /// project keeps paying for, in a new place.
+    ///
+    /// **Whether it would change something is not decided here.** That would be
+    /// a second opinion about rules, and two opinions drift. ``QuickPin`` is
+    /// asked instead: it derives the configuration a yes would produce, and if
+    /// that is the configuration we already have, there is nothing to ask. The
+    /// same call surfaces the case where a pin could not be derived at all, so
+    /// the question is never posed to a yes that would then fail.
     public static func request(
         for window: DroppedWindow,
         droppedInto zone: Dropzone,
         profile: ProfileID,
-        settings: DropzoneSettings
+        settings: DropzoneSettings,
+        configuration: Configuration
     ) -> Result<QuickPin.Request, Refusal> {
         guard settings.offerRule else { return .failure(.offerSwitchedOff) }
         guard let bundleIdentifier = window.bundleIdentifier, !bundleIdentifier.isEmpty else {
             return .failure(.missingBundleIdentifier(applicationName: window.applicationName))
         }
-        return .success(
-            QuickPin.Request(
-                bundleIdentifier: bundleIdentifier,
-                applicationName: window.applicationName,
-                profile: profile,
-                target: QuickPin.Target(display: zone.display, zone: zone.zone)
-            )
+        let request = QuickPin.Request(
+            bundleIdentifier: bundleIdentifier,
+            applicationName: window.applicationName,
+            profile: profile,
+            target: QuickPin.Target(display: zone.display, zone: zone.zone)
         )
+
+        let outcome: QuickPin.Outcome
+        do {
+            outcome = try QuickPin.pin(request, into: configuration)
+        } catch {
+            return .failure(.pinImpossible(reason: "\(error)"))
+        }
+        guard outcome.configuration != configuration else {
+            return .failure(.alreadyPinned(applicationName: window.applicationName, zoneName: zone.name))
+        }
+        return .success(request)
     }
 
     /// The question, with the place named.

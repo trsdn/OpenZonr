@@ -500,6 +500,9 @@ schaltet die Unterdrückung ab.
 `minimumDragDistance` verhindert, dass ein bloßer Klick auf eine Titelleiste das
 Overlay aufblitzen lässt.
 
+„Platzierung pausieren" im Menü hält auch das Ziehen an — die Pause meint alles,
+nicht nur die Automatik.
+
 Alles Weitere — die Wahl `CGEventTap` statt `kAXMovedNotification` mit Zahlen,
 das Verhalten neben Magnet und was daran ungemessen ist — steht in
 [dropzones.md](dropzones.md).

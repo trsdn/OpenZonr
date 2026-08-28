@@ -80,6 +80,11 @@ final class AppModel {
         didSet {
             guard isPaused != oldValue else { return }
             engine?.isPaused = isPaused
+            // The pause covers the drag half too, and the controller only learns
+            // that by being restarted. Leaving this out was a real bug: the
+            // overlay kept appearing and drops kept placing while the menu said
+            // nothing would be placed.
+            dropzones.restart()
             updateStatus()
         }
     }

@@ -46,7 +46,12 @@ final class DropzoneController {
 
     func start() {
         stop()
-        guard settings.enabled else { return }
+        if let suspension = DropzoneActivator.suspension(settings: settings, isPaused: model.isPaused) {
+            // Only the pause gets a line in the menu. "Switched off" is what the
+            // toggle right above it already says; repeating it would be noise.
+            problem = suspension == .paused ? suspension.explanation : nil
+            return
+        }
 
         let arrangement = ScreenArrangement(snapshots: SystemDisplays.snapshots())
         // The event tap, because the probe measured the one difference that
@@ -153,16 +158,15 @@ final class DropzoneController {
 
     private func prepareOffer(for window: DraggedWindow, zone: Dropzone, at point: ScreenPoint) {
         guard let profile = model.activeProfile else { return }
+        guard let configuration = model.document?.configuration ?? model.configuration else { return }
         switch DropRuleOffer.request(
             for: window.dropped,
             droppedInto: zone,
             profile: profile.id,
-            settings: settings
+            settings: settings,
+            configuration: configuration
         ) {
         case let .success(request):
-            // The offer is only worth making when it would change something.
-            // QuickPin knows whether it would; asking it here keeps this from
-            // becoming a second opinion about rules.
             let question = DropRuleOffer.question(for: window.dropped, zone: zone)
             offer = DropOffer(question: question, request: request)
             offerPanel.show(question: question, near: point) { [weak self] in self?.acceptOffer() }

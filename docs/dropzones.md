@@ -107,6 +107,8 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | Mindeststrecke vor dem Einblenden | **Bewiesen**, headless | verhindert Flackern beim bloßen Anklicken |
 | Ableitung Ablegen → Regel | **Bewiesen**, headless | `DropRuleOfferTests`; zweimal Ablegen verdoppelt die Regel nicht |
 | Alte Konfiguration ohne `dropzones` lädt | **Bewiesen**, headless | sonst wäre nicht der Schlüssel kaputt, sondern die ganze Datei |
+| Pause schaltet auch das Ziehen ab | **Bewiesen**, headless | `DropzoneActivator.suspension`; die Entscheidung liegt an einer Stelle, nicht in Controller und Menütext getrennt |
+| Kein Angebot, wenn die Regel schon dorthin zeigt | **Bewiesen**, headless | `DropRuleOffer` fragt `QuickPin`, ob ein Ja etwas änderte; ein Test hält auch das Gegenstück fest (andere Zone → es wird gefragt) |
 | Zonengeometrie identisch mit dem Regelweg | **Bewiesen**, headless | `ZoneGeometry` ist die einzige Umrechnung, ein Test vergleicht beide Ergebnisse |
 | Ereignisrate und Verlust beider Wege | **Gemessen**, synthetisch | drei Läufe, Tabelle oben; 0 von 40 verloren |
 | Loslassen als Ereignis vs. Abfrage | **Gemessen** | der Grund für die Entscheidung |
@@ -155,6 +157,37 @@ steht nichts, was ein Ereignis braucht, und deshalb ist dort alles prüfbar.
 
 ## Entscheidungen, die nicht offensichtlich sind
 
+**Die Pause hält auch das Ziehen an.** Der Menüpunkt heißt „Platzierung
+pausieren", das Protokoll sagt „es wird nichts mehr platziert" — ein Ablegen,
+das trotzdem platziert, macht beides zur Lüge. Dass eine ausdrückliche
+Mausgeste weiterläuft, während die Automatik ruht, wäre für sich genommen
+vertretbar; beides gleichzeitig zu behaupten nicht. Für die strengere Variante
+spricht der übliche Anlass zu pausieren: ein zweiter Fenstermanager, der
+gegenhält — genau die Lage, in der ein zweites Overlay beim Ziehen am meisten
+stört. Während der Pause steht im Menü „Ziehen ist nicht aktiv: Die Platzierung
+ist pausiert", und `WatchEngine.place(dropped:)` verweigert zusätzlich von sich
+aus. Zwei Schlösser, weil das Versprechen der Engine gehört, die es gibt, und
+nicht einem Aufrufer, der daran denken muss. Entschieden wurde das erst in der
+Durchsicht zu PR #15; die erste Fassung hörte während der Pause weiter zu und
+sagte das Gegenteil.
+
+**Gefragt wird nur, wenn eine Antwort etwas ändert.** Ob eine Regel schon auf
+diese Zone zeigt, entscheidet nicht das Angebot, sondern `QuickPin` selbst:
+`DropRuleOffer.request` lässt es die Konfiguration ableiten, die ein Ja erzeugen
+würde, und schweigt, wenn das die Konfiguration ist, die schon da ist. Ein
+eigener Vergleich wäre eine zweite Meinung über Regeln, und zwei Meinungen
+laufen auseinander. Ohne diese Prüfung führte das Ziehen einer bereits
+festgehaltenen App in ihre eigene Zone zur Frage, ein Ja in den Retarget-Zweig,
+zum Speichern einer unveränderten Datei und zu `Log.success` — eine
+Erfolgsmeldung ohne Wirkung. Derselbe Aufruf fängt außerdem den Fall ab, dass
+sich aus dem Ablegen überhaupt keine Regel schreiben ließe; dann wird gar nicht
+erst gefragt.
+
+**Ein unlesbarer Fensterrahmen wird nicht erfunden.** `place(dropped:)` ersetzte
+ihn zunächst durch `0×0 bei 0,0`, und dieser Wert wanderte unverändert in die
+Ablehnungsmeldung als „Ist:" — ein Messwert, der nie gemessen wurde. Jetzt wird
+nichts gesetzt und gesagt, dass der Rahmen nicht lesbar war.
+
 **⌥ statt ⌘ zum Unterdrücken.** ⌘-Ziehen bewegt auf macOS ein
 Hintergrundfenster, *ohne* es zu aktivieren — eine etablierte Interaktion.
 Sie zu überschreiben, hieße eine Fähigkeit zu nehmen, um eine zu geben.
@@ -193,6 +226,10 @@ Menüleiste → „Fenster in Zonen ziehen". Der Schalter schreibt
 `defaults.dropzones.enabled` über dasselbe `ConfigurationDocument` wie jede
 andere Änderung, überlebt also den Neustart und steht in der Datei, die der
 Nutzer bearbeitet.
+
+„Platzierung pausieren" schaltet das Ziehen mit ab — unter dem Schalter steht
+dann „Ziehen ist nicht aktiv: Die Platzierung ist pausiert", damit niemand
+gegen ein Overlay drückt, das nicht kommt.
 
 Konfiguration siehe [`konfiguration.md`](konfiguration.md), Abschnitt
 `defaults.dropzones`.
