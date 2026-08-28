@@ -70,6 +70,18 @@ final class WatchSession {
     /// the user did not ask about.
     private var windowsSeen: [pid_t: Int] = [:]
 
+    /// Windows replayed by ``sweepExistingWindows(of:)``, with the time of replay.
+    private var recentlySwept: [String: Date] = [:]
+
+    /// How often a swept window is re-read before it is given up on.
+    ///
+    /// Six attempts at one second cover the seven seconds Outlook needed on the
+    /// author's machine, with headroom. Each read can itself block for around
+    /// three seconds while the application is unresponsive, so the wall clock
+    /// budget is considerably larger than the nominal six seconds.
+    private static let frameReadAttempts = 6
+    private static let frameReadDelay: TimeInterval = 1.0
+
     init(configuration: Configuration, dryRun: Bool) throws {
         self.configuration = configuration
         self.dryRun = dryRun
@@ -216,8 +228,15 @@ final class WatchSession {
 
         guard result == .success else {
             if retriesLeft > 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, weak app] in
-                    guard let self, let app, !app.isTerminated else { return }
+                // `app` is captured strongly on purpose. The instance handed to
+                // us by the launch notification is not retained anywhere else,
+                // so a weak capture is deallocated before the first retry fires
+                // — the chain then aborts without ever reaching the warning
+                // below, and the window that mattered is missed in silence.
+                // `isTerminated` keeps a quitting app from being held alive in
+                // a retry loop.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, app] in
+                    guard let self, !app.isTerminated else { return }
                     MainActor.assumeIsolated {
                         self.attachObserver(to: app, retriesLeft: retriesLeft - 1)
                     }
@@ -235,33 +254,128 @@ final class WatchSession {
         )
         observers[pid] = observer
         Log.detail("Beobachte \(app.bundleIdentifier ?? "pid \(pid)")")
+        sweepExistingWindows(of: app)
+    }
+
+    /// Catches windows that appeared while the observer was still attaching.
+    ///
+    /// A freshly launched process rejects `AXObserverAddNotification` for a few
+    /// hundred milliseconds, and applications open their first window inside
+    /// exactly that gap — measured at 389 ms for TextEdit against a window that
+    /// was already on screen. Waiting for the notification alone therefore
+    /// misses the one window the whole feature exists for.
+    ///
+    /// Overlap is almost excluded by construction: the API only reports windows
+    /// created *after* registration, so anything found here predates it. The
+    /// remaining sliver is a window born between the successful registration and
+    /// this call, which would arrive twice. `recentlySwept` closes it — the
+    /// element address cannot serve as the key, because the notification hands
+    /// out a different `AXUIElement` instance for the same window.
+    private func sweepExistingWindows(of app: NSRunningApplication) {
+        let pid = app.processIdentifier
+        let element = AXUIElementCreateApplication(pid)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXWindowsAttribute as CFString, &value) == .success,
+              let windows = value as? [AXUIElement],
+              !windows.isEmpty
+        else { return }
+
+        Log.detail("Hole \(windows.count) bereits offene(s) Fenster von \(app.bundleIdentifier ?? "pid \(pid)") nach.")
+        for window in windows {
+            handleWindowCreated(window, viaSweep: true)
+        }
+    }
+
+    /// A short-lived identity for a window, stable across `AXUIElement` instances.
+    ///
+    /// Deliberately coarse: it only has to tell two windows apart for the couple
+    /// of seconds in which a duplicate could arrive.
+    private func signature(of element: AXUIElement, pid: pid_t, frame: WindowFrame? = nil) -> String? {
+        guard let frame = frame ?? Accessibility.frame(of: element) else { return nil }
+        var title: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+        return "\(pid)|\(title as? String ?? "")|\(Int(frame.x)),\(Int(frame.y)),\(Int(frame.width))x\(Int(frame.height))"
+    }
+
+    /// Whether this window was just replayed by the sweep.
+    ///
+    /// Entries expire after two seconds so that an app legitimately reopening an
+    /// identical window later is not silently ignored.
+    private func wasJustSwept(_ element: AXUIElement, pid: pid_t) -> Bool {
+        let cutoff = Date().addingTimeInterval(-2)
+        recentlySwept = recentlySwept.filter { $0.value > cutoff }
+        guard let signature = signature(of: element, pid: pid) else { return false }
+        return recentlySwept[signature] != nil
     }
 
     // MARK: - Reaction
 
-    func handleWindowCreated(_ element: AXUIElement) {
+    func handleWindowCreated(
+        _ element: AXUIElement,
+        viaSweep: Bool = false,
+        frameAttempt: Int = 0
+    ) {
         var pid: pid_t = 0
         guard AXUIElementGetPid(element, &pid) == .success,
               let app = NSRunningApplication(processIdentifier: pid)
         else { return }
 
-        // The window exists but is not laid out yet at notification time; the
-        // frame read a millisecond later is the placeholder frame, not the one
-        // the app will settle on. The retry loop deals with that — the snapshot
-        // only needs to be good enough for matching.
-        guard let frame = Accessibility.frame(of: element) else {
-            Log.warn("Neues Fenster von \(app.bundleIdentifier ?? "pid \(pid)") ohne lesbaren Frame.")
+        if !viaSweep, wasJustSwept(element, pid: pid) {
+            Log.detail("Fenster von \(app.bundleIdentifier ?? "pid \(pid)") wurde soeben nachgeholt — Benachrichtigung übersprungen.")
             return
         }
 
-        let seen = windowsSeen[pid] ?? Int.max / 2
-        windowsSeen[pid] = seen == Int.max / 2 ? seen : seen + 1
+        // A window replayed by the sweep may belong to an application that is
+        // still starting up and has not laid it out yet. Outlook made this
+        // concrete: for roughly seven seconds after launch every attribute read
+        // blocked for three seconds and returned nothing. Giving up on the first
+        // empty frame loses exactly the window the rule was written for, and no
+        // notification follows, because the window already existed when the
+        // observer was registered. So wait it out.
+        guard let frame = Accessibility.frame(of: element) else {
+            guard frameAttempt < Self.frameReadAttempts else {
+                Log.warn("Neues Fenster von \(app.bundleIdentifier ?? "pid \(pid)") ohne lesbaren Frame — nach \(Self.frameReadAttempts) Versuchen aufgegeben.")
+                return
+            }
+            if frameAttempt == 0 {
+                Log.detail("Fenster von \(app.bundleIdentifier ?? "pid \(pid)") noch ohne Frame — die App ist vermutlich noch am Starten. Versuche es erneut.")
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.frameReadDelay) { [weak self] in
+                self?.handleWindowCreated(element, viaSweep: viaSweep, frameAttempt: frameAttempt + 1)
+            }
+            return
+        }
+
+        if viaSweep, let signature = signature(of: element, pid: pid, frame: frame) {
+            recentlySwept[signature] = Date()
+        }
+
+        // Count only windows that could plausibly be placed. Outlook opens an
+        // AXUnknown window before its real one; counting that window made the
+        // mail window the *second* one and silenced the rule that asked for the
+        // first. Measured on 2026-08-28, see docs/tracer-bullet.md.
+        let probe = WindowInventory.snapshot(
+            of: element,
+            application: app,
+            frame: frame,
+            layer: CoreGraphicsWindowIndex().layer(forPID: pid, frame: frame) ?? 0,
+            isFirstWindowAfterLaunch: false
+        )
+        let structural = DefaultWindowFilter.structuralVerdict(probe, defaults: configuration.defaults)
+
+        let seen: Int
+        if case .accepted = structural {
+            seen = windowsSeen[pid] ?? Int.max / 2
+            windowsSeen[pid] = seen == Int.max / 2 ? seen : seen + 1
+        } else {
+            seen = Int.max / 2
+        }
 
         let snapshot = WindowInventory.snapshot(
             of: element,
             application: app,
             frame: frame,
-            layer: CoreGraphicsWindowIndex().layer(forPID: pid, frame: frame) ?? 0,
+            layer: probe.windowLayer,
             isFirstWindowAfterLaunch: seen == 0
         )
 
