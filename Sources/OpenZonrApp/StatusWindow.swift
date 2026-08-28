@@ -88,7 +88,7 @@ struct StatusWindow: View {
                 steps([
                     "Auf „Berechtigung anfragen“ klicken — macOS zeigt dann einmalig den Systemdialog.",
                     "Falls kein Dialog erscheint: Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen öffnen.",
-                    "Dort auf „+“ klicken und OpenZonr.app hinzufügen. „Im Finder zeigen“ legt die App bereit, damit sie sich hineinziehen lässt.",
+                    "Dort auf „+“ klicken und genau dieses Bundle hinzufügen — der Pfad steht unten unter „Code-Signatur“. „Im Finder zeigen“ legt es bereit, damit es sich hineinziehen lässt.",
                     "Schalter aktivieren. Danach prüft OpenZonr von selbst wieder nach."
                 ])
 
@@ -103,7 +103,7 @@ struct StatusWindow: View {
                 steps([
                     "Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen öffnen.",
                     "Den vorhandenen Eintrag für OpenZonr entfernen — den Haken nur neu zu setzen genügt nicht.",
-                    "OpenZonr.app neu hinzufügen und aktivieren.",
+                    "Dasselbe Bundle neu hinzufügen und aktivieren — der Pfad steht unten unter „Code-Signatur“; eine zweite Kopie an anderer Stelle hilft nicht.",
                     "Erscheint der Zustand danach erneut, ist fast immer die Signatur die Ursache — siehe unten."
                 ])
 
@@ -138,10 +138,17 @@ struct StatusWindow: View {
                     .textSelection(.enabled)
             } else {
                 Text("""
-                Die Freigabe bindet damit an Bundle-Identifier und Team statt an die \
-                Prüfsumme und übersteht jeden Neubau.
+                Die Signatur bindet an Bundle-Identifier und Team statt an die \
+                Prüfsumme. Die Freigabe gilt deshalb diesem Bundle an diesem Pfad \
+                und übersteht jeden Neubau dorthin — aber keinen Umzug.
                 """)
                 .foregroundStyle(.secondary)
+            }
+
+            if let bundle = model.bundlePath {
+                Text(bundle)
+                    .font(.system(.callout, design: .monospaced))
+                    .textSelection(.enabled)
             }
         }
     }

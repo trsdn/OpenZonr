@@ -71,19 +71,32 @@ public enum Accessibility {
     }
 
     /// German explanation of the degraded state, including how to escape it.
+    ///
+    /// The way out named here is the signed bundle, not "add this binary".
+    /// Adding an unsigned build product was the advice for a long time and it
+    /// does not hold: every rebuild produces a new checksum that is no longer
+    /// recognised, so the grant appears to be there and does nothing.
     public static let degradedAccessInstructions = """
     Die Bedienungshilfen melden Vertrauen (AXIsProcessTrusted == true), liefern
     aber keine echten Fenster: jede App antwortet auf AXWindows nur mit einem
     Stellvertreter-Element der Rolle AXApplication.
 
     Das passiert, wenn die Berechtigung am startenden Programm hängt (Terminal,
-    VS Code, ein Agent-Prozess) und nicht an dieser Binärdatei. Abhilfe:
+    VS Code, ein Agent-Prozess) und nicht an diesem Programm selbst. Aus der
+    Shell gestartet erbt der Prozess das Vertrauen des Terminals — deshalb
+    meldet AXIsProcessTrusted() irreführend true, die Fensterzugriffe erben es
+    aber nicht.
 
-      1. Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen
-      2. Vorhandenen Eintrag des Terminals entfernen und neu hinzufügen
-         (der Haken allein genügt nach einem Update oft nicht)
-      3. Terminal vollständig beenden und neu starten
-      4. Alternativ .build/debug/openzonr direkt eintragen und von dort starten
+    Der verlässliche Weg ist das signierte Bundle, denn dessen Freigabe hängt
+    an Pfad und Signatur und überlebt jeden Neubau:
+
+      ./Scripts/bundle.sh
+      # danach einmal freigeben: Systemeinstellungen → Datenschutz &
+      # Sicherheit → Bedienungshilfen → "+" → ~/Applications/OpenZonr.app
+      ~/Applications/OpenZonr.app/Contents/MacOS/OpenZonr windows --bundle com.apple.Safari
+
+    Eine unsignierte Binärdatei einzutragen hilft dagegen nicht dauerhaft: sie
+    bekommt bei jedem Neubau eine neue Prüfsumme, die nicht wiedererkannt wird.
 
     Zur Gegenprobe: 'openzonr windows' muss echte Fenster mit Subrolle
     AXStandardWindow und Größe anzeigen. Erscheint dort nur AXApplication mit
@@ -94,28 +107,85 @@ public enum Accessibility {
     ///
     /// Spelled out rather than "permission denied", because the setting is four
     /// clicks deep and the tool is useless without it.
-    public static let permissionInstructions = """
-    Zugriff auf die Bedienungshilfen fehlt.
+    ///
+    /// The advice depends on how this process was started, because the wrong
+    /// advice costs an hour: the grant is bound to a bundle at its path, so
+    /// naming the terminal emulator is right for `swift run` and actively
+    /// misleading for the shipped app. The running program is therefore named
+    /// literally, rather than described.
+    public static var permissionInstructions: String {
+        let header = """
+        Zugriff auf die Bedienungshilfen fehlt.
 
-    OpenZonr kann Fenster nur bewegen, wenn der Prozess als vertrauenswürdig
-    eingetragen ist:
+        OpenZonr kann Fenster nur bewegen, wenn das ausführende Programm als
+        vertrauenswürdig eingetragen ist:
 
-      1. Systemeinstellungen öffnen
-      2. Datenschutz & Sicherheit → Bedienungshilfen
-      3. Auf "+" klicken und das ausführende Programm hinzufügen
+          1. Systemeinstellungen öffnen
+          2. Datenschutz & Sicherheit → Bedienungshilfen
+          3. Auf "+" klicken und das Programm hinzufügen
+        """
 
-    Beim Start über "swift run" ist das ausführende Programm nicht dieses Tool,
-    sondern das Terminal (bzw. iTerm, VS Code …), aus dem heraus es gestartet
-    wurde. Trage deshalb den Terminal-Emulator ein — oder starte die gebaute
-    Binärdatei direkt:
+        let body: String
+        if let bundle = enclosingApplicationBundle() {
+            body = """
+            Hinzuzufügen ist genau dieses Bundle:
 
-      swift build
-      .build/debug/openzonr watch
+              \(bundle.path)
 
-    Die Berechtigung hängt an der Code-Signatur. Nach jedem Neubau einer
-    unsignierten Binärdatei muss sie unter Umständen erneut erteilt werden;
-    siehe docs/offene-fragen.md, Frage 7.
-    """
+            Ein bestehender Eintrag aus einem unsignierten Lauf ist zu entfernen
+            und neu hinzuzufügen; den Haken nur neu zu setzen genügt nicht.
+
+            Die Freigabe gilt diesem Pfad, nicht dem Identifier allein. Solange
+            hierhin gebaut wird, überlebt sie jeden Neubau — auch aus einem
+            anderen Klon des Repos.
+            """
+        } else {
+            body = """
+            Dieses Programm läuft nicht aus einem App-Bundle:
+
+              \(Bundle.main.executableURL?.path ?? CommandLine.arguments.first ?? "unbekannt")
+
+            Beim Start über "swift run" ist das ausführende Programm nicht dieses
+            Werkzeug, sondern das Terminal (bzw. iTerm, VS Code …), aus dem heraus
+            es gestartet wurde. Eine unsignierte Binärdatei bekommt zudem bei jedem
+            Neubau eine neue Prüfsumme, die nicht wiedererkannt wird.
+
+            Der verlässliche Weg ist deshalb das signierte Bundle:
+
+              ./Scripts/bundle.sh
+              open -n ~/Applications/OpenZonr.app
+
+            Dort einmal freigegeben, überlebt die Freigabe jeden Neubau.
+            """
+        }
+
+        return header + "\n\n" + body
+    }
+
+    /// The `.app` bundle this executable lives in, if any.
+    ///
+    /// `Bundle.main` is unreliable here: for the command line inside the bundle
+    /// it reports the bundle, but for a bare binary it reports the containing
+    /// directory. The executable path is walked instead, which answers the only
+    /// question that matters — is there something to add in the settings.
+    public static func enclosingApplicationBundle() -> URL? {
+        enclosingApplicationBundle(
+            of: Bundle.main.executableURL?.resolvingSymlinksInPath()
+        )
+    }
+
+    /// The `.app` bundle containing `executable`, if any. Split out so the
+    /// walking can be tested without an actual bundle on disk.
+    public static func enclosingApplicationBundle(of executable: URL?) -> URL? {
+        var directory = executable?.deletingLastPathComponent()
+        while let current = directory, current.path != "/", !current.path.isEmpty {
+            if current.pathExtension == "app" { return current }
+            let parent = current.deletingLastPathComponent()
+            if parent == current { return nil }
+            directory = parent
+        }
+        return nil
+    }
 
     // MARK: - Attribute access
 
