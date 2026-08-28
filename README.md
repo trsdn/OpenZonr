@@ -2,16 +2,19 @@
 
 **Status: lauffähiges Kommandozeilenwerkzeug, noch keine App.** Datenmodell,
 Konfigurationsspeicher, Regel-Engine und die Anbindung an Accessibility und
-CoreGraphics sind gebaut und getestet. `openzonr displays` und `openzonr windows`
-liefern am echten Schreibtisch verwertbare Daten.
+CoreGraphics sind gebaut und getestet.
+
+**Der Kern funktioniert und ist gemessen.** Am echten Vier-Display-Schreibtisch
+landen TextEdit und Outlook beim Start in ihrer Zone — jeweils beim ersten
+Versuch, mit einer Abweichung von 1,0 beziehungsweise 0,0 Punkten. Die Zahlen
+und der Weg dorthin stehen in [`docs/tracer-bullet.md`](docs/tracer-bullet.md).
 
 Zwei Einschränkungen, die man vor dem Ausprobieren kennen sollte:
 
-1. **Die Platzierung selbst ist gebaut, aber noch nie an einem echten Fenster
-   gemessen worden.** Sie hängt an einer Bedienungshilfen-Berechtigung, die eine
-   unsignierte Binärdatei nach jedem Neubau verliert. Siehe
-   [#6](https://github.com/trsdn/OpenZonr/issues/6) und
-   [`docs/tracer-bullet.md`](docs/tracer-bullet.md).
+1. **Es braucht ein signiertes Bundle.** `Scripts/bundle.sh` erledigt das. Eine
+   unsignierte Binärdatei verliert die Bedienungshilfen-Berechtigung nach jedem
+   Neubau — sie startet, sieht aber keine Fenster. Ohne Developer-ID-Zertifikat
+   ist OpenZonr derzeit nicht benutzbar.
 2. **Es gibt keine Oberfläche.** Kein Menüleisten-Symbol, kein Autostart, keine
    Dropzones zum Hineinziehen. `openzonr watch` läuft im Vordergrund eines
    Terminals.
@@ -92,15 +95,14 @@ docs/                         Konzept, Konfiguration, Durchstich, offene Fragen
 Der Stand umfasst das Datenmodell, den Konfigurationsspeicher (laden,
 validieren, atomar schreiben, migrieren), die rein rechnende Hälfte der
 Platzierung und das Kommandozeilenwerkzeug `openzonr`, das die Kette bis zum
-Aufruf der Accessibility-API schließt. Ob das gestellte Fenster am Ende
-tatsächlich liegen bleibt, ist noch nicht gemessen — siehe Fahrplan unten.
-Die Oberfläche fehlt vollständig.
+Aufruf der Accessibility-API schließt und sie am echten Schreibtisch nachweislich
+schließt. Die Oberfläche fehlt vollständig.
 
 **Warum Swift Package Manager und (noch) kein Xcode-Projekt?** Das Manifest ist
 Text, also diff- und reviewbar, und es gibt keine `.pbxproj`-Merge-Konflikte.
 Vor allem lässt sich der aktuelle Stand headless mit `swift build` und
-`swift test` prüfen. Die spätere App-Hülle — Menüleisten-App, Entitlements und
-Code-Signing, damit der Accessibility-Grant Updates übersteht — kommt als
+`swift test` prüfen. Das Bundle samt Signatur erzeugt `Scripts/bundle.sh` ohne
+Xcode. Die spätere App-Hülle — Menüleisten-App und Entitlements — kommt als
 separates Xcode-App-Target hinzu, das `OpenZonrCore` als lokales Package einbindet.
 
 ## Bauen
@@ -124,23 +126,36 @@ swift run openzonr --help
 
 ### Accessibility freischalten
 
-Ohne Berechtigung kann kein Werkzeug Fenster lesen oder bewegen. Nach dem Bauen:
+Ohne Berechtigung kann kein Werkzeug Fenster lesen oder bewegen. **Und ohne
+Signatur greift die Berechtigung nicht** — das ist der Stolperstein, der beim
+Bauen dieses Werkzeugs die meiste Zeit gekostet hat.
+
+```bash
+Scripts/bundle.sh
+```
+
+Das Skript baut, packt `.build/OpenZonr.app` und signiert es mit dem ersten
+gefundenen Developer-ID-Zertifikat (überschreibbar per `CODESIGN_IDENTITY`).
+Danach einmalig:
 
 1. Systemeinstellungen → Datenschutz & Sicherheit → **Bedienungshilfen**
-2. `.build/debug/openzonr` hinzufügen (Plus-Knopf, dann im Dateidialog mit
-   `⇧⌘G` den Pfad eingeben) und aktivieren
-3. Gegenprobe mit `swift run openzonr windows`
+2. `.build/OpenZonr.app` hinzufügen und aktivieren
+3. Gegenprobe: `.build/OpenZonr.app/Contents/MacOS/OpenZonr windows` muss
+   Fenster mit Subrolle `AXStandardWindow` und einer Größe ungleich `0x0` zeigen
 
-Zwei Stolpersteine, beide real aufgetreten:
+Warum der Umweg über ein Bundle:
 
-- **Nach jedem `swift build` ändert sich die Prüfsumme der unsignierten
-  Binärdatei.** Der Haken bleibt gesetzt, die Berechtigung greift trotzdem nicht
-  mehr. Abhilfe: Eintrag entfernen und neu hinzufügen.
-- **`AXIsProcessTrusted()` kann `true` melden, ohne dass der Zugriff
+- **Eine unsignierte Binärdatei bekommt bei jedem `swift build` eine neue
+  Prüfsumme.** Der Haken bleibt gesetzt und meint ein anderes Programm. Die
+  Signatur bindet stattdessen an Bundle-Identifier und Team und überlebt jeden
+  Neubau — sogar einen Umzug an einen anderen Pfad.
+- **`AXIsProcessTrusted()` kann dabei `true` melden, ohne dass der Zugriff
   funktioniert.** Dann liefert jede App auf `AXWindows` nur ein
   Stellvertreter-Element der Rolle `AXApplication` ohne Position und Größe.
   `openzonr` erkennt diesen Zustand und erklärt ihn, statt still nichts zu tun.
   Details in [docs/tracer-bullet.md](docs/tracer-bullet.md).
+- Bei einem vorhandenen Eintrag aus einem unsignierten Lauf: **entfernen und neu
+  hinzufügen.** Den Haken nur neu zu setzen genügt nicht.
 
 ### `openzonr displays` — welche Monitore sind da?
 
@@ -201,26 +216,30 @@ sonst `~/Library/Application Support/OpenZonr/config.json`.
 ### Ein Durchlauf von Anfang bis Ende
 
 ```bash
-# 1. Bauen und Berechtigung erteilen (siehe oben)
-swift build
+# 1. Bauen, signieren und freigeben (siehe oben — ohne Signatur sieht
+#    das Werkzeug keine Fenster)
+Scripts/bundle.sh
+OZ=.build/OpenZonr.app/Contents/MacOS/OpenZonr
 
 # 2. Die echten Displays ermitteln und als Fragment ausgeben
-swift run openzonr displays --config-fragment > /tmp/displays.json
+"$OZ" displays --config-fragment > /tmp/displays.json
 
 # 3. Konfiguration anlegen: Fragment übernehmen, Layouts, Rollen,
 #    Profile und Regeln ergänzen. Als Vorlage dient
 #    Examples/openzonr.config.json — aber mit den eigenen Identitäten.
+#    Vermutlich virtuelle Displays stehen im Fragment bereits unter
+#    ignoredDisplays; die Liste gehört geprüft, nicht blind übernommen.
 mkdir -p ~/Library/Application\ Support/OpenZonr
 $EDITOR ~/Library/Application\ Support/OpenZonr/config.json
 
 # 4. Trocken prüfen: Wird das richtige Profil gewählt?
-swift run openzonr watch --dry-run
+"$OZ" watch --dry-run
 
 # 5. Match-Kriterien für die Regeln verifizieren
-swift run openzonr windows --bundle com.microsoft.Outlook
+"$OZ" windows --bundle com.microsoft.Outlook
 
 # 6. Scharf schalten, dann die Ziel-App neu starten
-swift run openzonr watch
+"$OZ" watch
 ```
 
 ## Fahrplan
@@ -230,18 +249,19 @@ swift run openzonr watch
 | Konfiguration: laden, validieren, atomar schreiben, migrieren | fertig |
 | Regel-Engine, Profil- und Zonenauflösung | fertig |
 | Display-Identität und Setup-Fingerprint | fertig, am echten Schreibtisch geprüft |
-| Fenstererkennung über `NSWorkspace` und `AXObserver` | fertig, gemessen: 37 ms bis zum Observer, 310 ms bis zum Fensterereignis |
+| Fenstererkennung über `NSWorkspace` und `AXObserver` | fertig, gemessen: 124 ms bis zum Observer bei TextEdit, 2,2 s bei Outlook |
 | Diagnose per Kommandozeile (`displays`, `windows`) | fertig |
-| Platzierung mit Retry-Schleife | gebaut und unit-getestet, [#6](https://github.com/trsdn/OpenZonr/issues/6) — **nicht am echten Fenster gemessen** |
-| Signierung, damit der Grant Neubauten übersteht | offen, [#11](https://github.com/trsdn/OpenZonr/issues/11) — blockiert #6 |
+| Signierung, damit der Grant Neubauten übersteht | fertig, `Scripts/bundle.sh` |
+| Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit und Outlook je 1 Versuch, Abweichung 1,0 bzw. 0,0 pt |
 | Menüleisten-App mit Autostart | offen, [#8](https://github.com/trsdn/OpenZonr/issues/8) |
 | Regeln bearbeiten ohne JSON | offen, [#9](https://github.com/trsdn/OpenZonr/issues/9) |
 | Dropzones zum Hineinziehen | offen, [#10](https://github.com/trsdn/OpenZonr/issues/10) |
 
-Die Reihenfolge ist bewusst gewählt: Erst muss [#11](https://github.com/trsdn/OpenZonr/issues/11)
-die Signierung klären, damit [#6](https://github.com/trsdn/OpenZonr/issues/6) belegen kann,
-dass die Platzierung real trägt. Eine Oberfläche auf eine unbewiesene Kernfunktion
-zu setzen wäre verfrüht.
+Die Reihenfolge war bewusst gewählt: erst die Signierung, damit die Platzierung
+überhaupt messbar wird, und erst danach eine Oberfläche. Das hat sich gelohnt —
+die Messung hat drei Fehler zutage gefördert, die alle ein leeres Protokoll
+erzeugten statt einer Fehlermeldung, und die eine Oberfläche nur verdeckt hätte.
+Sie sind in [docs/tracer-bullet.md](docs/tracer-bullet.md) beschrieben.
 
 ## Weiterlesen
 
