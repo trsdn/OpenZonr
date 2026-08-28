@@ -454,6 +454,14 @@ Vorgaben, die jede Regel erbt, solange sie sie nicht überschreibt.
     "occupiedZone": "stack",        // "stack" | "replace" | "skip"
     "honorManualOverride": true,    // manuell verschobene Fenster in Ruhe lassen
     "manualOverrideTimeout": null   // null = für die Lebensdauer des Fensters
+  },
+
+  "dropzones": {
+    "enabled": true,                    // Overlay beim Ziehen
+    "suppressionModifier": "option",    // "option" | "command" | "control" | "shift" | "none"
+    "offerRule": true,                  // nach dem Ablegen „immer hier öffnen?" fragen
+    "minimumDragDistance": 12,          // Punkte, bevor das Overlay erscheint
+    "warnAboutCompetingManagers": true  // vor Magnet & Co. warnen
   }
 }
 ```
@@ -478,6 +486,23 @@ sichtbar zappeln.
 
 `honorManualOverride` ist die Höflichkeitsregel: zieht der Nutzer ein Fenster
 selbst heraus, darf die Regel es nicht zurückreißen.
+
+### Zu `dropzones`
+
+Der ganze Block ist optional; eine `config.json` ohne ihn lädt unverändert und
+bekommt die oben gezeigten Werte. Jedes einzelne Feld ist ebenfalls optional.
+
+`suppressionModifier` bestimmt, welche Taste das Overlay unterdrückt, damit frei
+gezogen werden kann. Voreingestellt ist ⌥ und nicht ⌘, weil ⌘-Ziehen auf macOS
+bereits bedeutet „Hintergrundfenster bewegen, ohne es zu aktivieren". `"none"`
+schaltet die Unterdrückung ab.
+
+`minimumDragDistance` verhindert, dass ein bloßer Klick auf eine Titelleiste das
+Overlay aufblitzen lässt.
+
+Alles Weitere — die Wahl `CGEventTap` statt `kAXMovedNotification` mit Zahlen,
+das Verhalten neben Magnet und was daran ungemessen ist — steht in
+[dropzones.md](dropzones.md).
 
 ---
 

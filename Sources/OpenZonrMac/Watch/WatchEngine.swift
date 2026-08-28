@@ -717,16 +717,41 @@ public final class WatchEngine {
         String(UInt(bitPattern: Unmanaged.passUnretained(element).toOpaque()), radix: 16)
     }
 
+    /// Places a window the user dropped on a zone.
+    ///
+    /// Deliberately not a second placement path. Issue #10 asks for the drop to
+    /// use the same logic as the automatic half, and this is how: it builds the
+    /// same snapshot and calls the same ``place(element:application:snapshot:rule:placement:)``
+    /// with no rule. Everything the automatic path learned the hard way — the
+    /// coordinate flip, the retry policy, the tolerance, the record — applies
+    /// unchanged, because it is literally the same code.
+    @MainActor
+    public func place(dropped element: AXUIElement, application: NSRunningApplication, into placement: ResolvedPlacement) {
+        let frame = Accessibility.frame(of: element) ?? WindowFrame(x: 0, y: 0, width: 0, height: 0)
+        let snapshot = WindowInventory.snapshot(
+            of: element,
+            application: application,
+            frame: frame,
+            layer: 0,
+            isFirstWindowAfterLaunch: false
+        )
+        place(element: element, application: application, snapshot: snapshot, rule: nil, placement: placement)
+    }
+
     private func place(
         element: AXUIElement,
         application: NSRunningApplication,
         snapshot: WindowSnapshot,
-        rule: PlacementRule,
+        rule: PlacementRule?,
         placement: ResolvedPlacement
     ) {
         let fallbackNote = placement.usedFallback ? " (über den Profil-Fallback)" : ""
-        Log.success("Regel \"\(rule.id)\" → Rolle \"\(rule.action.role)\"\(fallbackNote) → \(placement.display)/\(placement.zone)")
-        if let share = rule.action.share {
+        if let rule {
+            Log.success("Regel \"\(rule.id)\" → Rolle \"\(rule.action.role)\"\(fallbackNote) → \(placement.display)/\(placement.zone)")
+        } else {
+            Log.success("Abgelegt → \(placement.display)/\(placement.zone)")
+        }
+        if let share = rule?.action.share {
             Log.detail("share: \(share.axis.rawValue), Slot \(share.slotIndex + 1) von \(share.slots)")
         }
         // Everything above this line works in AppKit coordinates, because that
@@ -746,7 +771,7 @@ public final class WatchEngine {
             record(
                 application: application,
                 snapshot: snapshot,
-                ruleID: rule.id,
+                ruleID: rule?.id,
                 placement: placement,
                 outcome: .notExecuted("dry-run")
             )
@@ -797,12 +822,14 @@ public final class WatchEngine {
             record(
                 application: application,
                 snapshot: snapshot,
-                ruleID: rule.id,
+                ruleID: rule?.id,
                 placement: placement,
                 outcome: recorded
             )
 
-            if rule.action.focus == .activate {
+            // A dropped window is already the one the user has hold of; raising
+            // it would be a no-op at best and a focus steal at worst.
+            if rule?.action.focus == .activate {
                 Accessibility.raise(window.element, pid: snapshot.processIdentifier)
             }
         }

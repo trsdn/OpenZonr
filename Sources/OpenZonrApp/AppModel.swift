@@ -217,6 +217,7 @@ final class AppModel {
     func reloadConfiguration() {
         engine?.stop()
         engine = nil
+        dropzones.stop()
         profileState = nil
 
         do {
@@ -269,7 +270,57 @@ final class AppModel {
         }
 
         engine?.start()
+        // Dragging follows the engine: both need the same permission and the
+        // same configuration, and a drop is placed by the engine itself.
+        dropzones.restart()
         syncFromEngine()
+    }
+
+    /// The manual half — dragging a window onto a zone.
+    ///
+    /// Built on first use because the controller needs the model, which does
+    /// not exist yet while the model's own stored properties are initialised.
+    var dropzones: DropzoneController {
+        if let existing = dropzoneController { return existing }
+        let created = DropzoneController(model: self)
+        dropzoneController = created
+        return created
+    }
+
+    @ObservationIgnored private var dropzoneController: DropzoneController?
+
+    /// Whether dragging a window onto a zone is switched on.
+    ///
+    /// The write goes through ``ConfigurationDocument`` like every other write
+    /// in this app, so the setting survives a restart and is visible in the file
+    /// the user edits — a toggle that only lived in memory would be forgotten on
+    /// the next launch and blamed on the feature.
+    var dropzonesEnabled: Bool {
+        get { configuration?.defaults.dropzones.enabled ?? false }
+        set {
+            guard var base = document?.configuration ?? configuration else { return }
+            base.defaults.dropzones.enabled = newValue
+            let session = document ?? makeDocument(for: base)
+            session.replace(with: base)
+            if document == nil, !session.save() {
+                lastPinMessage = session.saveProblem ?? "Speichern fehlgeschlagen."
+                lastPinFailed = true
+                return
+            }
+            dropzones.restart()
+        }
+    }
+
+    /// Other window managers that are running right now.
+    ///
+    /// Recomputed on demand rather than cached: the answer changes when the user
+    /// quits Magnet, and a cached "Magnet is running" would keep warning about a
+    /// program that is gone.
+    var competingWindowManagers: [CompetingWindowManagers.Known] {
+        guard configuration?.defaults.dropzones.warnAboutCompetingManagers ?? true else { return [] }
+        return CompetingWindowManagers.detected(
+            among: NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier)
+        )
     }
 
     private func syncFromEngine() {
@@ -371,16 +422,28 @@ final class AppModel {
             return
         }
 
+        apply(
+            QuickPin.Request(
+                bundleIdentifier: window.bundleIdentifier,
+                applicationName: window.applicationName,
+                profile: profile.id,
+                target: target
+            ),
+            to: base
+        )
+    }
+
+    /// Writes one ``QuickPin`` request, whatever produced it.
+    ///
+    /// Extracted so that dropping a window on a zone and the menu entry share a
+    /// path instead of resembling one. Both derive a request; only this function
+    /// knows how a request becomes a saved configuration, which objection can
+    /// stop it, and what the user is told either way.
+    @discardableResult
+    func apply(_ request: QuickPin.Request, to base: Configuration) -> Bool {
+        lastPinFailed = true
         do {
-            let outcome = try QuickPin.pin(
-                QuickPin.Request(
-                    bundleIdentifier: window.bundleIdentifier,
-                    applicationName: window.applicationName,
-                    profile: profile.id,
-                    target: target
-                ),
-                into: base
-            )
+            let outcome = try QuickPin.pin(request, into: base)
 
             // Always through a document, open editor or not. It is the only
             // place that validates, and this menu entry is precisely what gets
@@ -400,7 +463,7 @@ final class AppModel {
                     ? " Die Änderung steht im Editor, ist aber nicht gesichert."
                     : " Nichts wurde geändert.")
                 Log.warn(objection)
-                return
+                return false
             }
 
             if hasEditorSession {
@@ -408,20 +471,23 @@ final class AppModel {
                 // instead of writing behind their back over their edits.
                 lastPinMessage = outcome.summary + " — im Editor eingetragen, noch nicht gesichert."
                 lastPinFailed = false
-                return
+                return true
             }
 
             guard session.save() else {
                 lastPinMessage = session.saveProblem ?? "Speichern fehlgeschlagen."
-                return
+                return false
             }
             Log.success(outcome.summary)
             lastPinMessage = outcome.summary
             lastPinFailed = false
+            return true
         } catch let error as QuickPin.Failure {
             lastPinMessage = error.description
+            return false
         } catch {
             lastPinMessage = "Festhalten fehlgeschlagen: \(error)"
+            return false
         }
     }
 

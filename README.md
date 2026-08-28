@@ -243,6 +243,23 @@ swift run openzonr watch --dry-run     # rechnet und protokolliert, bewegt nicht
 Konfigurationspfad in dieser Reihenfolge: `--config`, dann `OPENZONR_CONFIG`,
 sonst `~/Library/Application Support/OpenZonr/config.json`.
 
+### `openzonr dragprobe` — welcher Weg meldet einen Zug besser?
+
+Misst `CGEventTap` und `kAXMovedNotification` nebeneinander: Ereigniszahl, Rate,
+größte Lücke, Latenz und ob das Loslassen als Ereignis ankommt. Das war die
+Entscheidungsgrundlage für die Dropzones — die Zahlen stehen in
+[docs/dropzones.md](docs/dropzones.md).
+
+```bash
+swift run openzonr dragprobe --seconds 5            # von Hand ein Fenster ziehen
+swift run openzonr dragprobe --seconds 3 --synthesize   # ohne Hand am Gerät
+swift run openzonr dragprobe --seconds 5 --out /tmp/dragprobe.txt
+```
+
+Ohne `--synthesize` muss in den Messsekunden wirklich gezogen werden. Meldet der
+Bericht dann bei beiden Wegen null Ereignisse, ist nichts gemessen worden — dann
+fehlt die Bedienungshilfen-Freigabe oder es wurde nicht gezogen.
+
 ### Ein Durchlauf von Anfang bis Ende
 
 ```bash
@@ -311,7 +328,7 @@ beschrieben — dort steht auch, was von der App gemessen ist und was nicht.
 | Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit und Outlook je 1 Versuch, Abweichung 1,0 bzw. 0,0 pt |
 | Menüleisten-App mit Autostart | gebaut, [#8](https://github.com/trsdn/OpenZonr/issues/8) — Zustand, Profilwahl, Pause, Autostart, letzte Platzierungen; Platzierung mit laufender App noch nicht nachgemessen, siehe [docs/menueleisten-app.md](docs/menueleisten-app.md) |
 | Regeln bearbeiten ohne JSON | gebaut, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster hier festhalten" plus Editor für Regeln, Rollen und Zonen; Kern headless gemessen, Oberfläche mangels Bedienungshilfen-Freigabe nicht nachgemessen, siehe [docs/regel-editor.md](docs/regel-editor.md) |
-| Dropzones zum Hineinziehen | offen, [#10](https://github.com/trsdn/OpenZonr/issues/10) |
+| Dropzones zum Hineinziehen | gebaut, [#10](https://github.com/trsdn/OpenZonr/issues/10) — Overlay beim Ziehen, Ablegen über dieselbe Platzierung wie die Automatik, danach „immer hier öffnen?"; `CGEventTap` gegen `kAXMovedNotification` gemessen (der Tap meldet das Loslassen, Accessibility nicht), echter Zug mangels Bedienungshilfen-Freigabe nicht nachgemessen, siehe [docs/dropzones.md](docs/dropzones.md) |
 
 Die Reihenfolge war bewusst gewählt: erst die Signierung, damit die Platzierung
 überhaupt messbar wird, und erst danach eine Oberfläche. Das hat sich gelohnt —
@@ -328,6 +345,9 @@ Sie sind in [docs/tracer-bullet.md](docs/tracer-bullet.md) beschrieben.
   warum sie so gebaut ist, und was daran gemessen ist
 - [docs/regel-editor.md](docs/regel-editor.md) — Regeln, Rollen und Zonen ohne
   JSON bearbeiten; Entscheidungen, Abweichungen und der Stand der Messung
+- [docs/dropzones.md](docs/dropzones.md) — Fenster mit der Maus in Zonen ziehen;
+  `CGEventTap` gegen `kAXMovedNotification` mit Zahlen, das Verhalten neben
+  Magnet, und was daran ungemessen ist
 - [docs/tracer-bullet.md](docs/tracer-bullet.md) — was der Durchstich abdeckt,
   was fehlt, und der Stand der Messung
 - [docs/offene-fragen.md](docs/offene-fragen.md) — was noch nicht entschieden ist

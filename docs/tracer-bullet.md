@@ -285,6 +285,11 @@ hält das Ergebnis für Outlook.
 **Für eine saubere Messung Magnet vorübergehend beenden.** Wenn das nicht in
 Frage kommt, mindestens im Protokoll vermerken, dass es lief.
 
+**Mit den Dropzones (#10) ist Magnet vom Messproblem zum Entwurfsproblem
+geworden**, weil beide Programme beim Ziehen ein Overlay einblenden. Wie sich
+OpenZonr dann verhält — erkennen und einmal warnen, nicht um die Vorherrschaft
+kämpfen — steht in [dropzones.md](dropzones.md).
+
 ---
 
 ## Die Koordinatenfalle, mit echten Zahlen

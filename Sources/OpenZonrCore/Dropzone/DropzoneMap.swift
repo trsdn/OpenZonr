@@ -15,19 +15,29 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
     public var relativeFrame: RelativeRect
     /// The zone in absolute **AppKit** coordinates, origin bottom-left.
     public var frame: WindowFrame
+    /// The usable area of the display this zone belongs to.
+    ///
+    /// Carried along so that "which display is the pointer over" never depends
+    /// on the pointer being inside a zone. Zones need not cover their screen —
+    /// a layout may leave gaps, and the menu bar is outside every zone — and an
+    /// overlay that vanished whenever the pointer crossed a gap would flicker
+    /// through every drag.
+    public var visibleFrame: VisibleFrame
 
     public init(
         display: DisplayAlias,
         zone: ZoneID,
         name: String,
         relativeFrame: RelativeRect,
-        frame: WindowFrame
+        frame: WindowFrame,
+        visibleFrame: VisibleFrame
     ) {
         self.display = display
         self.zone = zone
         self.name = name
         self.relativeFrame = relativeFrame
         self.frame = frame
+        self.visibleFrame = visibleFrame
     }
 
     public var id: String { "\(display)/\(zone)" }
@@ -79,7 +89,8 @@ public enum DropzoneMap {
                         zone: zone.id,
                         name: zone.name,
                         relativeFrame: zone.frame,
-                        frame: ZoneGeometry.absoluteFrame(for: zone.frame, in: visibleFrame)
+                        frame: ZoneGeometry.absoluteFrame(for: zone.frame, in: visibleFrame),
+                        visibleFrame: visibleFrame
                     )
                 )
             }
@@ -124,6 +135,12 @@ public enum DropzoneMap {
     /// every screen. Lighting up four monitors because a window is being nudged
     /// on one of them is noise, and on the author's desk it is a lot of noise.
     public static func zones(onDisplayUnder point: ScreenPoint, in zones: [Dropzone]) -> [Dropzone] {
+        // By the display's own area, not by which zone was hit: a pointer in a
+        // gap between zones, or over the menu bar, is still on that display and
+        // the zones must stay on screen.
+        if let display = zones.first(where: { $0.visibleFrame.contains(point) })?.display {
+            return zones.filter { $0.display == display }
+        }
         guard let hit = zone(at: point, in: zones) else { return [] }
         return zones.filter { $0.display == hit.display }
     }
