@@ -182,3 +182,89 @@ struct DropzoneMapTests {
         #expect(matching.frame == resolved.frame)
     }
 }
+
+/// The pin badge each zone carries while the overlay is up — hit test and
+/// placement, as arithmetic.
+///
+/// Its own suite because the badge is a second target the mouse can hit, and
+/// the whole design of Issue #23 rests on this being one function rather than
+/// a hover state or a menu. If any of these tests starts asking for AppKit,
+/// the badge has silently grown a permission requirement.
+struct DropzonePinBadgeTests {
+
+    private func zone(_ frame: WindowFrame) -> Dropzone {
+        Dropzone(
+            display: "main",
+            zone: "left",
+            name: "Links",
+            relativeFrame: RelativeRect(x: 0, y: 0, width: 0.5, height: 1),
+            frame: frame,
+            visibleFrame: VisibleFrame(x: 0, y: 0, width: 1920, height: 1080)
+        )
+    }
+
+    @Test("Die Marke sitzt oben rechts in der Zone")
+    func theBadgeSitsInTheTopRightCorner() throws {
+        // Corner rather than centre: on a small zone, a centred badge would
+        // cover the whole zone and every drop would be a pin — the *drop
+        // without pinning* case would be unreachable. The top-right corner
+        // leaves most of the zone free for the plain drop.
+        let z = zone(WindowFrame(x: 100, y: 200, width: 600, height: 400))
+        let badge = try #require(DropzoneMap.pinBadgeFrame(for: z))
+        // The badge is inside the zone…
+        #expect(badge.x >= z.frame.x)
+        #expect(badge.y >= z.frame.y)
+        #expect(badge.x + badge.width <= z.frame.x + z.frame.width)
+        #expect(badge.y + badge.height <= z.frame.y + z.frame.height)
+        // …and towards the top-right, in AppKit coordinates (origin
+        // bottom-left, so *top* is *higher y*).
+        #expect(badge.x > z.frame.x + z.frame.width / 2)
+        #expect(badge.y > z.frame.y + z.frame.height / 2)
+    }
+
+    @Test("Ein Punkt in der Marke wird als Marke erkannt")
+    func aPointOnTheBadgeIsDetected() throws {
+        let z = zone(WindowFrame(x: 0, y: 0, width: 500, height: 500))
+        let badge = try #require(DropzoneMap.pinBadgeFrame(for: z))
+        let centre = ScreenPoint(x: badge.x + badge.width / 2, y: badge.y + badge.height / 2)
+        #expect(DropzoneMap.isOnPinBadge(centre, of: z))
+    }
+
+    @Test("Ein Punkt daneben trifft die Marke nicht")
+    func aPointNextToTheBadgeIsNotOnIt() {
+        // The two everyday cases in one test: the centre of the zone is a
+        // plain drop, so is a point in the outer corner but outside the
+        // badge square.
+        let z = zone(WindowFrame(x: 0, y: 0, width: 500, height: 500))
+        #expect(DropzoneMap.isOnPinBadge(ScreenPoint(x: 250, y: 250), of: z) == false)
+        #expect(DropzoneMap.isOnPinBadge(ScreenPoint(x: 5, y: 5), of: z) == false)
+    }
+
+    @Test("Eine winzige Zone hat gar keine Marke")
+    func aTinyZoneHasNoBadge() {
+        // A badge that covered the whole zone would silently take away the
+        // plain drop; refusing to draw one is the honest answer. `isOnPinBadge`
+        // returns false on such a zone, so the controller has a single line to
+        // read: no badge means no pin, and every drop is a one-off.
+        let z = zone(WindowFrame(x: 0, y: 0, width: 40, height: 40))
+        #expect(DropzoneMap.pinBadgeFrame(for: z) == nil)
+        #expect(DropzoneMap.isOnPinBadge(ScreenPoint(x: 20, y: 20), of: z) == false)
+    }
+
+    @Test("Die Marke verschluckt nie die ganze Zone")
+    func theBadgeNeverSwallowsTheWholeZone() throws {
+        // The invariant behind the *tiny zone has no badge* rule: every zone
+        // that carries a badge must leave the plain drop reachable. The centre
+        // of the zone must not be on the badge, at any size the function is
+        // willing to draw a badge for.
+        for side in stride(from: 60.0, through: 4000.0, by: 20.0) {
+            let z = zone(WindowFrame(x: 0, y: 0, width: side, height: side))
+            guard DropzoneMap.pinBadgeFrame(for: z) != nil else { continue }
+            let centre = ScreenPoint(x: side / 2, y: side / 2)
+            #expect(
+                DropzoneMap.isOnPinBadge(centre, of: z) == false,
+                "Zone \(side)×\(side): Marke deckt die Mitte ab"
+            )
+        }
+    }
+}

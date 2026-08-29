@@ -59,6 +59,12 @@ public enum DropRuleOffer {
     /// that is the configuration we already have, there is nothing to ask. The
     /// same call surfaces the case where a pin could not be derived at all, so
     /// the question is never posed to a yes that would then fail.
+    ///
+    /// **The `offerRule` gate is checked first.** This function is the *ask
+    /// afterwards* path. The badge on the zone is a different one — the user
+    /// has already said *and pin* with the mouse and is not waiting for a
+    /// panel — and that path uses ``pin(_:droppedInto:profile:configuration:)``
+    /// instead.
     public static func request(
         for window: DroppedWindow,
         droppedInto zone: Dropzone,
@@ -67,6 +73,37 @@ public enum DropRuleOffer {
         configuration: Configuration
     ) -> Result<QuickPin.Request, Refusal> {
         guard settings.offerRule else { return .failure(.offerSwitchedOff) }
+        return build(for: window, droppedInto: zone, profile: profile, configuration: configuration)
+    }
+
+    /// The request the badge path uses: the same rule, without the panel gate.
+    ///
+    /// The badge is not the *ask afterwards* offer. It is the user saying *drop
+    /// and pin* with the mouse, in one motion, before the release. Gating it
+    /// on ``DropzoneSettings/offerRule`` — the switch for the old question
+    /// panel — would tie two independent choices together and, worse, would
+    /// silently ignore the release on the badge for anyone who has the panel
+    /// off, which is now the default. The name spells that out.
+    ///
+    /// Everything else is identical: same duplicate check, same
+    /// already-pointed-there check, same failure vocabulary — because a pin
+    /// that came from a badge should not become a different kind of rule than
+    /// one that came from a panel.
+    public static func pin(
+        for window: DroppedWindow,
+        droppedInto zone: Dropzone,
+        profile: ProfileID,
+        configuration: Configuration
+    ) -> Result<QuickPin.Request, Refusal> {
+        build(for: window, droppedInto: zone, profile: profile, configuration: configuration)
+    }
+
+    private static func build(
+        for window: DroppedWindow,
+        droppedInto zone: Dropzone,
+        profile: ProfileID,
+        configuration: Configuration
+    ) -> Result<QuickPin.Request, Refusal> {
         guard let bundleIdentifier = window.bundleIdentifier, !bundleIdentifier.isEmpty else {
             return .failure(.missingBundleIdentifier(applicationName: window.applicationName))
         }

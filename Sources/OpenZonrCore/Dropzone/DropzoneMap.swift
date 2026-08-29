@@ -145,6 +145,66 @@ public enum DropzoneMap {
         return zones.filter { $0.display == hit.display }
     }
 
+    /// The small pin badge each zone carries while the overlay is up.
+    ///
+    /// A **pure function** of the zone's frame, deliberately. Dropping *and
+    /// pinning* used to be two moments — drop, then answer a question — with a
+    /// gesture wedged between them. Moving the decision into the drag itself
+    /// means the drop and the pin land in one motion: release on the zone for a
+    /// one-off placement, release on the badge for the same placement plus the
+    /// rule via ``QuickPin``. The badge is the second target the mouse can hit;
+    /// it is not a menu, a button or a hover state, and it does not depend on
+    /// the Accessibility permission to be true — so the hit test lives here and
+    /// is tested headlessly.
+    ///
+    /// The badge is placed in the **top-right corner** of the inset the overlay
+    /// draws (see ``DropzoneOverlayView`` in `OpenZonrApp`). Choosing a corner
+    /// rather than the centre is not decoration: the centre of a small zone
+    /// covers the whole zone, so every drop would be a pin, and the *drop
+    /// without pinning* case would be unreachable. A corner keeps most of the
+    /// zone free for the plain drop.
+    ///
+    /// - Returns: The badge frame in the same AppKit coordinates as
+    ///   ``Dropzone/frame``, or `nil` when the zone is too small to place a
+    ///   badge without swallowing the whole zone. The overlay must not draw a
+    ///   badge whose hit test would answer *yes* for every point of the zone —
+    ///   that would remove the plain-drop path from the layouts that need it
+    ///   most.
+    public static func pinBadgeFrame(for zone: Dropzone) -> WindowFrame? {
+        let frame = zone.frame
+        // Same values as the on-screen badge; kept here as constants so the
+        // hit test and the drawing agree without one importing the other.
+        let inset: Double = 4
+        let padding: Double = 8
+        let size: Double = 24
+
+        // A zone must have room for the drawing inset the overlay applies to
+        // every zone, plus the badge and its padding, and still leave a strip
+        // for the plain drop. Twice the badge's smallest side is the strip.
+        let required = inset * 2 + padding * 2 + size + size
+        guard frame.width >= required, frame.height >= required else { return nil }
+
+        // Top-right, in AppKit coordinates (origin at the bottom-left).
+        let x = frame.x + frame.width - inset - padding - size
+        let y = frame.y + frame.height - inset - padding - size
+        return WindowFrame(x: x, y: y, width: size, height: size)
+    }
+
+    /// Whether `point` is on the badge of `zone`.
+    ///
+    /// A drop that lands here writes a rule; anywhere else in the zone is a
+    /// one-off. Both are decisions the user makes with the mouse, in the same
+    /// gesture, and neither asks a question afterwards.
+    ///
+    /// - Returns: `false` when the zone has no badge — a zone too small to
+    ///   carry one has no *drop and pin* target, only the plain drop. The
+    ///   caller can therefore treat every drop on such a zone as a one-off
+    ///   without a second code path.
+    public static func isOnPinBadge(_ point: ScreenPoint, of zone: Dropzone) -> Bool {
+        guard let badge = pinBadgeFrame(for: zone) else { return false }
+        return badge.contains(point)
+    }
+
     private static func isOrderedBefore(_ lhs: Dropzone, _ rhs: Dropzone) -> Bool {
         lhs.display == rhs.display ? lhs.zone < rhs.zone : lhs.display < rhs.display
     }

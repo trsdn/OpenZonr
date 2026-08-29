@@ -5,15 +5,137 @@ Satz: *„Könnte man einen Fenstermanager bauen, der so Dropzones hat, wie die
 meisten — mich nervt aber, dass eine neu geöffnete App nicht automatisch in der
 Zone landet."* Gebaut war bisher nur der zweite Teil. Dies ist der erste.
 
-Umgesetzt in Issue #10. Kurz:
+Umgesetzt in Issue #10, danach fortgeschrieben in Issue #23. Kurz:
 
-- Beim Ziehen eines Fensters erscheinen die Zonen des aktiven Profils auf dem
-  Display unter dem Zeiger; die getroffene Zone ist hervorgehoben.
+- Beim Ziehen eines Fensters mit gehaltenem **⌘** erscheinen die Zonen des
+  aktiven Profils auf dem Display unter dem Zeiger; die getroffene Zone ist
+  hervorgehoben.
 - Beim Loslassen wird das Fenster in diese Zone gelegt — **über denselben Code
   wie die Automatik**, nicht über einen zweiten Pfad.
-- Danach die Frage „Diese App immer hier öffnen?", die über das bestehende
-  `QuickPin` eine Regel schreibt.
-- ⌥ gedrückt halten unterdrückt das Ganze; dann wird frei gezogen.
+- Loslassen auf der **Anheft-Marke** einer Zone schreibt zusätzlich eine Regel
+  über den bestehenden `QuickPin`, in derselben Bewegung. Loslassen daneben
+  bleibt eine einmalige Platzierung.
+- Die alte Rückfrage „Diese App immer hier öffnen?" ist als Vorgabe **aus**;
+  wer sie will, schaltet `defaults.dropzones.offerRule` an.
+- Die Aktivierungsregel `defaults.dropzones.activation` hat zwei Formen: die
+  Vorgabe `{"showsWhile": "command"}` — Zonen erscheinen nur mit ⌘ — und die
+  ältere `{"showsUnless": "option"}` — Zonen bei jedem Zug, ⌥ silent. Eine
+  bestehende `config.json` mit `suppressionModifier: "option"` liest weiter
+  und bildet automatisch auf die ältere Form ab (siehe *Migration* unten).
+
+---
+
+---
+
+## Der Tausch bei ⌘ als Einschalter, gemessen
+
+Seit Issue #23 ist die Vorgabe: **die Zonen erscheinen nur, solange ⌘ gehalten
+wird**, statt „bei jedem Zug, außer bei ⌥". Die Umkehrung ist bewusst und hat
+einen Preis, der gemessen ist.
+
+**Drei Läufe am 29.08.2026:** Ein Zug an der Titelleiste eines Hintergrund­fensters
+holt es nach vorn. **Derselbe Zug mit ⌘ lässt die vordere App vorne.** ⌘ ist auf
+Fenster­zügen also bereits belegt und bedeutet dort *bewegen, ohne zu aktivieren*.
+
+Folge: Mit ⌘ als Einschalter erscheinen die Zonen genau dann, wenn nicht
+aktiviert werden soll — ein Hintergrund­fenster einsortieren, ohne den Fokus zu
+verlieren. Es heißt aber auch, dass es die alte Geste *ohne die neue* nicht mehr
+gibt: wer einfach ein Fenster ziehen will, ohne dass Zonen aufleuchten, muss
+nichts drücken (das ist jetzt der Normalfall) — wer sie sehen will, drückt ⌘.
+
+*Nicht gemessen:* ob ⌘-Ziehen ein Hintergrund­fenster tatsächlich **bewegt**. In
+keinem Lauf hat sich ein Hintergrund­fenster bewegt, auch nicht ohne ⌘ — der
+synthetische Zug kann das nicht beantworten. Belegt ist ausschließlich der
+Unterschied bei der Aktivierung.
+
+*Ebenfalls nicht gemessen:* ob sich ⌘ beim Ziehen bequem anfühlt und ob die
+Anheft-Marke auffindbar ist. Das braucht eine Hand an der Maus; siehe die
+Tabelle „Was gemessen ist und was nicht" weiter unten.
+
+## Migration bestehender Konfigurationen
+
+Eine `config.json`, die vor Issue #23 geschrieben wurde, trägt
+`defaults.dropzones.suppressionModifier: "option"`. Ohne Migration stünde ein
+Nutzer nach dem Update mit der neuen Vorgabe da — Zonen erscheinen nur mit ⌘ —
+und wüsste nicht, dass eine unbenutzte Sekunde Ziehen jetzt genau das *nicht*
+mehr bedeutet, was sie gestern bedeutet hat.
+
+Der Codec liest den alten Schlüssel weiter und bildet ihn auf
+`activation: {"showsUnless": "option"}` ab — dieselbe Polarität, die die alte
+Datei ausdrückte. **Neu geschrieben wird nur der neue Schlüssel.** Beide Namen
+in derselben Datei würden sich beim nächsten Bearbeiten von Hand widersprechen,
+und der Codec müsste einen Vorrang festlegen: er tut es (`activation` schlägt
+`suppressionModifier`), damit eine handbearbeitete neue Datei nicht von einem
+übrig­gebliebenen alten Feld überstimmt wird. `DropzoneSettingsDecodingTests`
+hält beide Fälle fest.
+
+## Die Anheft-Marke — Regel im Zug statt Rückfrage danach
+
+Solange die Zonen sichtbar sind, trägt jede Zone eine kleine Marke, oben rechts.
+Normal loslassen: einmalige Platzierung, keine Regel, keine Frage. Auf der
+Marke loslassen: dieselbe Platzierung und `QuickPin` schreibt die Regel — in
+derselben Bewegung.
+
+Die Trefferprüfung ist eine **reine Funktion** neben `DropzoneMap`
+(`DropzoneMap.pinBadgeFrame(for:)` und `DropzoneMap.isOnPinBadge(_:of:)`), damit
+sie ohne die Bedienungshilfen-Freigabe geprüft werden kann — dieselbe Trennung,
+die der Rest der Dropzones-Hälfte durchzieht. Der Codepfad im Controller ist
+zwei Zeilen: liegt der Zeiger beim Loslassen auf der Marke, wird über die
+Fabrik `DropRuleOffer.pin(...)` (kein Panel-Gate) direkt eine `QuickPin.Request`
+gebaut und angewendet — sonst der bisherige *Panel-anbieten*-Zweig, der aber
+per Vorgabe schweigt.
+
+**Warum die Marke oben rechts und nicht in der Mitte.** Auf einer kleinen Zone
+würde eine mittige Marke die ganze Zone abdecken; die einmalige Platzierung
+*ohne* Regel wäre unerreichbar. Der Sicherheitstest
+`theBadgeNeverSwallowsTheWholeZone` zieht über Zonengrößen von 60 bis 4000
+Punkten und stellt sicher, dass die Mitte jeder Zone, für die überhaupt eine
+Marke gezeichnet wird, kein Marken-Treffer ist. Ist die Zone zu klein für Marke
+plus verbleibenden Streifen, wird gar keine Marke gezeichnet — dann ist jeder
+Drop einmalig, ohne dass der Controller einen zweiten Pfad kennen muss.
+
+## Was ausdrücklich nicht gebaut wird — und warum
+
+Drei naheliegende Wege, die Regel *im Zug* zu setzen, sind gemessen ausgeschieden.
+Ohne diese Liste baut sie jemand erneut.
+
+**Rechtsklick auf die Titelleiste — kollidiert.** Instrument: Klick und
+Erkennung in *einem* Programm (ein Kontextmenü kann zwischen zwei Aufrufen
+zugehen), Menüfenster über `CGWindowList` an Ebene 101. Positivkontrolle
+bestanden, 3/3.
+
+| Wohin geklickt | App-Menü? | Läufe |
+|---|---|---|
+| TextEdit — Textbereich *(Positivkontrolle)* | **ja**, 290×543 | 3/3 |
+| TextEdit — leere Titelleiste | nein | 3/3 |
+| TextEdit — Titeltext / Proxy-Symbol | **ja**, 197×82 | 1/1 |
+| TextEdit — grüner Knopf, Rechtsklick | nein | 1/1 |
+| **Safari — vereinheitlichte Symbolleiste, leere Stelle** | **ja**, 206×34 | 3/3 |
+| Safari — dieselbe Stelle mit ⌥ / ⌘ / ⇧ | **ja, jedes Mal** | je 1 |
+
+In modernen Apps *ist* die Titelleiste die Symbolleiste — Safari, Finder, Mail.
+TextEdit war die Ausnahme, nicht die Regel. Modifier unterdrücken das App-Menü
+nicht.
+
+**Aktiver Event-Tap, um den Rechtsklick zu schlucken — zu teuer.**
+`EventTapDragTracker.swift:74` erstellt den Tap mit `options: .listenOnly`; er
+kann nichts verschlucken. Mit `.defaultTap` ginge es, aber dann liefe **jeder
+Rechtsklick der Maschine** durch unseren Rückruf, bevor irgendeine App ihn
+sieht. Ist er zu langsam, schaltet macOS den Tap ab — und dann hört auch die
+Drag-Erkennung auf, ohne dass es auffällt. Genau die Fehlerklasse, die dieses
+Projekt sonst jagt.
+
+**Panel unter dem grünen Knopf — fremdes Revier.** Der Knopf ist auffindbar
+(gemessen: `AXButton … AXZoomWindow` bei `3894,39 16×16`), und ein Rechtsklick
+darauf zeigt kein App-Menü. Aber macOS blendet dort beim *Schweben* sein
+eigenes Menü ein. Zwei Menüs am selben Pixel.
+
+**Erst nach mehrfacher Wiederholung fragen** („du hast das jetzt dreimal so
+gemacht") — streckt das Ärgernis, statt es zu beheben, und braucht Zustand über
+Sitzungen hinweg.
+
+Die tatsächliche Antwort ist stattdessen die Anheft-Marke: kein neuer Eingriff
+ins System, keine Kollision mit fremden Apps, kein aktiver Event-Tap.
 
 ---
 
@@ -103,7 +225,11 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | Gleiche Fläche → deterministische Wahl | **Bewiesen**, headless | nach Display- und Zonenkennung, nie nach Array-Reihenfolge |
 | Zonen bleiben in einer Lücke sichtbar | **Bewiesen**, headless | das Display entscheidet, nicht die getroffene Zone |
 | Overlay-Entscheidung (zeigen/verstecken) | **Bewiesen**, headless | `DropzoneOverlayPlanTests` |
-| Unterdrückung per ⌥ | **Bewiesen**, headless | `DropzoneActivationTests`, inklusive „⌘ unterdrückt nicht" |
+| Unterdrückung per ⌥ (`showsUnless`-Form) | **Bewiesen**, headless | `DropzoneActivationTests`, inklusive „⌘ unterdrückt bei `showsUnless(.option)` nicht" |
+| Einschalter per ⌘ (`showsWhile`-Form, neue Vorgabe) | **Bewiesen**, headless | `DropzoneActivationTests`; ohne ⌘ liefert die Aktivierung `awaitingModifier(.command)` mit deutschem Grund |
+| Migration alter Konfigurationen (`suppressionModifier` → `showsUnless`) | **Bewiesen**, headless | `DropzoneSettingsDecodingTests`, mit Vorrangregel für gleichzeitig vorhandene alte und neue Schlüssel |
+| Trefferprüfung auf der Anheft-Marke | **Bewiesen**, headless | `DropzonePinBadgeTests`, samt Invariante „Marke schluckt nie die ganze Zone" über Zonengrößen von 60 bis 4000 Punkten |
+| Marken-Pfad umgeht den `offerRule`-Schalter | **Bewiesen**, headless | `DropRuleOfferPinTests`; sonst würde bei ausgeschaltetem Panel jede Marke stumm nichts tun |
 | Mindeststrecke vor dem Einblenden | **Bewiesen**, headless | verhindert Flackern beim bloßen Anklicken |
 | Ableitung Ablegen → Regel | **Bewiesen**, headless | `DropRuleOfferTests`; zweimal Ablegen verdoppelt die Regel nicht |
 | Alte Konfiguration ohne `dropzones` lädt | **Bewiesen**, headless | sonst wäre nicht der Schlüssel kaputt, sondern die ganze Datei |
@@ -119,7 +245,9 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | **Verhalten mit laufendem Magnet im Zug** | **Nicht gemessen** | Setzt einen echten Zug voraus. Die Erkennung ist getestet, das Verhalten bei Konflikt ist entworfen und begründet, nicht beobachtet. |
 | **Ruhe der Hervorhebung auf einer Zonenkante** | **Nicht gemessen** | Die Zuordnung ist eindeutig, aber zustandslos: auf einer Kante kippt die Hervorhebung bei einem Punkt Zittern. Ob das im Gebrauch stört und welche Totzone richtig wäre, ist ohne echten Zug nicht zu beurteilen — deshalb ist keine Hysterese gebaut, sondern Punkt 13 in [`offene-fragen.md`](offene-fragen.md) eröffnet, samt der Falle, in die ein erster Versuch dazu bereits gelaufen ist. |
 | **Platzierung nach dem Ablegen** | **Nicht gemessen für das Ablegen**, aber für denselben Code | Der Drop ruft `WatchEngine.place(dropped:application:into:)` auf, das die private `place(…)` mit `rule: nil` benutzt — dieselbe Funktion, deren Platzierung in [`tracer-bullet.md`](tracer-bullet.md) inzwischen auch bei laufender App gemessen ist, samt eines Falls, in dem Outlook sich beim ersten Schreiben wehrt und ein zweiter Versuch nötig ist. |
-| **Angebotspanel im Betrieb** | **Nicht gemessen** | Erscheint nur nach einem echten Ablegen. Dass es den Fokus nicht stiehlt, folgt aus `.nonactivatingPanel`; belegt ist es nicht. |
+| **Angebotspanel im Betrieb** | **Nicht gemessen** | Erscheint nur nach einem echten Ablegen. Dass es den Fokus nicht stiehlt, folgt aus `.nonactivatingPanel`; belegt ist es nicht. Seit Issue #23 ist die Vorgabe ohnehin *aus* — der Weg bleibt nur, weil er ohne zusätzlichen Zustand verlässlich ist. |
+| **Auffindbarkeit der Anheft-Marke** | **Nicht gemessen** | Ob eine 24-Punkt-Marke oben rechts einer Zone im Gebrauch als *hier festhalten* verstanden wird — oder ob sie zwischen Titel­leisten und Fenster­rand unauffällig verschwindet — braucht eine Hand an der Maus und mehrere Nutzer. Was headless prüfbar ist (sitzt sie in der Ecke, deckt sie nie die ganze Zone ab), ist geprüft. |
+| **Verhalten von ⌘-Ziehen mit der Hand** | **Nicht gemessen** | Ob es angenehm ist, ⌘ über die Dauer eines Zugs zu halten, und ob die Umkehrung „nichts drücken heißt: keine Zonen" für den Nutzer stimmig ist, ist ohne echten Zug nicht zu beurteilen. Was gemessen ist, ist der Preis: ⌘-Ziehen bringt heute schon Hintergrundfenster nicht nach vorn, und diese Nebenwirkung wandert mit. |
 
 Kurz: Alles, was ohne einen echten Zug beweisbar ist, ist bewiesen. Alles, was
 einen braucht, ist als ungemessen ausgewiesen. Der Schnitt zwischen beidem war
@@ -196,12 +324,26 @@ ihn zunächst durch `0×0 bei 0,0`, und dieser Wert wanderte unverändert in die
 Ablehnungsmeldung als „Ist:" — ein Messwert, der nie gemessen wurde. Jetzt wird
 nichts gesetzt und gesagt, dass der Rahmen nicht lesbar war.
 
-**⌥ statt ⌘ zum Unterdrücken.** ⌘-Ziehen bewegt auf macOS ein
-Hintergrundfenster, *ohne* es zu aktivieren — eine etablierte Interaktion.
-Sie zu überschreiben, hieße eine Fähigkeit zu nehmen, um eine zu geben.
+**⌘ als Einschalter, seit Issue #23.** Die frühere Vorgabe hatte ⌥ als
+*Silence*-Taste; Zonen erschienen bei jedem Zug, ⌥ unterdrückte sie. Die neue
+Vorgabe ist die Umkehrung: nichts drücken → keine Zonen, ⌘ drücken → Zonen. Der
+Tausch ist bewusst — der Preis ist im Kopfabschnitt gemessen — und die alte
+Polarität lebt in `activation: {"showsUnless": "option"}` weiter. Wer will,
+schaltet zurück. Die Migration bestehender Konfigurationen bildet den alten
+`suppressionModifier` automatisch auf `showsUnless` ab; ohne sie fänden Nutzer
+ihre Zonen nach dem Update ohne Grund still verschwunden.
 
-**Der Modifikator zählt jetzt, nicht beim Zugbeginn.** Wer mitten im Ziehen ⌥
-drückt, meint es.
+**Anheft-Marke statt Rückfrage.** Das Panel „Diese App immer hier öffnen?"
+unterbricht eine gerade beendete Geste; die Anheft-Marke verlegt die
+Entscheidung nach *vor* das Loslassen. Der Panel-Weg bleibt (über den Menü­eintrag
+und einen ausschaltbaren Vorgabeschalter), damit nichts an Fähigkeit verloren
+geht, was sich Nutzer vielleicht anders zurechtlegen wollen. Die Marken-Fabrik
+`DropRuleOffer.pin(...)` und der Panel-Weg `DropRuleOffer.request(...)` bauen
+dieselbe `QuickPin.Request` — zwei Eingänge, ein Rechnen, keine zweite Regel­art.
+
+**Der Modifikator zählt jetzt, nicht beim Zugbeginn.** Wer mitten im Ziehen ⌘
+drückt, meint es. (Bei `showsWhile` erscheint der Overlay dann, bei `showsUnless`
+verschwindet er.)
 
 **Nur das Display unter dem Zeiger.** Auf diesem Schreibtisch ist der
 Hauptmonitor 5120 Punkte breit. Alle Displays gleichzeitig zu beleuchten macht

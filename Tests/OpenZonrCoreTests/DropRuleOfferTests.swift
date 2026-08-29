@@ -6,6 +6,16 @@ import Testing
 /// Turning a drop into a rule — and refusing to, when it would be a guess.
 struct DropRuleOfferTests {
 
+    /// The panel-driven `request` path was tested first, and now runs against
+    /// the *ask afterwards* switch that Issue #23 turned off by default. Every
+    /// test in this suite that uses `.request` opts back in explicitly, so a
+    /// failure here means the panel path — not the badge path — is broken.
+    private func offeringSettings() -> DropzoneSettings {
+        var settings = DropzoneSettings()
+        settings.offerRule = true
+        return settings
+    }
+
     private func zone(display: DisplayAlias = "main", zone: ZoneID = "right") -> Dropzone {
         // The name follows the ID: a helper that calls every zone "Rechts"
         // makes a test about zone names pass for the wrong reason.
@@ -26,7 +36,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
             droppedInto: zone(),
             profile: "solo",
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: TestConfigurations.minimal()
         ).get()
 
@@ -44,7 +54,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: nil, applicationName: "Namenlos"),
             droppedInto: zone(),
             profile: "solo",
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: TestConfigurations.minimal()
         )
         #expect(result.isFailure)
@@ -56,7 +66,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "", applicationName: "Leer"),
             droppedInto: zone(),
             profile: "solo",
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: TestConfigurations.minimal()
         )
         #expect(result.isFailure)
@@ -64,7 +74,7 @@ struct DropRuleOfferTests {
 
     @Test("Abgeschaltetes Angebot fragt nicht")
     func switchedOffOfferStaysQuiet() {
-        var settings = DropzoneSettings()
+        var settings = offeringSettings()
         settings.offerRule = false
         let result = DropRuleOffer.request(
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
@@ -74,6 +84,26 @@ struct DropRuleOfferTests {
             configuration: TestConfigurations.minimal()
         )
         #expect(result.isFailure)
+    }
+
+    @Test("Die Vorgabe seit Issue #23: das Angebot ist aus, request scheitert")
+    func newDefaultSuppressesTheRequestPath() {
+        // A regression check on the default: if the panel default ever slid
+        // back to `true`, the badge would still work but the *ask afterwards*
+        // interruption would return, unmentioned. That is the exact shape of
+        // silent behaviour change this project rejects.
+        let result = DropRuleOffer.request(
+            for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
+            droppedInto: zone(),
+            profile: "solo",
+            settings: DropzoneSettings(),
+            configuration: TestConfigurations.minimal()
+        )
+        if case let .failure(refusal) = result {
+            #expect(refusal == .offerSwitchedOff)
+        } else {
+            Issue.record("erwartet: offerSwitchedOff, bekommen: \(result)")
+        }
     }
 
     @Test("Die Frage nennt die Zone beim Namen")
@@ -100,7 +130,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
             droppedInto: zone(display: "main", zone: "left"),
             profile: profile.id,
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: base
         ).get()
 
@@ -117,7 +147,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
             droppedInto: zone(display: "main", zone: "left"),
             profile: profile.id,
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: base
         ).get()
 
@@ -138,7 +168,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
             droppedInto: zone(display: "main", zone: "left"),
             profile: profile.id,
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: base
         ).get()
 
@@ -149,7 +179,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
             droppedInto: zone(display: "main", zone: "left"),
             profile: profile.id,
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: pinned
         )
         #expect(second.isFailure)
@@ -169,7 +199,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
             droppedInto: zone(display: "main", zone: "left"),
             profile: profile.id,
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: base
         ).get()
         let pinned = try QuickPin.pin(toLeft, into: base).configuration
@@ -178,7 +208,7 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
             droppedInto: zone(display: "main", zone: "right"),
             profile: profile.id,
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
             configuration: pinned
         )
         #expect(toRight.isFailure == false)
@@ -194,7 +224,94 @@ struct DropRuleOfferTests {
             for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
             droppedInto: zone(display: "main", zone: "erfunden"),
             profile: profile.id,
-            settings: DropzoneSettings(),
+            settings: offeringSettings(),
+            configuration: base
+        )
+        #expect(result.isFailure)
+    }
+}
+
+/// The badge path: the user says *and pin* with the mouse, not with a panel.
+///
+/// A separate suite because the badge and the panel are two entrances to one
+/// rule, and mixing their tests would hide the case that matters most: a
+/// release on the badge must write a rule *regardless* of the panel setting
+/// that is now off by default.
+struct DropRuleOfferPinTests {
+
+    private func zone(display: DisplayAlias = "main", zone: ZoneID = "right") -> Dropzone {
+        let names: [ZoneID: String] = ["left": "Links", "right": "Rechts"]
+        return Dropzone(
+            display: display,
+            zone: zone,
+            name: names[zone] ?? String(describing: zone),
+            relativeFrame: RelativeRect(x: 0.5, y: 0, width: 0.5, height: 1),
+            frame: WindowFrame(x: 960, y: 0, width: 960, height: 1080),
+            visibleFrame: VisibleFrame(x: 0, y: 0, width: 1920, height: 1080)
+        )
+    }
+
+    @Test("Die Marke schreibt die Regel, auch wenn das Angebotspanel aus ist")
+    func pinPathIgnoresThePanelSwitch() throws {
+        // The defining property of the badge, and the reason `pin` exists next
+        // to `request`. Gate the badge on `offerRule` and a release on the
+        // badge would silently do nothing for every default install, which is
+        // the exact silent failure the *ask afterwards* switch is meant to
+        // eliminate — not perpetuate.
+        let base = TestConfigurations.minimal()
+        let profile = try #require(base.profiles.first)
+        let request = try DropRuleOffer.pin(
+            for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
+            droppedInto: zone(display: "main", zone: "left"),
+            profile: profile.id,
+            configuration: base
+        ).get()
+        #expect(request.target.zone == "left")
+
+        let outcome = try QuickPin.pin(request, into: base)
+        #expect(outcome.configuration.rules.count == base.rules.count + 1)
+    }
+
+    @Test("Die Marke fragt QuickPin, ob überhaupt etwas zu ändern wäre")
+    func pinRefusesWhenTheRuleAlreadyPointsThere() throws {
+        // Same *already pointed there* discipline as the panel path. A badge
+        // that silently rewrote an identical rule would be Log.success without
+        // effect — the same class of silent success the panel path guards
+        // against, in a new place.
+        let base = TestConfigurations.minimal()
+        let profile = try #require(base.profiles.first)
+        let first = try DropRuleOffer.pin(
+            for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
+            droppedInto: zone(display: "main", zone: "left"),
+            profile: profile.id,
+            configuration: base
+        ).get()
+        let pinned = try QuickPin.pin(first, into: base).configuration
+
+        let again = DropRuleOffer.pin(
+            for: DroppedWindow(bundleIdentifier: "com.apple.TextEdit", applicationName: "TextEdit"),
+            droppedInto: zone(display: "main", zone: "left"),
+            profile: profile.id,
+            configuration: pinned
+        )
+        #expect(again.isFailure)
+        if case let .failure(refusal) = again {
+            #expect(refusal == .alreadyPinned(applicationName: "TextEdit", zoneName: "Links"))
+        }
+    }
+
+    @Test("Auch die Marke braucht eine Bundle-Kennung")
+    func pinRefusesWithoutABundleIdentifier() throws {
+        // If the badge could invent a key, two entrances to the same rule
+        // would soon produce two different keys — and rules matching by name
+        // would drift as soon as an app was renamed or a display was renamed.
+        // The refusal is the same on both paths, for the same reason.
+        let base = TestConfigurations.minimal()
+        let profile = try #require(base.profiles.first)
+        let result = DropRuleOffer.pin(
+            for: DroppedWindow(bundleIdentifier: nil, applicationName: "Namenlos"),
+            droppedInto: zone(),
+            profile: profile.id,
             configuration: base
         )
         #expect(result.isFailure)

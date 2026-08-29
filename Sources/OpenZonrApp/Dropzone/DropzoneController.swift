@@ -147,13 +147,51 @@ final class DropzoneController {
     }
 
     /// Puts the window in the zone under the pointer.
+    ///
+    /// The **release point decides whether a rule is written.** Anywhere in the
+    /// zone: one-off placement, nothing else. On the zone's pin badge: same
+    /// placement, and ``QuickPin`` writes the rule. The user made both
+    /// decisions with the mouse, in the same gesture, so nothing pops up
+    /// afterwards to ask again. The old *„immer hier öffnen?"* panel remains
+    /// as a switch (`defaults.dropzones.offerRule`) but is off by default —
+    /// see the type's own note.
     private func drop(at point: ScreenPoint) {
         guard let window = dragged, let zone = lastPlan.highlighted else { return }
         guard let application = NSRunningApplication(processIdentifier: window.processIdentifier) else { return }
         guard let engine = model.engine else { return }
 
         engine.place(dropped: window.element, application: application, into: zone.placement)
-        prepareOffer(for: window, zone: zone, at: point)
+
+        if DropzoneMap.isOnPinBadge(point, of: zone) {
+            pin(window: window, into: zone)
+        } else {
+            prepareOffer(for: window, zone: zone, at: point)
+        }
+    }
+
+    /// Writes the rule the badge stands for.
+    ///
+    /// The same request the panel would build, through the same ``QuickPin``,
+    /// so a badge-pinned rule and a panel-pinned rule are the same kind of
+    /// rule and cannot drift apart. What is skipped is the panel itself: the
+    /// user already answered with the release point.
+    private func pin(window: DraggedWindow, into zone: Dropzone) {
+        guard let profile = model.activeProfile else { return }
+        guard let base = model.document?.configuration ?? model.configuration else { return }
+        switch DropRuleOffer.pin(
+            for: window.dropped,
+            droppedInto: zone,
+            profile: profile.id,
+            configuration: base
+        ) {
+        case let .success(request):
+            model.apply(request, to: base)
+        case let .failure(refusal):
+            // Same log line the panel path uses on refusal: the badge and the
+            // panel are two ways to reach the same rule, and a rule that
+            // cannot be written should say so with one voice.
+            Log.detail("Anheft-Marke ohne Wirkung: \(refusal)")
+        }
     }
 
     private func prepareOffer(for window: DraggedWindow, zone: Dropzone, at point: ScreenPoint) {
