@@ -35,10 +35,11 @@ struct EventTapDragTrackerTests {
     /// wie ein Druck auf den Schreibtisch.
     private func makeTracker(
         window: DraggedWindow? = nil,
-        lookup: (@MainActor (ScreenPoint, Double) -> DraggedWindow?)? = nil
+        lookup: (@Sendable (ScreenPoint, Double) -> DraggedWindow?)? = nil
     ) -> (tracker: EventTapDragTracker, events: EventBox) {
         let box = EventBox()
-        let resolver: @MainActor (ScreenPoint, Double) -> DraggedWindow? = lookup ?? { _, _ in window }
+        let captured = window
+        let resolver: @Sendable (ScreenPoint, Double) -> DraggedWindow? = lookup ?? { _, _ in captured }
         let tracker = EventTapDragTracker(primaryTopY: 0, windowLookup: resolver)
         tracker.minimumDragDistance = 5
         tracker.onEvent = { event in box.append(event) }
