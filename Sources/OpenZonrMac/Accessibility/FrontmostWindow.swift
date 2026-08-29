@@ -8,19 +8,19 @@ import OpenZonrCore
 /// ## Why this is not a right-click on the window
 ///
 /// The concept and issue #9 describe the 90 % case as a **right click on a
-/// placed window → „Diese App immer hier öffnen"**. That is not reachable with
-/// public API. A context menu on a foreign application's window would have to be
-/// injected into that application's own event handling; macOS has no supported
-/// way to add an item to another process's window menu, and the alternative —
-/// a transparent overlay window that intercepts right clicks over every screen —
-/// would swallow clicks that belong to the app underneath and needs
-/// Screen Recording on top of Accessibility.
+/// placed window → „Diese App immer hier öffnen"**. Auf ein *beliebiges*
+/// Pixel im Fenster ist das nicht mit Public API erreichbar: ein Menü in das
+/// Ereignishandling einer fremden App zu injizieren geht nicht, und ein
+/// transparentes Overlay über allen Bildschirmen würde Klicks schlucken, die
+/// der App darunter gehören, und Screen Recording zusätzlich zur
+/// Bedienungshilfen-Freigabe verlangen.
 ///
-/// The reachable path with the same result is this one: the user puts the
-/// window where it belongs, then picks „Aktuelles Fenster hier festhalten" from
-/// the menu bar. Same input (this app, this place), same output (a rule and a
-/// binding), one extra move of the mouse. The deviation is written down in
-/// `docs/regel-editor.md` rather than left to be discovered.
+/// ``FrontmostWindow`` ist deshalb der **Tastatur-Weg** dieser Absicht: der
+/// Nutzer bringt das Fenster nach vorn, wählt „Aktuelles Fenster hier
+/// festhalten" aus dem Menüleisten-Menü, dieselbe Regel wird geschrieben. Ein
+/// zweiter Weg — Rechtsklick auf den grünen Fensterknopf — kam mit Issue #27
+/// hinzu (`ZoomButtonMenu`); er ist punktgenau, nicht flächig, deshalb ohne
+/// Overlay und ohne fremdes Ereignishandling zu schlucken.
 public enum FrontmostWindow {
 
     /// What the pin needs to know about the window in front.

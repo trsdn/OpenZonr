@@ -109,10 +109,13 @@ struct MenuContent: View {
 
     /// The 90 % case: „diese App immer hier öffnen“.
     ///
-    /// The issue asks for a right click on the placed window. That is not
-    /// reachable with public API — see ``FrontmostWindow`` for why — so the same
-    /// intent is expressed from the menu: the user has already put the window
-    /// where it belongs, this entry writes that down.
+    /// Seit Issue #27 gibt es zwei Wege: der Menüleisten-Eintrag hier und ein
+    /// Rechtsklick auf den grünen Fensterknopf (siehe ``ZoomButtonMenu``).
+    /// Beide gehen durch denselben ``QuickPin``, keine zweite Buchhaltung.
+    /// Der Menüleisten-Weg bleibt, weil er tastaturbedienbar ist und ohne
+    /// Zeiger auskommt — bei einem Fenster, das gerade wo anders hin will,
+    /// aber die App-Zuordnung schon steht, ist er kürzer als „raus zum
+    /// grünen Knopf".
     /// Says out loud that another window manager is running.
     ///
     /// OpenZonr does not try to win against it. Two tools that both show an

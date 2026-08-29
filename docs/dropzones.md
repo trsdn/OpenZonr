@@ -94,6 +94,44 @@ Marke gezeichnet wird, kein Marken-Treffer ist. Ist die Zone zu klein für Marke
 plus verbleibenden Streifen, wird gar keine Marke gezeichnet — dann ist jeder
 Drop einmalig, ohne dass der Controller einen zweiten Pfad kennen muss.
 
+## Rechtsklick am grünen Knopf — Menü statt Ziehen (Issue #27)
+
+Manche Züge kann sich der Nutzer sparen. Ein Rechtsklick auf den grünen
+Fensterknopf öffnet ein eigenes Menü mit den Zonen des Bildschirms, auf dem
+das Fenster mehrheitlich liegt, beim Namen. Ein Klick platziert das Fenster
+einmalig; ⌥ + Klick macht daraus die Regel — durch **denselben `QuickPin`**
+wie Menüleisten-Eintrag und Anheft-Marke. Keine zweite Buchhaltung.
+
+Der Weg dorthin:
+
+- Der bestehende `EventTapDragTracker` hört zusätzlich auf `rightMouseDown`.
+  Ein separater Rückruf (`onRightClick`) reicht das Ereignis am Zug vorbei.
+  Der Tap ist derselbe, weil zwei Taps dieselbe Berechtigung zweimal
+  verlangten — reine Verdoppelung.
+- `ZoomButtonLookup.read(atAccessibilityPoint:primaryTopY:)` in `OpenZonrMac`
+  ermittelt Fenster und Zoom-Knopf-Rahmen. Drei Ausgänge: `found`,
+  `zoomButtonUnavailable`, `noWindow` — jede Trennung ist mit Vorsatz.
+- `zoomButtonHitTest(point:zoomButtonFrame:)` in `OpenZonrCore` prüft die
+  Geometrie. Reine Funktion, headless testbar — die Trefferprüfung ohne
+  Bedienungshilfen-Freigabe war die Vorgabe aus dem Issue.
+- `ZoomButtonMenu` in `OpenZonrApp` baut das `NSMenu` an der Knopfposition
+  und routet den Klick durch `WatchEngine.place(dropped:application:into:)`
+  (einmalige Platzierung) und optional durch `AppModel.apply(_:to:)`
+  (`QuickPin` schreibt die Regel).
+
+**Zwei Fallen, ehrlich benannt (aus dem Issue):**
+
+- **`.listenOnly` kann nichts schlucken.** Zeigt eine App doch ein Menü auf
+  Rechtsklick am Zoom-Knopf, erscheinen zwei. Gemessen sind zwei Apps
+  (TextEdit, Safari) ohne eigenes Menü, **nicht alle**. Ein Ausweichweg
+  (nur reagieren, wenn kurz kein fremdes Menüfenster erscheint) ist erst
+  fällig, wenn ein Gegenbeispiel gemessen ist — nicht auf Verdacht.
+- **`kAXZoomButtonAttribute` fehlt bei manchen Fenstern.** Beim Messen zu
+  Issue #27 lieferte ein Finder-Fenster keinen. In dem Fall darf nichts
+  passieren — aber **erkennbar nichts**, nicht stumm. `ZoomButtonMenu`
+  geht durch `AppModel.reportPinFailure` mit einer Meldung, die den Namen
+  der App nennt.
+
 ## Was ausdrücklich nicht gebaut wird — und warum
 
 Drei naheliegende Wege, die Regel *im Zug* zu setzen, sind gemessen ausgeschieden.
@@ -229,6 +267,7 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | Einschalter per ⌘ (`showsWhile`-Form, neue Vorgabe) | **Bewiesen**, headless | `DropzoneActivationTests`; ohne ⌘ liefert die Aktivierung `awaitingModifier(.command)` mit deutschem Grund |
 | Migration alter Konfigurationen (`suppressionModifier` → `showsUnless`) | **Bewiesen**, headless | `DropzoneSettingsDecodingTests`, mit Vorrangregel für gleichzeitig vorhandene alte und neue Schlüssel |
 | Trefferprüfung auf der Anheft-Marke | **Bewiesen**, headless | `DropzonePinBadgeTests`, samt Invariante „Marke schluckt nie die ganze Zone" über Zonengrößen von 60 bis 4000 Punkten |
+| Trefferprüfung auf dem Zoom-Knopf | **Bewiesen**, headless | `ZoomButtonHitTests`; drei-wertig (`hit`/`missed`/`buttonUnavailable`), damit fehlendes `AXZoomButton` nicht mit „daneben" verwechselt wird |
 | Marken-Pfad umgeht den `offerRule`-Schalter | **Bewiesen**, headless | `DropRuleOfferPinTests`; sonst würde bei ausgeschaltetem Panel jede Marke stumm nichts tun |
 | Mindeststrecke vor dem Einblenden | **Bewiesen**, headless | verhindert Flackern beim bloßen Anklicken |
 | Ableitung Ablegen → Regel | **Bewiesen**, headless | `DropRuleOfferTests`; zweimal Ablegen verdoppelt die Regel nicht |
@@ -248,6 +287,10 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | **Angebotspanel im Betrieb** | **Nicht gemessen** | Erscheint nur nach einem echten Ablegen. Dass es den Fokus nicht stiehlt, folgt aus `.nonactivatingPanel`; belegt ist es nicht. Seit Issue #23 ist die Vorgabe ohnehin *aus* — der Weg bleibt nur, weil er ohne zusätzlichen Zustand verlässlich ist. |
 | **Auffindbarkeit der Anheft-Marke** | **Nicht gemessen** | Ob eine 24-Punkt-Marke oben rechts einer Zone im Gebrauch als *hier festhalten* verstanden wird — oder ob sie zwischen Titel­leisten und Fenster­rand unauffällig verschwindet — braucht eine Hand an der Maus und mehrere Nutzer. Was headless prüfbar ist (sitzt sie in der Ecke, deckt sie nie die ganze Zone ab), ist geprüft. |
 | **Verhalten von ⌘-Ziehen mit der Hand** | **Nicht gemessen** | Ob es angenehm ist, ⌘ über die Dauer eines Zugs zu halten, und ob die Umkehrung „nichts drücken heißt: keine Zonen" für den Nutzer stimmig ist, ist ohne echten Zug nicht zu beurteilen. Was gemessen ist, ist der Preis: ⌘-Ziehen bringt heute schon Hintergrundfenster nicht nach vorn, und diese Nebenwirkung wandert mit. |
+| **Doppelte Menüs am grünen Knopf** | **Nicht gemessen für alle Apps** | Gemessen sind TextEdit und Safari (kein App-Menü auf Rechtsklick am Zoom-Knopf, Positivkontrolle bestanden). Für **alle anderen Apps** ist es nicht gemessen. Der Tap ist `.listenOnly` und kann nichts schlucken — zeigt eine App dort doch selbst ein Menü, erscheinen zwei. Ein Ausweichweg wird erst gebaut, wenn ein Gegenbeispiel gemessen ist. |
+| **Erscheinen und Bedienbarkeit des Menüs am Bildschirm** | **Nicht gemessen** | Ob das `NSMenu` an der berechneten Position aufgeht, ob es die richtigen Zonen zeigt und ob der ⌥-Zusatz beim *Klick* korrekt gelesen wird, braucht eine Hand an der Maus — headless nicht prüfbar. Zonenermittlung und Trefferprüfung sind headless getestet, die AppKit-Anzeige nicht. |
+| **Verhalten auf Fenstern ohne `kAXZoomButton`** | **Gemessen für ein Finder-Fenster** | Ein Finder-Fenster lieferte kein `AXZoomButton` — der Fall ist im Code als `zoomButtonUnavailable` ausdrücklich getrennt und geht durch `AppModel.reportPinFailure`. Ob **jedes** Finder-Fenster (und andere AXScrollArea-artige Fenster) es genauso hält, ist nicht gemessen. |
+| **Systemmenü beim Schweben mit eingeschalteter macOS-Fensteranordnung** | **Nicht gemessen** | Auf dieser Maschine ist `EnableTilingByEdgeDrag = 0`. Ob das Schweben-Menü der macOS-Fensteranordnung mit dem Rechtsklick-Menü kollidiert (verschiedene Gesten, aber am selben Pixel), braucht eine Maschine mit eingeschalteter Fensteranordnung und eine Positivkontrolle für das Schweben-Menü — beides fehlt. |
 
 Kurz: Alles, was ohne einen echten Zug beweisbar ist, ist bewiesen. Alles, was
 einen braucht, ist als ungemessen ausgewiesen. Der Schnitt zwischen beidem war
@@ -271,19 +314,22 @@ Sources/OpenZonrCore/
   Dropzone/DropzoneSettings.swift     Einstellungen, Modifikator, Aktivierung.
   Dropzone/DropzoneOverlayPlan.swift  Was das Overlay zeigen soll.
   Dropzone/DropRuleOffer.swift        Ablegen → QuickPin.Request.
+  Dropzone/ZoomButtonHit.swift        Trefferprüfung am grünen Knopf (Issue #27).
   Dropzone/CompetingWindowManagers.swift
 
 Sources/OpenZonrMac/
   Dropzone/WindowDragTracker.swift    Gemeinsame Typen beider Wege.
-  Dropzone/EventTapDragTracker.swift  Der gewählte Weg.
+  Dropzone/EventTapDragTracker.swift  Der gewählte Weg. Seit #27 auch rightMouseDown.
   Dropzone/AXMovedDragTracker.swift   Der Vergleichsmaßstab.
   Dropzone/DragMeasurement.swift      Die Statistik der Messung.
+  Dropzone/ZoomButtonLookup.swift     AX-Abfrage nach Fenster und Zoom-Knopf.
   CommandLine/DragProbeCommand.swift  openzonr dragprobe.
 
 Sources/OpenZonrApp/
   Dropzone/DropzoneController.swift   Verdrahtung, sonst nichts.
   Dropzone/DropzoneOverlay.swift      Ein durchlässiges Fenster je Display.
   Dropzone/DropOfferPanel.swift       „Immer hier öffnen?"
+  Dropzone/ZoomButtonMenu.swift       Rechtsklickmenü am grünen Knopf.
 ```
 
 Die Trennung ist die Antwort auf die fehlende Berechtigung: In `OpenZonrCore`

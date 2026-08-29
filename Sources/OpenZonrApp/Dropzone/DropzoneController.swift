@@ -17,6 +17,7 @@ final class DropzoneController {
     private let model: AppModel
     private let overlay = DropzoneOverlay()
     private let offerPanel = DropOfferPanel()
+    private lazy var zoomMenu = ZoomButtonMenu(model: model)
     private var tracker: (any WindowDragTracker)?
 
     /// The drag in progress.
@@ -60,6 +61,13 @@ final class DropzoneController {
         let tap = EventTapDragTracker(primaryTopY: arrangement.primaryTopY)
         tap.minimumDragDistance = settings.minimumDragDistance
         tap.onEvent = { [weak self] event in self?.handle(event) }
+        tap.onRightClick = { [weak self] appKitPoint, accessibilityPoint in
+            // Der Rechtsklick geht am Zug vorbei. Das Menü prüft selbst, ob am
+            // Zeigerpunkt tatsächlich der grüne Knopf liegt; passt es nicht,
+            // passiert stumm nichts (oder erkennbar nichts, wenn das Fenster
+            // keinen Zoom-Knopf-Rahmen liefert — siehe Issue #27).
+            self?.zoomMenu.show(atAppKitPoint: appKitPoint, accessibilityPoint: accessibilityPoint)
+        }
 
         do {
             try tap.start()
