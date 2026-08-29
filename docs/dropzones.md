@@ -368,6 +368,37 @@ statt auf `OptionSet.contains`: unendliche Rekursion, SIGBUS in jedem Test, der
 die Einstellungen anfasste — und ein Absturz, der über die Ursache nichts sagt.
 Die Methode heißt jetzt `holds(_:)`, damit der Fehler nicht wieder möglich ist.
 
+**Keine AX-Abfrage im Tap-Rückruf, seit Issue #26.** Der erste Fehlerbericht aus
+echter Benutzung: das Overlay erschien und war sofort wieder weg, obwohl ⌘
+gehalten wurde. Ursache war eine `AXUIElementCopyElementAtPosition`-Kette
+**innerhalb** des `CGEventTap`-Rückrufs — Median 0,3 – 76,7 ms, Maximum 970 ms
+(Messung 30.08.2026, vier Punkte, je fünf Wiederholungen, vier Läufe). macOS
+schaltete den zu langsamen Tap mit `kCGEventTapDisabledByTimeout` ab, der
+Handler schaltete ihn wieder ein — und meldete `.cancelled`, was das Overlay
+verbarg. Der Fix zerlegt das in drei Zusicherungen:
+
+1. **Die Abfrage läuft außerhalb des Rückrufs.** Beim `leftMouseDown` wird der
+   Fenster-Lookup als `Task { @MainActor in … }` angestoßen; der Rückruf ist
+   längst zurückgekehrt, wenn sie läuft. Bis die Mindeststrecke zurückgelegt
+   ist, vergeht ohnehin Zeit — das Ergebnis liegt dann meist schon vor. Ist es
+   noch nicht da, wartet der Tracker still; wird es fertig, reicht er `.began`
+   selbst nach.
+2. **Ein Timeout beendet den Zug nicht.** Der Tap wird wieder eingeschaltet,
+   `dragging` und der Druckpunkt bleiben. Das nächste `leftMouseDragged`
+   liefert weiter `.moved`. Nur `kCGEventTapDisabledByUserInput` — das echte
+   Ende der Beobachtung — beendet den Zug. Und wenn der `mouseUp` selbst im
+   Aussetzer verlorenging, wird das beim nächsten `mouseDown` sauber gemeldet,
+   statt bis in alle Ewigkeit im Zug festzuhängen.
+3. **Ein Abbruch ist nicht mehr stumm.** Der Controller schickt den Grund
+   durch `AppModel.reportPinFailure(…)` — denselben Kanal wie die Menüwege —
+   statt ihn nur in `Log.detail` zu verstecken. Wenn das Overlay verschwindet,
+   erfährt der Nutzer, warum.
+
+Prüfbar ist die Zustandsmaschine headless, weil sie hinter einer Enum `Input`
+sitzt und der Lookup als Closure injizierbar ist. Der Test, der belegt, dass
+ein Timeout einen laufenden Zug **nicht** beendet, steht in
+`EventTapDragTrackerTests.timeoutDoesNotCancelDrag`.
+
 ---
 
 ## Bedienung

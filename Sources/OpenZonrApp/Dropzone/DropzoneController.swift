@@ -120,7 +120,13 @@ final class DropzoneController {
             dragged = nil
 
         case let .cancelled(reason):
+            // Ein Abbruch trifft den Nutzer mitten in einer sichtbaren Geste:
+            // das Overlay verschwindet, und ohne Hinweis bleibt unklar warum.
+            // Deshalb geht die Meldung durch denselben Kanal wie andere
+            // sichtbare Fehler dieses Wegs (`AppModel.lastPinMessage`), nicht
+            // nur ins Protokoll. Siehe Issue #26 (Fehler C).
             Log.detail("Zug abgebrochen: \(reason)")
+            model.reportPinFailure("Der Zug wurde abgebrochen: \(reason)")
             overlay.hide()
             origin = nil
             dragged = nil
