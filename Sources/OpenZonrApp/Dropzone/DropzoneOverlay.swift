@@ -115,7 +115,55 @@ final class DropzoneOverlayView: NSView {
             path.stroke()
 
             if isHighlighted { drawName(of: zone, in: rect) }
+            drawPinBadge(of: zone)
         }
+    }
+
+    /// The pin badge as the mouse sees it.
+    ///
+    /// A release inside this square writes a rule; a release anywhere else in
+    /// the zone does not. The hit test is in ``DropzoneMap/isOnPinBadge(_:of:)``
+    /// and shares neither state nor code with this drawing — the constants
+    /// live in ``DropzoneMap/pinBadgeFrame(for:)`` and are the same in both
+    /// places. If they ever disagreed, the shape and the target would drift
+    /// apart, which is exactly the silent-failure class this project catches
+    /// with tests.
+    private func drawPinBadge(of zone: Dropzone) {
+        guard let badge = DropzoneMap.pinBadgeFrame(for: zone) else { return }
+        let rect = NSRect(
+            x: badge.x - offset.x,
+            y: badge.y - offset.y,
+            width: badge.width,
+            height: badge.height
+        )
+        let path = NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6)
+        NSColor.black.withAlphaComponent(0.55).setFill()
+        path.fill()
+        NSColor.white.withAlphaComponent(0.9).setStroke()
+        path.lineWidth = 1
+        path.stroke()
+
+        // A pin, drawn as a symbol rather than the SF Symbols glyph, because
+        // the overlay's context is `.floating` and outside any window: the
+        // glyph would need `NSImage(systemSymbolName:accessibilityDescription:)`
+        // and a scale that follows the display, and getting either wrong is
+        // silent. A two-line pin is unmistakable in a 24-point square.
+        let inset = rect.insetBy(dx: 6, dy: 6)
+        let head = NSBezierPath(ovalIn: NSRect(
+            x: inset.midX - 4,
+            y: inset.maxY - 8,
+            width: 8,
+            height: 8
+        ))
+        NSColor.white.setFill()
+        head.fill()
+
+        let needle = NSBezierPath()
+        needle.move(to: NSPoint(x: inset.midX, y: inset.maxY - 4))
+        needle.line(to: NSPoint(x: inset.midX, y: inset.minY))
+        needle.lineWidth = 2
+        NSColor.white.setStroke()
+        needle.stroke()
     }
 
     private func drawName(of zone: Dropzone, in rect: NSRect) {

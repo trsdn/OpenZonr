@@ -457,11 +457,14 @@ Vorgaben, die jede Regel erbt, solange sie sie nicht überschreibt.
   },
 
   "dropzones": {
-    "enabled": true,                    // Overlay beim Ziehen
-    "suppressionModifier": "option",    // "option" | "command" | "control" | "shift" | "none"
-    "offerRule": true,                  // nach dem Ablegen „immer hier öffnen?" fragen
-    "minimumDragDistance": 12,          // Punkte, bevor das Overlay erscheint
-    "warnAboutCompetingManagers": true  // vor Magnet & Co. warnen
+    "enabled": true,                              // Overlay beim Ziehen
+    "activation": {"showsWhile": "command"},      // Vorgabe seit Issue #23:
+                                                  //   {"showsWhile": "X"}  – Zonen nur, solange X gehalten wird
+                                                  //   {"showsUnless": "X"} – Zonen immer, außer wenn X gehalten wird
+                                                  //   X ist "option" | "command" | "control" | "shift" | "none"
+    "offerRule": false,                           // nach dem Ablegen „immer hier öffnen?" fragen (aus)
+    "minimumDragDistance": 12,                    // Punkte, bevor das Overlay erscheint
+    "warnAboutCompetingManagers": true            // vor Magnet & Co. warnen
   }
 }
 ```
@@ -492,10 +495,33 @@ selbst heraus, darf die Regel es nicht zurückreißen.
 Der ganze Block ist optional; eine `config.json` ohne ihn lädt unverändert und
 bekommt die oben gezeigten Werte. Jedes einzelne Feld ist ebenfalls optional.
 
-`suppressionModifier` bestimmt, welche Taste das Overlay unterdrückt, damit frei
-gezogen werden kann. Voreingestellt ist ⌥ und nicht ⌘, weil ⌘-Ziehen auf macOS
-bereits bedeutet „Hintergrundfenster bewegen, ohne es zu aktivieren". `"none"`
-schaltet die Unterdrückung ab.
+`activation` sagt, **wann** die Zonen erscheinen. Zwei Formen, eine Datei:
+
+- `{"showsWhile": "command"}` – Vorgabe seit Issue #23. Die Zonen erscheinen
+  nur, solange ⌘ gehalten wird. Ohne die Taste passiert nichts — die alte
+  „ziehen immer, unterdrücken mit ⌥"-Geste ist absichtlich getauscht (Preis
+  und Begründung in [dropzones.md](dropzones.md)).
+- `{"showsUnless": "option"}` – die ältere Polarität. Die Zonen erscheinen bei
+  jedem Zug; die genannte Taste silenced sie. Wer die alte Geste möchte,
+  schaltet hierher zurück.
+
+`"none"` innerhalb der `showsUnless`-Form schaltet die Unterdrückung ab: dann
+gibt es keinen Weg zum freien Ziehen mehr, was der Nutzer wählen darf, aber
+nicht die Vorgabe ist.
+
+**Alte Konfigurationen laden weiter.** Eine `config.json` mit dem früheren
+Feld `suppressionModifier: "option"` (statt `activation`) wird beim Laden auf
+`activation: {"showsUnless": "option"}` abgebildet — dieselbe Polarität, die
+sie ausdrückte. Neu geschrieben wird nur das neue Feld. Sind zufällig beide
+Felder in der Datei, gewinnt das neue.
+
+`offerRule` bestimmt, ob nach einem Ablegen das Panel „Diese App immer hier
+öffnen?" erscheint. **Seit Issue #23 ist die Vorgabe `false`.** Statt der
+Rückfrage danach trägt jede sichtbare Zone eine kleine Anheft-Marke: loslassen
+auf der Marke schreibt die Regel in derselben Bewegung, loslassen daneben ist
+eine einmalige Platzierung. Der Menü­eintrag „Aktuelles Fenster hier festhalten"
+schreibt die gleiche Regel über denselben `QuickPin` — der Weg bleibt für den
+Fall, dass die Marke nicht getroffen war.
 
 `minimumDragDistance` verhindert, dass ein bloßer Klick auf eine Titelleiste das
 Overlay aufblitzen lässt.
@@ -504,8 +530,8 @@ Overlay aufblitzen lässt.
 nicht nur die Automatik.
 
 Alles Weitere — die Wahl `CGEventTap` statt `kAXMovedNotification` mit Zahlen,
-das Verhalten neben Magnet und was daran ungemessen ist — steht in
-[dropzones.md](dropzones.md).
+das Verhalten neben Magnet, der Tausch bei ⌘ und was daran ungemessen ist —
+steht in [dropzones.md](dropzones.md).
 
 ---
 
