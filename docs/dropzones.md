@@ -377,12 +377,17 @@ schaltete den zu langsamen Tap mit `kCGEventTapDisabledByTimeout` ab, der
 Handler schaltete ihn wieder ein — und meldete `.cancelled`, was das Overlay
 verbarg. Der Fix zerlegt das in drei Zusicherungen:
 
-1. **Die Abfrage läuft außerhalb des Rückrufs.** Beim `leftMouseDown` wird der
-   Fenster-Lookup als `Task { @MainActor in … }` angestoßen; der Rückruf ist
-   längst zurückgekehrt, wenn sie läuft. Bis die Mindeststrecke zurückgelegt
-   ist, vergeht ohnehin Zeit — das Ergebnis liegt dann meist schon vor. Ist es
-   noch nicht da, wartet der Tracker still; wird es fertig, reicht er `.began`
-   selbst nach.
+1. **Die Abfrage läuft außerhalb des Rückrufs — und außerhalb des Hauptthreads.**
+   Beim `leftMouseDown` wird der Fenster-Lookup als `Task.detached` angestoßen;
+   der Rückruf ist längst zurückgekehrt, wenn sie läuft, und die Spitze
+   belegt einen Hintergrund-Thread statt der Runloop, die den Tap bedient.
+   Der Nutzer hat nachgemessen, dass die AX-Abfrage auf einem Hintergrund-Thread
+   dasselbe Ergebnis liefert wie auf dem Hauptthread (identische PIDs, drei von
+   drei Läufen; aufgewärmt gleich schnell). Wichtig ist nicht die
+   Geschwindigkeit, sondern wen die Spitze trifft. Bis die Mindeststrecke
+   zurückgelegt ist, vergeht ohnehin Zeit — das Ergebnis liegt dann meist schon
+   vor. Ist es noch nicht da, wartet der Tracker still; wird es fertig, reicht
+   er `.began` selbst nach.
 2. **Ein Timeout beendet den Zug nicht.** Der Tap wird wieder eingeschaltet,
    `dragging` und der Druckpunkt bleiben. Das nächste `leftMouseDragged`
    liefert weiter `.moved`. Nur `kCGEventTapDisabledByUserInput` — das echte

@@ -82,9 +82,12 @@ public final class EventTapDragTracker: WindowDragTracker {
     private var lastDragModifiers: ModifierState = []
 
     /// Ermittelt das Fenster unter einem Punkt in **Accessibility**‑Koordinaten.
-    /// Injizierbar, damit die Zustandsmaschine ohne echte AX-Abfrage getestet
-    /// werden kann. Der Aufruf erfolgt **nie** aus dem Tap-Rückruf.
-    private let windowLookup: @MainActor (ScreenPoint, Double) -> DraggedWindow?
+    /// Wird auf einem **Hintergrund-Thread** aufgerufen (via `Task.detached` in
+    /// `scheduleWindowLookup`) — nicht auf dem MainActor, damit die AX-Spitzen
+    /// (gemessen bis 970 ms in Issue #26) nicht den Runloop belegen, der den
+    /// Tap bedient. Injizierbar, damit die Zustandsmaschine ohne echte
+    /// AX-Abfrage getestet werden kann.
+    private let windowLookup: @Sendable (ScreenPoint, Double) -> DraggedWindow?
 
     public convenience init(primaryTopY: Double) {
         self.init(primaryTopY: primaryTopY, windowLookup: Self.window(atAccessibilityPoint:primaryTopY:))
@@ -94,7 +97,7 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// zu ersetzen und die Zustandsmaschine kopfweise durchzuspielen.
     init(
         primaryTopY: Double,
-        windowLookup: @escaping @MainActor (ScreenPoint, Double) -> DraggedWindow?
+        windowLookup: @escaping @Sendable (ScreenPoint, Double) -> DraggedWindow?
     ) {
         self.primaryTopY = primaryTopY
         self.windowLookup = windowLookup
@@ -284,12 +287,22 @@ public final class EventTapDragTracker: WindowDragTracker {
         onEvent?(.began(window, at: press))
     }
 
-    /// Stößt die AX-Abfrage außerhalb des Tap-Rückrufs an.
+    /// Stößt die AX-Abfrage außerhalb des Tap-Rückrufs **und außerhalb des
+    /// Hauptthreads** an.
     ///
-    /// Der eigentliche Aufruf landet in einer `Task` auf dem MainActor; der
-    /// aktuelle Rückruf ist bereits zurückgekehrt, wenn sie läuft. Das ist der
-    /// Kern des Fixes für Fehler A aus Issue #26: die Dauer der AX-Abfrage
-    /// darf die Rückkehr des Rückrufs nicht mehr blockieren.
+    /// Der Aufruf landet in `Task.detached` — auf einem Hintergrund-Thread. Der
+    /// Rückruf ist längst zurückgekehrt, wenn die Abfrage läuft, und der
+    /// Runloop des Hauptthreads bleibt frei, um den Tap zu bedienen und die
+    /// Oberfläche zu zeichnen. Das Ergebnis kehrt über `Task { @MainActor }` in
+    /// die Zustandsmaschine zurück.
+    ///
+    /// Warum nicht einfach `Task { @MainActor }`? Weil die AX-Abfrage dann auf
+    /// genau dem Thread landet, dessen Runloop den Tap bedient — gemessene
+    /// Spitzen bis 970 ms (Issue #26) hätten dort Ereignisse aufgestaut. Apples
+    /// Accessibility-API ist dokumentiert threadsicher; der Nutzer hat vor dem
+    /// Merge nachgemessen, dass ein Hintergrund-Aufruf dasselbe Ergebnis
+    /// liefert (siehe PR-#28-Kommentar). Wichtig ist nicht die Geschwindigkeit,
+    /// sondern wen die Spitze trifft: nicht mehr den Hauptthread.
     ///
     /// Ein Zähler verwirft veraltete Ergebnisse — falls in kurzer Folge ein
     /// zweiter `mouseDown` kommt (Doppelklick, neue Geste), zählt nur die
@@ -299,9 +312,11 @@ public final class EventTapDragTracker: WindowDragTracker {
         let token = lookupToken
         let pivot = primaryTopY
         let lookup = windowLookup
-        Task { @MainActor [weak self] in
+        Task.detached { [weak self] in
             let window = lookup(accessibilityPoint, pivot)
-            self?.applyLookupResult(window, token: token)
+            await MainActor.run {
+                self?.applyLookupResult(window, token: token)
+            }
         }
     }
 
@@ -389,7 +404,14 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// `AXParent` until something with the window role appears. The walk is
     /// bounded: a malformed hierarchy must not turn a mouse drag into an
     /// infinite loop.
-    static func window(atAccessibilityPoint point: ScreenPoint, primaryTopY: Double) -> DraggedWindow? {
+    ///
+    /// **`nonisolated`, damit der Aufruf auf einem Hintergrund-Thread laufen
+    /// kann.** Apples Accessibility-API ist dokumentiert threadsicher; das
+    /// einzige, was hier vom Hauptthread abhängen könnte, wäre die Auswertung
+    /// eines Ergebnisses in unserer Zustandsmaschine — die passiert getrennt in
+    /// `applyLookupResult(_:token:)`. Siehe Issue #26 und den Kommentar in
+    /// `scheduleWindowLookup`.
+    nonisolated static func window(atAccessibilityPoint point: ScreenPoint, primaryTopY: Double) -> DraggedWindow? {
         let systemWide = AXUIElementCreateSystemWide()
         var element: AXUIElement?
         guard AXUIElementCopyElementAtPosition(

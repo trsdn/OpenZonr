@@ -4,10 +4,14 @@ import OpenZonrCore
 
 /// The window a drag is about.
 ///
-/// Not `Sendable`: it carries an `AXUIElement`, which is a CoreFoundation type
-/// and stays on the main actor with everything else that touches Accessibility.
-@MainActor
-public struct DraggedWindow {
+/// **Nicht `@MainActor`, aber `Sendable`.** Der Typ ist ein Wertetyp mit einem
+/// `AXUIElement` — Apples Accessibility-API ist dokumentiert threadsicher, jede
+/// `AXUIElementCopy…`-Operation darf von jedem Thread aus laufen. Der frühere
+/// Grund für die Isolation war, dass alle AX-Aufrufer auf dem Hauptthread
+/// standen; das wurde mit Issue #26 aufgegeben, weil dort ein Lookup von 970 ms
+/// auf dem Hauptthread landete. Der `@unchecked`-Anteil betrifft nur, dass
+/// `AXUIElement` selbst nicht als `Sendable` deklariert ist.
+public struct DraggedWindow: @unchecked Sendable {
     public let element: AXUIElement
     public let processIdentifier: pid_t
     public let bundleIdentifier: String?
@@ -29,7 +33,7 @@ public struct DraggedWindow {
         self.frame = frame
     }
 
-    /// The window reduced to what a rule needs.
+    /// Das Fenster reduziert auf das, was eine Regel braucht.
     public var dropped: DroppedWindow {
         DroppedWindow(bundleIdentifier: bundleIdentifier, applicationName: applicationName)
     }
