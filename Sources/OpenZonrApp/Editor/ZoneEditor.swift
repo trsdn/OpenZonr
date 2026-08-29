@@ -77,11 +77,9 @@ struct ZoneEditor: View {
     // MARK: - Canvas
 
     private func canvas(layout: OpenZonrCore.Layout, display: DisplayAlias) -> some View {
-        GeometryReader { geometry in
-            // 16:10 is a stand-in, not a measurement: the real aspect ratio of a
-            // display is only known while it is connected, and the editor has to
-            // work for a screen that is currently unplugged.
-            let side = fittedRect(in: geometry.size, aspectRatio: 16.0 / 10.0)
+        let aspect = canvasAspect(for: display)
+        return GeometryReader { geometry in
+            let side = fittedRect(in: geometry.size, aspectRatio: aspect.ratio)
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Color(nsColor: .underPageBackgroundColor))
@@ -102,10 +100,63 @@ struct ZoneEditor: View {
                         }
                     }
                 }
+
+                // Die Herkunftsbeschriftung sitzt in derselben Ebene wie die
+                // Vorschau, damit sie mit ihr wandert und nicht mit dem
+                // umgebenden Fenster. Ein unbeschrifteter Wert, der aussieht
+                // wie eine Messung, ist die Fehlerklasse aus #18 — hier steht
+                // deshalb immer eine der beiden Auskünfte, nie keine.
+                aspectBadge(aspect)
+                    .frame(width: side.width, height: side.height, alignment: .bottomLeading)
+                    .allowsHitTesting(false)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
         }
         .padding(16)
+    }
+
+    /// Wählt das Vorschau-Seitenverhältnis für den gerade sichtbaren Bildschirm.
+    ///
+    /// Ist der Bildschirm mit dieser Kennung angeschlossen, kommt das echte
+    /// Verhältnis aus seinem sichtbaren Rahmen. Ist er es nicht — oder findet
+    /// sich in der Konfiguration kein Eintrag zum Alias, was der Editor sonst
+    /// nicht zulässt — bleibt es bei der beschrifteten Schätzung.
+    private func canvasAspect(for display: DisplayAlias) -> CanvasAspect {
+        guard let descriptor = document.configuration.displays.first(where: { $0.alias == display }) else {
+            return .fallback
+        }
+        return OpenZonrCore.canvasAspect(for: descriptor, snapshots: document.displaySnapshots)
+    }
+
+    @ViewBuilder
+    private func aspectBadge(_ aspect: CanvasAspect) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: aspect.source == .measured ? "checkmark.seal" : "questionmark.circle")
+            Text(aspectDescription(aspect))
+        }
+        .font(.system(.caption2, design: .monospaced))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
+        .foregroundStyle(aspect.source == .measured ? Color.secondary : Color.orange)
+        .padding(6)
+    }
+
+    private func aspectDescription(_ aspect: CanvasAspect) -> String {
+        // Verhältnis auf zwei Nachkommastellen — das entspricht der Genauigkeit,
+        // mit der man am Bild einen Unterschied überhaupt bemerkt. Bei
+        // Messungen sagen die Punktmaße daneben, was gemessen wurde.
+        let ratio = String(format: "%.2f:1", aspect.ratio)
+        switch aspect.source {
+        case .measured:
+            if let size = aspect.visibleSize {
+                let pts = "\(Int(size.width.rounded())) × \(Int(size.height.rounded())) pt"
+                return "\(ratio) · sichtbar \(pts) · gemessen"
+            }
+            return "\(ratio) · gemessen"
+        case .estimated:
+            return "\(ratio) · Bildschirm nicht angeschlossen, Seitenverhältnis geschätzt"
+        }
     }
 
     private func fittedRect(in size: CGSize, aspectRatio: Double) -> CGSize {
@@ -151,9 +202,26 @@ struct ZoneEditor: View {
 
             if let selection, let zone = layout.zones.first(where: { $0.id == selection }) {
                 Divider()
-                ZoneForm(document: document, zone: zone, layout: layout.id, display: display)
+                ZoneForm(
+                    document: document,
+                    zone: zone,
+                    layout: layout.id,
+                    display: display,
+                    visibleSize: measuredVisibleSize(for: display)
+                )
             }
         }
+    }
+
+    /// Punktmaße des sichtbaren Bereichs, wenn sie gemessen sind — sonst `nil`.
+    ///
+    /// Das Formular schreibt daneben aus `0,25` ein `1280 × 1344 pt`. Bei einer
+    /// Schätzung bleibt der Zusatz weg: eine geschätzte Punktzahl neben einer
+    /// gespeicherten Zahl behauptet mehr, als sie belegt.
+    private func measuredVisibleSize(for display: DisplayAlias) -> WindowSize? {
+        let aspect = canvasAspect(for: display)
+        guard aspect.source == .measured else { return nil }
+        return aspect.visibleSize
     }
 
     private func addZone(layout: OpenZonrCore.Layout, display: DisplayAlias) {
@@ -275,6 +343,12 @@ private struct ZoneForm: View {
     let zone: Zone
     let layout: LayoutID
     let display: DisplayAlias
+    /// Punktmaße des sichtbaren Rahmens, nur wenn sie gemessen sind.
+    ///
+    /// Gesetzt heißt: neben den Brüchen darf ein Punktmaß stehen. `nil` heißt:
+    /// die Vorschau selbst ist eine Schätzung, und ein daraus abgeleitetes
+    /// Punktmaß wäre es auch — es bleibt bei den Brüchen.
+    let visibleSize: WindowSize?
 
     var body: some View {
         Form {
@@ -292,12 +366,12 @@ private struct ZoneForm: View {
                     .foregroundStyle(.secondary)
             }
             HStack {
-                field("x", \.x)
-                field("y", \.y)
+                field("x", \.x, dimension: .width)
+                field("y", \.y, dimension: .height)
             }
             HStack {
-                field("Breite", \.width)
-                field("Höhe", \.height)
+                field("Breite", \.width, dimension: .width)
+                field("Höhe", \.height, dimension: .height)
             }
             FieldFindings(
                 path: .zoneFrame(zone.id, layout: layout, display: display),
@@ -312,17 +386,43 @@ private struct ZoneForm: View {
         .padding(10)
     }
 
-    private func field(_ title: String, _ keyPath: WritableKeyPath<RelativeRect, Double>) -> some View {
+    private enum Dimension { case width, height }
+
+    private func field(
+        _ title: String,
+        _ keyPath: WritableKeyPath<RelativeRect, Double>,
+        dimension: Dimension
+    ) -> some View {
         LabeledContent(title) {
-            TextField(title, value: Binding(
-                get: { zone.frame[keyPath: keyPath] },
-                set: { value in
-                    var edited = zone
-                    edited.frame[keyPath: keyPath] = value
-                    document.apply { $0.updating(zone: edited, layout: layout, display: display) }
+            HStack(spacing: 6) {
+                TextField(title, value: Binding(
+                    get: { zone.frame[keyPath: keyPath] },
+                    set: { value in
+                        var edited = zone
+                        edited.frame[keyPath: keyPath] = value
+                        document.apply { $0.updating(zone: edited, layout: layout, display: display) }
+                    }
+                ), format: .number.precision(.fractionLength(0...3)))
+                .frame(width: 70)
+
+                if let points = pointHint(for: zone.frame[keyPath: keyPath], dimension: dimension) {
+                    Text(points)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
                 }
-            ), format: .number.precision(.fractionLength(0...3)))
-            .frame(width: 70)
+            }
         }
+    }
+
+    /// Rechnet eine gespeicherte Bruchzahl in Punkte um, wenn Punkte gemessen sind.
+    ///
+    /// Ohne gemessene Maße bleibt der Zusatz weg. Punkte, die aus einem
+    /// geschätzten 16:10 abgeleitet wären, sind gerade das, was die
+    /// Fehlerklasse aus #18 ausmacht.
+    private func pointHint(for fraction: Double, dimension: Dimension) -> String? {
+        guard let size = visibleSize else { return nil }
+        let base = dimension == .width ? size.width : size.height
+        let points = Int((fraction * base).rounded())
+        return "≙ \(points) pt"
     }
 }

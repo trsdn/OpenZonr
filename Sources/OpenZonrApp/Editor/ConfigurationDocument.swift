@@ -33,6 +33,17 @@ final class ConfigurationDocument {
     private(set) var findings: FindingIndex
     private(set) var saveState: SaveState = .unchanged
 
+    /// Die zum Zeitpunkt des Öffnens angeschlossenen Bildschirme.
+    ///
+    /// Wird beim Erzeugen einmal gefüllt und danach nicht mehr angerührt. Der
+    /// Zoneneditor liest daraus das echte Seitenverhältnis für die Vorschau
+    /// (siehe ``canvasAspect(for:snapshots:)``). Ein Umstecken während der
+    /// Sitzung schlägt hier bewusst nicht durch: der Editor bearbeitet
+    /// Layouts, die auch für abgezogene Bildschirme gelten, und ein Wechsel
+    /// des Bezugsbildschirms mitten im Ziehen einer Zone ist keine Hilfe,
+    /// sondern ein Sprung im Bild.
+    let displaySnapshots: [DisplaySnapshot]
+
     /// The configuration as it was when the session started, for ``revert()``.
     private var original: Configuration
 
@@ -43,7 +54,12 @@ final class ConfigurationDocument {
     /// the configuration that is now on disk.
     var onSave: ((Configuration) -> Void)?
 
-    init(configuration: Configuration, url: URL, store: ConfigurationStore = ConfigurationStore()) {
+    init(
+        configuration: Configuration,
+        url: URL,
+        displaySnapshots: [DisplaySnapshot] = [],
+        store: ConfigurationStore = ConfigurationStore()
+    ) {
         let report = store.validate(configuration)
         self.configuration = configuration
         self.original = configuration
@@ -51,6 +67,7 @@ final class ConfigurationDocument {
         self.store = store
         self.report = report
         self.findings = FindingIndex(report)
+        self.displaySnapshots = displaySnapshots
     }
 
     var fileURL: URL { url }
