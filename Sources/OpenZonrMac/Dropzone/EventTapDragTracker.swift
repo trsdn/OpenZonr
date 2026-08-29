@@ -13,6 +13,15 @@ import OpenZonrCore
 /// feature hangs on knowing exactly when the user let go, and the Accessibility
 /// API has no notification for it.
 ///
+/// ## Second use: right-clicks on the zoom button
+///
+/// Seit Issue #27 hört derselbe Tap zusätzlich auf `rightMouseDown` — nicht,
+/// weil er begrifflich für Rechtsklicks zuständig wäre, sondern weil er der
+/// einzige Ort im Programm ist, an dem Mausereignisse hereinkommen. Ein
+/// zweiter Tap verlangte dieselbe Berechtigung noch einmal und wäre reine
+/// Verdoppelung. Der Rechtsklick geht durch einen **eigenen** Rückruf
+/// (``onRightClick``), damit die Zug-Zustandsmaschine unbehelligt bleibt.
+///
 /// ## What it costs
 ///
 /// A tap sees every mouse event in the session, including all the ones that have
@@ -27,11 +36,29 @@ import OpenZonrCore
 /// re-enabled and a running drag is **kept**, because the mouse button is
 /// still down and the gesture has only lost an observation, not itself.
 /// See Issue #26 and `docs/dropzones.md`.
+///
+/// Listen-only heißt auch: der Rechtsklick kann nicht verschluckt werden.
+/// Zeigt eine App selbst ein Menü auf Rechtsklick am Zoom-Knopf, erscheinen
+/// zwei. Gemessen sind zwei Apps (TextEdit und Safari) ohne eigenes Menü,
+/// nicht alle — das steht als *nicht gemessen* in der Doku, nicht als
+/// Zusicherung.
 @MainActor
 public final class EventTapDragTracker: WindowDragTracker {
 
     public var onEvent: ((WindowDragEvent) -> Void)?
     public let name = "CGEventTap"
+
+    /// Rückruf für Rechtsklicks — beide Punkte, damit der Empfänger sowohl in
+    /// AppKit-Koordinaten (für das Menü) als auch in Accessibility-Koordinaten
+    /// (für den Fenster- und Knopfrahmen-Lookup) rechnen kann, ohne den Pivot
+    /// nochmal selbst zu spiegeln.
+    ///
+    /// Warum getrennt vom Zug-Rückruf: ein Rechtsklick hat keinen Anfang, keine
+    /// Bewegung und kein Ende. In die ``WindowDragEvent``-Zustandsmaschine
+    /// gehört er nicht — der Tap ist nur zufällig ein guter Ort, um das
+    /// Ereignis überhaupt zu sehen. Zwei Kanäle sind ehrlicher als ein
+    /// überladener.
+    public var onRightClick: ((_ appKitPoint: ScreenPoint, _ accessibilityPoint: ScreenPoint) -> Void)?
 
     /// Set from the outside to record raw event arrivals for the probe.
     ///
@@ -117,6 +144,7 @@ public final class EventTapDragTracker: WindowDragTracker {
         let mask = (1 << CGEventType.leftMouseDown.rawValue)
             | (1 << CGEventType.leftMouseDragged.rawValue)
             | (1 << CGEventType.leftMouseUp.rawValue)
+            | (1 << CGEventType.rightMouseDown.rawValue)
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -195,6 +223,14 @@ public final class EventTapDragTracker: WindowDragTracker {
             handle(.mouseDragged(point: point, modifiers: Self.modifiers(of: event)))
         case .leftMouseUp:
             handle(.mouseUp(point: point, modifiers: Self.modifiers(of: event)))
+        case .rightMouseDown:
+            // Rechtsklick geht am Zug vorbei — der Rückruf entscheidet ganz
+            // eigenständig, ob am Zeigerpunkt ein Zoom-Knopf sitzt. Wichtig:
+            // der Tap ist `.listenOnly`, wir können den Klick nicht schlucken.
+            // Zeigt eine andere App an derselben Stelle ihr eigenes Menü,
+            // erscheinen zwei; gemessen sind zwei Apps (TextEdit, Safari)
+            // ohne Menü, nicht alle. Siehe Issue #27 und `docs/dropzones.md`.
+            onRightClick?(point, accessibilityPoint)
         default:
             break
         }
