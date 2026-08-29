@@ -295,9 +295,13 @@ jedem unsignierten Build auf, also bei jedem Mitwirkenden ohne Zertifikat. Ein
 Werkzeug, das nur `AXIsProcessTrusted()` prüft, täte dort stumm gar nichts und
 gäbe keinen Hinweis darauf, woran es liegt.
 
-**Nachgetragen:** Das Retry-Verhalten ist inzwischen gemessen — beide getesteten
-Apps fügen sich beim ersten Schreiben, siehe
-[tracer-bullet.md](tracer-bullet.md).
+**Nachgetragen:** Das Retry-Verhalten ist inzwischen gemessen. Der erste
+Nachtrag hier lautete „beide getesteten Apps fügen sich beim ersten Schreiben" —
+das galt für zwei Fälle, in denen das Fenster kaum etwas zurücklegen musste.
+Sobald ein Fenster wirklich über den Bildschirm zu ziehen ist, braucht Outlook
+einen zweiten Versuch; die Schleife ist tragend. Siehe
+[tracer-bullet.md](tracer-bullet.md), „Verifiziert: die Platzierung bei laufender
+App".
 
 ---
 

@@ -221,8 +221,92 @@ eine Abweichung von 1,0 pt bei TextEdit liegt weit innerhalb der Toleranz von
 
 Die Retry-Schleife bleibt trotzdem nötig — sie ist gegen Apps gerichtet, die
 sich wehren, und deren Verhalten ist mit einem Fake-Fenster abgedeckt
-(`Tests/OpenZonrCoreTests/RetryingWindowPlacerTests.swift`). Was die Messung
-zeigt, ist, dass sie im Normalfall nicht in Anspruch genommen wird.
+(`Tests/OpenZonrCoreTests/RetryingWindowPlacerTests.swift`).
+
+> **Nachgetragen am 29.08.2026 — der letzte Satz dieses Abschnitts war falsch.**
+> Er lautete: „Was die Messung zeigt, ist, dass sie im Normalfall nicht in
+> Anspruch genommen wird." Das galt für zwei Fälle, in denen das Fenster kaum
+> etwas zurücklegen musste. Sobald ein echtes Fenster über den Bildschirm zu
+> ziehen ist, wird die Schleife sehr wohl in Anspruch genommen — siehe
+> [„Verifiziert: die Platzierung bei laufender App"](#verifiziert-die-platzierung-bei-laufender-app).
+> Der Grund, warum sie damals nicht auffiel, ist derselbe, der die Outlook-Zeile
+> oben angreifbar macht: Outlook stand bereits an der Soll-Position.
+
+### Verifiziert: die Platzierung bei laufender App
+
+Gemessen am 29.08.2026, `main` auf `28d84e7`. Der Unterschied zur Tabelle oben
+ist nicht die Logik, sondern der **Startweg**: nicht `openzonr watch` aus einer
+Shell, sondern das signierte Bundle unter `~/Applications/OpenZonr.app`, über
+LaunchServices gestartet, mit der von Hand erteilten Bedienungshilfen-Freigabe.
+Das war die Lücke, die [`menueleisten-app.md`](menueleisten-app.md) offen ließ.
+
+Vorbedingungen, jede einzeln geprüft statt angenommen:
+
+```
+selftest über LaunchServices (Elternprozess launchd)
+  probeWindowAccess():  granted
+Gegenprobe an fremder App: Safari → AXWindow / AXStandardWindow, Frame 1820,74 1202x1108
+Magnet:                   läuft nicht (pgrep, nicht vermutet)
+Displays:                 4 aktiv, beide Fingerprint-Displays vorhanden
+Profil:                   „Schreibtisch" (messung) greift
+```
+
+| Fall | Zone | Ist **mit** OpenZonr | Ist **ohne** OpenZonr | Aussagekraft |
+|---|---|---|---|---|
+| TextEdit, Kaltstart | `c49rg9x/right-quarter` | `3840,31 1280x1343` | `1920,32 1280x1343` | **beweisend** — 1920 pt Versatz, gleiche Größe |
+| Outlook, Kaltstart | `c49rg9x/center-half` | `1280,31 2560x1344` | `1280,31 2560x1344` | **wertlos** — siehe unten |
+| Outlook gegen die eigene Erinnerung | `c49rg9x/left-quarter` | `0,31 1280x1344` | (erinnert `1280,…`) | **beweisend** — siehe unten |
+
+**Die mittlere Zeile steht absichtlich in dieser Tabelle.** Outlook stellt die
+Position seines Fensters selbst wieder her. Es landet also auch dann in
+`center-half`, wenn OpenZonr gar nicht läuft — die Messung gelingt ohne die
+Sache, die sie belegen soll, und belegt damit nichts. Sie war der erste Versuch
+und wäre als Erfolg durchgegangen.
+
+Entscheidbar wird der Fall erst, wenn beide Antworten **auseinanderfallen**:
+eine Kopie der Konfiguration (`watch --config`, nichts am Original verändert)
+schickt die Rolle `mail` nach `left-quarter`. Outlook erinnert `x=1280`, die
+Regel verlangt `x=0`. Wörtlich aus dem Protokoll:
+
+```
+▸ Neues Fenster: com.microsoft.Outlook  1280,31 2560x1344  subrole=AXUnknown
+  ignoriert — Subrole AXUnknown ist nicht freigegeben.
+▸ Neues Fenster: com.microsoft.Outlook  1280,31 2560x1344  subrole=AXStandardWindow
+✓ Regel "outlook" → Rolle "mail" → c49rg9x/left-quarter
+  Soll-Frame 0,65 1280x1344 (AppKit) → 0,31 1280x1344 (AX)
+  Versuch 1: Soll 0,31 1280x1344 | Ist -0,31 1288x1344 | Abweichung 8.0 pt | Abweichung zu groß | 121 ms
+  Versuch 2: Soll 0,31 1280x1344 | Ist -0,31 1280x1344 | Abweichung 0.0 pt | innerhalb der Toleranz | 218 ms
+✓ Platziert nach 2 Versuchen.
+```
+
+Drei Dinge, die diese acht Zeilen belegen und die vorherige Messung nicht konnte:
+
+1. **Die App gewinnt gegen die Positionserinnerung der Ziel-App.** Genau das war
+   der Anlass des Projekts.
+2. **Die Retry-Schleife ist tragend, nicht Zierde.** Outlook fügte sich beim
+   ersten Schreiben *nicht*: 1288 statt 1280 pt breit, 8 pt über der Toleranz von
+   4 pt. Ohne den zweiten Versuch wäre das Fenster falsch stehengeblieben — und
+   die Abweichung wäre klein genug gewesen, dass niemand sie als Fehler erkannt
+   hätte. Die Aussage weiter oben, die Schleife werde „im Normalfall nicht in
+   Anspruch genommen", ist damit widerlegt.
+3. **Der Subrole-Filter arbeitet.** Outlook meldet zwei Fenster mit identischem
+   Frame; eines trägt `AXUnknown`. Ohne den Filter wäre die Platzierung auf ein
+   Phantom gegangen.
+
+**Ein Methodenfehler, der beinahe eine zweite wertlose Messung erzeugt hätte:**
+`pgrep -x Outlook` findet Outlook **nicht** — der Prozess heißt
+`Microsoft Outlook`. Ein Test, der daraufhin „nicht laufend" annimmt und
+anschließend einen Frame misst, misst ein Fenster, das seit Stunden dort steht.
+Aufgefallen ist es nur an `ps -p <pid> -o lstart`. Wer eine Platzierung als
+frisch ausgibt, muss die **Startzeit des Prozesses** belegen, nicht seine
+Abwesenheit vermuten. Aus demselben Grund taugt `ps aux | grep -i openzonr`
+nicht zur Prüfung, ob die App läuft: es trifft jeden Prozess, der den Pfad im
+Aufruf trägt. Richtig ist `pgrep -lf 'OpenZonr.app/Contents/MacOS'`.
+
+Ungemessen bleibt: der Autostart über `SMAppService` nach einer echten
+Neuanmeldung, und alles, was eine Hand an der Maus braucht — Overlay,
+echter Zug, Magnet im Konflikt, Angebotspanel (siehe
+[`dropzones.md`](dropzones.md)).
 
 ### Was die Messung an Fehlern zutage gefördert hat
 

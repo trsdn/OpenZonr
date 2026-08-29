@@ -211,7 +211,7 @@ Was am 28.08.2026 auf der Zielmaschine (macOS 26.6.2, Mac16,11) belegt ist:
 | Der Unterschied zwischen Shell- und LaunchServices-Start | **gemessen** — siehe unten |
 | Beendete Apps geben ihren Observer wieder frei | **gemessen** — `observedApplicationCount` 1 → 2 → 1; vor der Behebung 1 → 2 → 2 |
 | Der Autostart als Anmeldeobjekt überlebt eine Neuanmeldung | **nicht gemessen** — `SMAppService.register()` meldet Erfolg, ein echter Ab- und Anmeldevorgang stand nicht an |
-| **Ob TextEdit beim Start in seiner Zone landet, während die App läuft** | **nicht gemessen** — Begründung unten |
+| **Ob TextEdit beim Start in seiner Zone landet, während die App läuft** | **gemessen am 29.08.2026** — `3840,31 1280x1343` mit laufender App, `1920,32 1280x1343` ohne sie. Nachtrag unten |
 
 Der Startweg-Unterschied, wörtlich aus zwei Läufen derselben Binärdatei:
 
@@ -230,9 +230,16 @@ Der Startweg-Unterschied, wörtlich aus zwei Läufen derselben Binärdatei:
 Das bestätigt den Nachtrag in [`tracer-bullet.md`](tracer-bullet.md) unabhängig
 und macht ihn in einem Befehl reproduzierbar.
 
-### Warum die Platzierung nicht nachgemessen wurde
+### Warum die Platzierung lange nicht nachgemessen wurde
 
-Das neu gebaute Bundle unter `~/Applications/OpenZonr.app` ist in den
+> **Erledigt am 29.08.2026.** Der Nutzer hat die Freigabe von Hand erteilt; die
+> Platzierung bei laufender App ist seitdem gemessen, mit Gegenprobe und gegen
+> die Positionserinnerung der Ziel-App. Die Zahlen stehen in
+> [`tracer-bullet.md`](tracer-bullet.md) unter „Verifiziert: die Platzierung bei
+> laufender App". Der folgende Abschnitt bleibt stehen, weil die Begründung, warum
+> es kein Code-Problem war, und die Handgriffe zur Einrichtung unverändert gelten.
+
+Das neu gebaute Bundle unter `~/Applications/OpenZonr.app` war in den
 Bedienungshilfen **nicht freigegeben**. Ohne diese Freigabe sieht der Prozess
 keine Fenster, und ohne Fenster ist keine Platzierung messbar.
 
@@ -266,3 +273,10 @@ Die Platzierungslogik selbst ist gegenüber der gemessenen Fassung unverändert:
 CLI ruft heute denselben Code auf, mit dem die Messung in
 [`tracer-bullet.md`](tracer-bullet.md) entstanden ist. Das ist ein Argument, keine
 Messung — und wird hier bewusst nicht als eine ausgegeben.
+
+**Nachtrag:** Das Argument hat gehalten, aber es hätte nichts genützt, wenn es
+falsch gewesen wäre — und die Messung hat gezeigt, warum man es nicht hätte
+stehenlassen dürfen. Sie hat nämlich etwas zutage gefördert, das aus der Logik
+allein nicht folgte: Outlook wehrt sich beim ersten Schreiben und braucht einen
+zweiten Versuch. Ein Argument über unveränderten Code hätte diesen Fall nie
+gefunden, weil er nicht am Code liegt, sondern an der Ziel-App.

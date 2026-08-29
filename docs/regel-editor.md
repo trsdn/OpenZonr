@@ -174,7 +174,7 @@ ist, und der Editor muss auch für einen abgezogenen Monitor funktionieren.
 | Die Editier-Funktionen tun, was sie sollen | **gemessen** — 51 neue Tests in 4 Suites, darunter Reihenfolge, Löschsemantik, Bezeichner-Eindeutigkeit |
 | Eine umgehängte Regel gewinnt gegen eine später dazugekommene Auffangregel | **gemessen** — Gegenprobe an `DefaultRuleEngine`, und der Fehlerfall vorher bewusst reproduziert (siehe unten) |
 | Der Schnellbefehl lehnt ab, statt Wirkung zuzusagen, die ausbleibt | **gemessen** — 4 Tests an `QuickPin.objection(to:report:)`, headless |
-| **Ob der Schnellbefehl am echten Menü ablehnt** | **nicht gemessen** — `AppModel` braucht die Freigabe; geprüft ist die Entscheidung, nicht ihre Anzeige |
+| **Ob der Schnellbefehl am echten Menü ablehnt** | **nicht gemessen** — geprüft ist die Entscheidung, nicht ihre Anzeige; es fehlt eine Hand an der Maus, seit dem 29.08.2026 nicht mehr die Freigabe |
 | `PinTargetResolver` ist die Umkehrung von `DefaultZoneResolver` | **gemessen** — Rundlauftest gegen den echten Resolver, nicht gegen handgerechnete Zahlen |
 | Der 90-Prozent-Fall erzeugt eine Regel, die die Engine auch wählt | **gemessen** — Gegenprobe an `DefaultRuleEngine` im Test und am echten Konfigurationsstand, siehe unten |
 | Rundlauf gegen die **echte** Konfiguration des Nutzers | **gemessen** — auf einer Kopie, Original unverändert; Zahlen unten |
@@ -229,7 +229,17 @@ Regel, die entstanden ist.
 
 ### Warum die Oberfläche nicht nachgemessen wurde
 
-Aus demselben Grund wie in [docs/menueleisten-app.md](menueleisten-app.md): die
+> **Teilweise überholt am 29.08.2026.** Die Bedienungshilfen-Freigabe ist erteilt,
+> und die App liest Fenster — belegt in [docs/tracer-bullet.md](tracer-bullet.md).
+> Der ursprüngliche Hinderungsgrund gilt damit **nicht mehr**. Was bleibt, ist ein
+> anderer und kleinerer: Menü aufklappen, Knopf drücken, Zone ziehen — das
+> verlangt eine Hand an der Maus, keine Berechtigung. Wer diesen Abschnitt liest
+> und in den Systemeinstellungen nach einem fehlenden Haken sucht, sucht
+> vergeblich. Die Prüfliste am Ende ist unverändert gültig und jetzt
+> **durchführbar**.
+
+Der ursprüngliche Grund war derselbe wie in
+[docs/menueleisten-app.md](menueleisten-app.md): die
 Bedienungshilfen-Freigabe für `~/Applications/OpenZonr.app` muss der Nutzer von
 Hand erteilen, und der Bereich „Bedienungshilfen" der Systemeinstellungen
 liefert weder einen Accessibility-Baum noch ein Bildschirmfoto — beides bleibt
