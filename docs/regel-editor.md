@@ -162,16 +162,33 @@ zwischen zwei Zonen ist im Editor unsichtbar und auf dem Bildschirm sehr
 sichtbar. Die Zahlenfelder bleiben daneben stehen, für die Fälle, in denen eine
 Zone exakt zu einer Zone auf einem anderen Bildschirm passen muss.
 
-Das Seitenverhältnis der Miniatur ist fest 16:10 und **keine Messung**: das
-echte Verhältnis eines Bildschirms ist nur bekannt, solange er angeschlossen
-ist, und der Editor muss auch für einen abgezogenen Monitor funktionieren.
+Das Seitenverhältnis der Miniatur ist **nicht mehr fest 16:10**. Ist der zum
+gerade bearbeiteten Alias gehörende Bildschirm angeschlossen, kommt das
+Verhältnis aus dessen **sichtbarem Rahmen** (`visibleFrame`, nicht `frame`) —
+denn Zonen werden ohnehin gegen den sichtbaren Bereich aufgelöst
+(`DefaultZoneResolver`). Ist der Bildschirm gerade nicht da, bleibt 16:10 der
+Platzhalter — dann steht aber sichtbar an der Vorschau **„Bildschirm nicht
+angeschlossen, Seitenverhältnis geschätzt"**. Eine unbeschriftete Schätzung, die
+aussieht wie eine Messung, war die Fehlerklasse aus
+[#18](https://github.com/trsdn/OpenZonr/issues/18): ein Ultrawide mit 3,81:1
+wurde 1,6:1 gezeichnet, `left-quarter` sah aus wie eine schmale Säule und war
+in Wahrheit fast quadratisch. Die Auswahl „echte Maße oder Schätzung" liegt als
+reine Funktion `canvasAspect(for:snapshots:)` in `OpenZonrCore/Display/` und ist
+damit ohne angeschlossenen Bildschirm prüfbar.
+
+Solange echte Maße vorliegen, steht im Zonenformular neben jedem Bruch das
+zugehörige Punktmaß — aus `0,25` wird `≙ 1280 pt`. Bei einer Schätzung entfällt
+der Zusatz: eine geschätzte Punktzahl neben einer gespeicherten Zahl behauptete
+mehr, als sie belegt.
 
 ## Was gemessen ist und was nicht
 
 | Behauptung | Stand |
 |---|---|
-| `swift build` und `swift test` sind grün | **gemessen** — 207 Tests in 21 Suites, headless (vorher 156 in 17) |
+| `swift build` und `swift test` sind grün | **gemessen** — 280 Tests in 31 Suites, headless (zuletzt 274 in 30) |
 | Die Editier-Funktionen tun, was sie sollen | **gemessen** — 51 neue Tests in 4 Suites, darunter Reihenfolge, Löschsemantik, Bezeichner-Eindeutigkeit |
+| Das Vorschau-Seitenverhältnis kommt aus `visibleFrame`, wenn der Bildschirm da ist | **gemessen** — 6 Tests an `canvasAspect(for:snapshots:)` gegen ein Ultrawide-Fixture (5120×1344), einschließlich Gegenprobe „nicht `frame`" und „falscher Bildschirm angeschlossen ≠ stiller Ersatz" |
+| **Ob die Vorschau am echten Bildschirm danach passt** | **nicht gemessen** — die Rechnung ist geprüft, das Bild braucht eine Hand an der Maus |
 | Eine umgehängte Regel gewinnt gegen eine später dazugekommene Auffangregel | **gemessen** — Gegenprobe an `DefaultRuleEngine`, und der Fehlerfall vorher bewusst reproduziert (siehe unten) |
 | Der Schnellbefehl lehnt ab, statt Wirkung zuzusagen, die ausbleibt | **gemessen** — 4 Tests an `QuickPin.objection(to:report:)`, headless |
 | **Ob der Schnellbefehl am echten Menü ablehnt** | **nicht gemessen** — geprüft ist die Entscheidung, nicht ihre Anzeige; es fehlt eine Hand an der Maus, seit dem 29.08.2026 nicht mehr die Freigabe |

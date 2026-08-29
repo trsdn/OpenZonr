@@ -374,7 +374,15 @@ final class AppModel {
 
     /// An editing session wired up to reload the engine after a successful write.
     private func makeDocument(for configuration: Configuration) -> ConfigurationDocument {
-        let document = ConfigurationDocument(configuration: configuration, url: configurationURL)
+        // Snapshots werden hier einmalig eingesammelt und ins Document gereicht,
+        // damit der Zoneneditor die Vorschau am echten Seitenverhältnis
+        // ausrichten kann. `SystemDisplays` liegt in `OpenZonrMac` und ist im
+        // Editor selbst nicht erreichbar — die Trennung bleibt so bestehen.
+        let document = ConfigurationDocument(
+            configuration: configuration,
+            url: configurationURL,
+            displaySnapshots: SystemDisplays.snapshots()
+        )
         document.onSave = { [weak self] _ in
             // Reload rather than adopting the in-memory copy: what the engine
             // runs on should be what is on disk, migration and all.
