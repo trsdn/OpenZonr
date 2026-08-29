@@ -5,9 +5,11 @@ Datenmodell, Konfigurationsspeicher, Regel-Engine und die Anbindung an
 Accessibility und CoreGraphics sind gebaut und getestet.
 
 **Der Kern funktioniert und ist gemessen.** Am echten Vier-Display-Schreibtisch
-landen TextEdit und Outlook beim Start in ihrer Zone — jeweils beim ersten
-Versuch, mit einer Abweichung von 1,0 beziehungsweise 0,0 Punkten. Die Zahlen
-und der Weg dorthin stehen in [`docs/tracer-bullet.md`](docs/tracer-bullet.md).
+landen TextEdit und Outlook beim Start in ihrer Zone — auch mit der Menüleisten-App
+als laufendem Prozess und gegen die Positionserinnerung der Ziel-App. Outlook
+wehrt sich dabei beim ersten Schreiben und wird im zweiten Versuch gesetzt; die
+Retry-Schleife ist also tragend, nicht Zierde. Die Zahlen, die Gegenproben und
+der Weg dorthin stehen in [`docs/tracer-bullet.md`](docs/tracer-bullet.md).
 
 Zwei Einschränkungen, die man vor dem Ausprobieren kennen sollte:
 
@@ -325,10 +327,10 @@ beschrieben — dort steht auch, was von der App gemessen ist und was nicht.
 | Fenstererkennung über `NSWorkspace` und `AXObserver` | fertig, gemessen: 124 ms bis zum Observer bei TextEdit, 2,2 s bei Outlook |
 | Diagnose per Kommandozeile (`displays`, `windows`) | fertig |
 | Signierung, damit der Grant Neubauten übersteht | fertig, `Scripts/bundle.sh` |
-| Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit und Outlook je 1 Versuch, Abweichung 1,0 bzw. 0,0 pt |
-| Menüleisten-App mit Autostart | gebaut, [#8](https://github.com/trsdn/OpenZonr/issues/8) — Zustand, Profilwahl, Pause, Autostart, letzte Platzierungen; Platzierung mit laufender App noch nicht nachgemessen, siehe [docs/menueleisten-app.md](docs/menueleisten-app.md) |
-| Regeln bearbeiten ohne JSON | gebaut, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster hier festhalten" plus Editor für Regeln, Rollen und Zonen; Kern headless gemessen, Oberfläche mangels Bedienungshilfen-Freigabe nicht nachgemessen, siehe [docs/regel-editor.md](docs/regel-editor.md) |
-| Dropzones zum Hineinziehen | gebaut, [#10](https://github.com/trsdn/OpenZonr/issues/10) — Overlay beim Ziehen, Ablegen über dieselbe Platzierung wie die Automatik, danach „immer hier öffnen?"; `CGEventTap` gegen `kAXMovedNotification` gemessen (der Tap meldet das Loslassen, Accessibility nicht), echter Zug mangels Bedienungshilfen-Freigabe nicht nachgemessen, siehe [docs/dropzones.md](docs/dropzones.md) |
+| Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit 1 Versuch; Outlook 2 Versuche, sobald das Fenster wirklich zu ziehen ist — die Schleife wird in Anspruch genommen |
+| Menüleisten-App mit Autostart | gebaut, [#8](https://github.com/trsdn/OpenZonr/issues/8) — Zustand, Profilwahl, Pause, Autostart, letzte Platzierungen; Platzierung mit laufender App **nachgemessen** (29.08.2026), siehe [docs/menueleisten-app.md](docs/menueleisten-app.md) |
+| Regeln bearbeiten ohne JSON | gebaut, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster hier festhalten" plus Editor für Regeln, Rollen und Zonen; Kern headless gemessen, die Oberfläche nicht nachgemessen — sie braucht eine Hand an der Maus, nicht mehr die Freigabe, siehe [docs/regel-editor.md](docs/regel-editor.md) |
+| Dropzones zum Hineinziehen | gebaut, [#10](https://github.com/trsdn/OpenZonr/issues/10) — Overlay beim Ziehen, Ablegen über dieselbe Platzierung wie die Automatik, danach „immer hier öffnen?"; `CGEventTap` gegen `kAXMovedNotification` gemessen (der Tap meldet das Loslassen, Accessibility nicht), ein echter Zug nicht nachgemessen — er braucht eine Hand an der Maus, nicht mehr die Freigabe, siehe [docs/dropzones.md](docs/dropzones.md) |
 
 Die Reihenfolge war bewusst gewählt: erst die Signierung, damit die Platzierung
 überhaupt messbar wird, und erst danach eine Oberfläche. Das hat sich gelohnt —

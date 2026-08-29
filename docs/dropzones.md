@@ -114,16 +114,23 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | Loslassen als Ereignis vs. Abfrage | **Gemessen** | der Grund für die Entscheidung |
 | Einrichtbarkeit beider Wege | **Gemessen** | beide gelingen, beide mit derselben Berechtigung |
 | **Latenz eines Ereignisses** | **Nicht gemessen** | Selbst gepostete `CGEvent`s werden erst bei der Zustellung gestempelt; die Differenz zu `mach_absolute_time()` ist nicht positiv und wird deshalb als „nicht messbar" gemeldet statt als 0,0 ms. Accessibility-Benachrichtigungen tragen überhaupt keinen Zeitstempel — dort ist Latenz auch bei echten Zügen prinzipiell nicht messbar. |
-| **Ein echter Zug mit der Hand** | **Nicht gemessen** | Erfordert die Bedienungshilfen-Freigabe für `~/Applications/OpenZonr.app`, die nur der Nutzer von Hand erteilen kann. Der Bereich in den Systemeinstellungen liefert weder Accessibility-Baum noch Bildschirmfoto; beides bleibt schwarz. Nicht automatisierbar, siehe [`tracer-bullet.md`](tracer-bullet.md). |
-| **Overlay auf dem Bildschirm** | **Nicht gemessen** | Zeichnen braucht ein sichtbares Fenster während eines echten Zugs, also dieselbe Freigabe. Die *Entscheidung*, was gezeichnet wird, ist getestet; das Zeichnen selbst ist absichtlich dünn gehalten. |
+| **Ein echter Zug mit der Hand** | **Nicht gemessen** | Die Bedienungshilfen-Freigabe für `~/Applications/OpenZonr.app` liegt seit dem 29.08.2026 vor — daran liegt es also **nicht mehr**. Was fehlt, ist eine Hand an der Maus: ein Zug ist nicht automatisierbar, und synthetische Ereignisse belegen nur den Empfang, nicht die Bedienung. |
+| **Overlay auf dem Bildschirm** | **Nicht gemessen** | Zeichnen braucht ein sichtbares Fenster während eines echten Zugs — also dieselbe Hand, nicht dieselbe Freigabe. Die *Entscheidung*, was gezeichnet wird, ist getestet; das Zeichnen selbst ist absichtlich dünn gehalten. |
 | **Verhalten mit laufendem Magnet im Zug** | **Nicht gemessen** | Setzt einen echten Zug voraus. Die Erkennung ist getestet, das Verhalten bei Konflikt ist entworfen und begründet, nicht beobachtet. |
 | **Ruhe der Hervorhebung auf einer Zonenkante** | **Nicht gemessen** | Die Zuordnung ist eindeutig, aber zustandslos: auf einer Kante kippt die Hervorhebung bei einem Punkt Zittern. Ob das im Gebrauch stört und welche Totzone richtig wäre, ist ohne echten Zug nicht zu beurteilen — deshalb ist keine Hysterese gebaut, sondern Punkt 13 in [`offene-fragen.md`](offene-fragen.md) eröffnet, samt der Falle, in die ein erster Versuch dazu bereits gelaufen ist. |
-| **Platzierung nach dem Ablegen** | **Nicht gemessen für das Ablegen**, aber für denselben Code | Der Drop ruft `WatchEngine.place(dropped:application:into:)` auf, das die private `place(…)` mit `rule: nil` benutzt — dieselbe Funktion, deren Retry-Verhalten in [`tracer-bullet.md`](tracer-bullet.md) mit TextEdit (1 Versuch, 122 ms) und Outlook (1 Versuch, 236 ms) gemessen ist. |
+| **Platzierung nach dem Ablegen** | **Nicht gemessen für das Ablegen**, aber für denselben Code | Der Drop ruft `WatchEngine.place(dropped:application:into:)` auf, das die private `place(…)` mit `rule: nil` benutzt — dieselbe Funktion, deren Platzierung in [`tracer-bullet.md`](tracer-bullet.md) inzwischen auch bei laufender App gemessen ist, samt eines Falls, in dem Outlook sich beim ersten Schreiben wehrt und ein zweiter Versuch nötig ist. |
 | **Angebotspanel im Betrieb** | **Nicht gemessen** | Erscheint nur nach einem echten Ablegen. Dass es den Fokus nicht stiehlt, folgt aus `.nonactivatingPanel`; belegt ist es nicht. |
 
-Kurz: Alles, was ohne die fehlende Freigabe beweisbar ist, ist bewiesen. Alles,
-was sie braucht, ist als ungemessen ausgewiesen. Der Schnitt zwischen beidem war
+Kurz: Alles, was ohne einen echten Zug beweisbar ist, ist bewiesen. Alles, was
+einen braucht, ist als ungemessen ausgewiesen. Der Schnitt zwischen beidem war
 die eigentliche Entwurfsarbeit.
+
+> **Stand 29.08.2026:** Die Bedienungshilfen-Freigabe ist erteilt, und die
+> Platzierung ist bei laufender App gemessen ([`tracer-bullet.md`](tracer-bullet.md)).
+> Der verbleibende Rest dieser Tabelle hängt damit **nicht mehr an einer
+> Berechtigung, sondern an einer Hand an der Maus**. Wer die Zeilen anders liest
+> und in den Systemeinstellungen nach einem fehlenden Haken sucht, sucht
+> vergeblich.
 
 ---
 
