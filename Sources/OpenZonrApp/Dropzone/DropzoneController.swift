@@ -175,9 +175,23 @@ final class DropzoneController {
     /// so a badge-pinned rule and a panel-pinned rule are the same kind of
     /// rule and cannot drift apart. What is skipped is the panel itself: the
     /// user already answered with the release point.
+    ///
+    /// **Ablehnungen sind hier nicht still.** Anders als das Angebotspanel,
+    /// dessen Ausbleiben nichts weiter heißt, wurde die Marke ausdrücklich
+    /// getroffen — ihr einziger Zweck ist die Regel. Bleibt die Regel aus,
+    /// muss das Fenster gesagt bekommen, warum. Wir gehen deshalb durch
+    /// dieselbe ``AppModel/lastPinMessage`` wie der Menüweg „Aktuelles Fenster
+    /// hier festhalten"; das Fenster wird trotzdem platziert, weil das schon
+    /// oben geschehen ist.
     private func pin(window: DraggedWindow, into zone: Dropzone) {
-        guard let profile = model.activeProfile else { return }
-        guard let base = model.document?.configuration ?? model.configuration else { return }
+        guard let base = model.document?.configuration ?? model.configuration else {
+            model.reportPinFailure("Es ist keine Konfiguration geladen.")
+            return
+        }
+        guard let profile = model.activeProfile else {
+            model.reportPinFailure("Kein Profil ist aktiv — ohne Profil ist nicht bekannt, was „hier“ bedeutet.")
+            return
+        }
         switch DropRuleOffer.pin(
             for: window.dropped,
             droppedInto: zone,
@@ -187,10 +201,10 @@ final class DropzoneController {
         case let .success(request):
             model.apply(request, to: base)
         case let .failure(refusal):
-            // Same log line the panel path uses on refusal: the badge and the
-            // panel are two ways to reach the same rule, and a rule that
-            // cannot be written should say so with one voice.
-            Log.detail("Anheft-Marke ohne Wirkung: \(refusal)")
+            // Dieselbe Stimme wie der Menüweg: eine Regel, die nicht
+            // geschrieben werden kann, muss dem Nutzer sichtbar erklärt
+            // werden — nicht nur ins Protokoll.
+            model.reportPinFailure("Anheft-Marke ohne Wirkung: \(refusal)")
         }
     }
 
