@@ -129,6 +129,49 @@ struct CanvasAspectTests {
         #expect(aspect.ratio > 0)
     }
 
+    @Test("Ein direkt gebauter NaN-Wert darf sich nicht als Messung beschriften")
+    func initialiserForcesEstimatedOnDegenerateRatio() {
+        // Der Befund aus der PR-Durchsicht: `CanvasAspect(ratio: .nan,
+        // source: .measured, visibleSize: 5120×0)` lieferte 16:10 mit dem
+        // Häkchen-Siegel „gemessen" und einem Punktmaß, das den Fehler nicht
+        // zugab. Heute nicht auslösbar — die Aufrufer sind sauber —, aber
+        // der Typ ist `public` in Core, und die Zusicherung, für die er
+        // existiert, muss im Typ selbst stehen, nicht im Aufrufer.
+        let broken = CanvasAspect(
+            ratio: .nan,
+            source: .measured,
+            visibleSize: WindowSize(width: 5120, height: 0)
+        )
+        #expect(broken.source == .estimated)
+        #expect(broken.ratio == 16.0 / 10.0)
+        #expect(broken.visibleSize == nil)
+
+        let zero = CanvasAspect(
+            ratio: 0,
+            source: .measured,
+            visibleSize: WindowSize(width: 5120, height: 1344)
+        )
+        #expect(zero.source == .estimated)
+        #expect(zero.visibleSize == nil)
+
+        let negative = CanvasAspect(
+            ratio: -1,
+            source: .measured,
+            visibleSize: WindowSize(width: 5120, height: 1344)
+        )
+        #expect(negative.source == .estimated)
+        #expect(negative.visibleSize == nil)
+
+        // Gegenprobe: gültige Werte werden nicht angetastet.
+        let ok = CanvasAspect(
+            ratio: 5120.0 / 1344.0,
+            source: .measured,
+            visibleSize: WindowSize(width: 5120, height: 1344)
+        )
+        #expect(ok.source == .measured)
+        #expect(ok.visibleSize == WindowSize(width: 5120, height: 1344))
+    }
+
     @Test("Der Fallback selbst ist als Schätzung beschriftet")
     func fallbackIsLabelled() {
         #expect(CanvasAspect.fallback.source == .estimated)
