@@ -49,12 +49,24 @@ public struct CanvasAspect: Hashable, Sendable {
     public init(ratio: Double, source: Source, visibleSize: WindowSize? = nil) {
         // Ein Verhältnis von `0` oder `.nan` würde `fittedRect` in einen
         // Divisions-durch-Null-Fehler treiben. Ein Bildschirm mit Breite oder
-        // Höhe `0` ist ohnehin unmöglich; der Klammerungswert `0.01` steht
-        // dafür, dass der Fehler hier bemerkt und nicht weitergereicht wird.
-        let sanitised = (ratio.isFinite && ratio > 0) ? ratio : (16.0 / 10.0)
-        self.ratio = sanitised
-        self.source = source
-        self.visibleSize = visibleSize
+        // Höhe `0` ist ohnehin unmöglich; wenn hier trotzdem einer ankommt,
+        // fällt der Typ auf den 16:10-Platzhalter zurück — und **zwingt in
+        // demselben Zug** `source` auf `.estimated` und `visibleSize` auf `nil`.
+        //
+        // Das ist die Zusicherung, für die dieser Typ überhaupt existiert:
+        // ein Verhältnis, das aus einer Notrechnung kommt, darf nicht als
+        // Messung beschriftet sein und darf keine Punktmaße mitführen, die es
+        // nicht belegen kann. Die Zusicherung im Aufrufer stehen zu lassen
+        // hieße, sie an jeder Aufrufstelle neu zu machen (oder zu vergessen).
+        if ratio.isFinite, ratio > 0 {
+            self.ratio = ratio
+            self.source = source
+            self.visibleSize = visibleSize
+        } else {
+            self.ratio = 16.0 / 10.0
+            self.source = .estimated
+            self.visibleSize = nil
+        }
     }
 
     /// Der Platzhalter, den der Editor bekommt, wenn nichts Besseres da ist.

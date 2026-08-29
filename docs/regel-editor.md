@@ -185,9 +185,9 @@ mehr, als sie belegt.
 
 | Behauptung | Stand |
 |---|---|
-| `swift build` und `swift test` sind grün | **gemessen** — 280 Tests in 31 Suites, headless (zuletzt 274 in 30) |
+| `swift build` und `swift test` sind grün | **gemessen** — 281 Tests in 31 Suites, headless (zuletzt 274 in 30) |
 | Die Editier-Funktionen tun, was sie sollen | **gemessen** — 51 neue Tests in 4 Suites, darunter Reihenfolge, Löschsemantik, Bezeichner-Eindeutigkeit |
-| Das Vorschau-Seitenverhältnis kommt aus `visibleFrame`, wenn der Bildschirm da ist | **gemessen** — 6 Tests an `canvasAspect(for:snapshots:)` gegen ein Ultrawide-Fixture (5120×1344), einschließlich Gegenprobe „nicht `frame`" und „falscher Bildschirm angeschlossen ≠ stiller Ersatz" |
+| Das Vorschau-Seitenverhältnis kommt aus `visibleFrame`, wenn der Bildschirm da ist | **gemessen** — 7 Tests an `canvasAspect(for:snapshots:)` gegen ein Ultrawide-Fixture (5120×1344), einschließlich Gegenprobe „nicht `frame`", „falscher Bildschirm angeschlossen ≠ stiller Ersatz" und „direkt gebauter `NaN`-Wert wird auf `.estimated` gezwungen" |
 | **Ob die Vorschau am echten Bildschirm danach passt** | **nicht gemessen** — die Rechnung ist geprüft, das Bild braucht eine Hand an der Maus |
 | Eine umgehängte Regel gewinnt gegen eine später dazugekommene Auffangregel | **gemessen** — Gegenprobe an `DefaultRuleEngine`, und der Fehlerfall vorher bewusst reproduziert (siehe unten) |
 | Der Schnellbefehl lehnt ab, statt Wirkung zuzusagen, die ausbleibt | **gemessen** — 4 Tests an `QuickPin.objection(to:report:)`, headless |
