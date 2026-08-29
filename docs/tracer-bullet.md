@@ -266,18 +266,24 @@ und wäre als Erfolg durchgegangen.
 Entscheidbar wird der Fall erst, wenn beide Antworten **auseinanderfallen**:
 eine Kopie der Konfiguration (`watch --config`, nichts am Original verändert)
 schickt die Rolle `mail` nach `left-quarter`. Outlook erinnert `x=1280`, die
-Regel verlangt `x=0`. Wörtlich aus dem Protokoll:
+Regel verlangt `x=0`. Aus dem Protokoll — Zeitstempel entfernt, der Fenstertitel
+enthält eine Mailadresse und ist deshalb ausgelassen, sonst unverändert:
 
 ```
-▸ Neues Fenster: com.microsoft.Outlook  1280,31 2560x1344  subrole=AXUnknown
+▸ Neues Fenster: com.microsoft.Outlook  1280,31 2560x1344  subrole=AXUnknown  Ebene 0
   ignoriert — Subrole AXUnknown ist nicht freigegeben.
-▸ Neues Fenster: com.microsoft.Outlook  1280,31 2560x1344  subrole=AXStandardWindow
+▸ Neues Fenster: com.microsoft.Outlook  1280,31 2560x1344  subrole=AXStandardWindow  Ebene 0
 ✓ Regel "outlook" → Rolle "mail" → c49rg9x/left-quarter
   Soll-Frame 0,65 1280x1344 (AppKit) → 0,31 1280x1344 (AX)
-  Versuch 1: Soll 0,31 1280x1344 | Ist -0,31 1288x1344 | Abweichung 8.0 pt | Abweichung zu groß | 121 ms
-  Versuch 2: Soll 0,31 1280x1344 | Ist -0,31 1280x1344 | Abweichung 0.0 pt | innerhalb der Toleranz | 218 ms
+  Versuch 1: Soll 0,31 1280x1344 | Ist -0,31 1288x1344 | Abweichung 8.0 pt (Toleranz 4 pt) | Abweichung zu groß | 121 ms
+  Versuch 2: Soll 0,31 1280x1344 | Ist -0,31 1280x1344 | Abweichung 0.0 pt (Toleranz 4 pt) | innerhalb der Toleranz | 218 ms
 ✓ Platziert nach 2 Versuchen.
 ```
+
+Das `-0` in der Ist-Spalte ist kein Messwert, sondern negative Null aus der
+Formatierung; die Abweichung daneben ist 0,0 pt. `openzonr windows` gibt danach
+denselben Rahmen als `-0,31 1280x1344` aus. Kein Fehler in der Platzierung, aber
+eine Stelle, an der ein Leser stolpert.
 
 Drei Dinge, die diese acht Zeilen belegen und die vorherige Messung nicht konnte:
 
