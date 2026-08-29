@@ -72,9 +72,13 @@ public struct ModifierState: OptionSet, Hashable, Sendable {
 /// zones therefore trades away the old *drag with no key* gesture. See
 /// `docs/dropzones.md` for the measurements and the reasoning.
 ///
-/// ``DropzoneModifier/none`` is refused for both forms: *always show* was the
-/// old *shows unless none* and is not a mode worth adding a case for; *never
-/// show* is what `enabled = false` already says.
+/// ``DropzoneModifier/none`` ist ein zulässiger Wert und wird nicht abgelehnt,
+/// hat aber in beiden Formen keine sinnvolle Wirkung: *shows unless none* fällt
+/// auf *immer zeigen* zurück, *shows while none* fiele auf *nie zeigen* zurück
+/// — was `enabled = false` schon sagt. Beide Fälle laden absichtlich weiter
+/// (siehe ``DropzoneActivator/activation(settings:modifiers:travelled:)``),
+/// damit eine ererbte oder von Hand geschriebene `.none` niemanden ohne
+/// Zonen dastehen lässt.
 public enum DropzoneActivationRule: Hashable, Sendable {
     case showsUnless(DropzoneModifier)
     case showsWhile(DropzoneModifier)

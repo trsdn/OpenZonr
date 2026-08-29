@@ -359,6 +359,20 @@ final class AppModel {
     private(set) var lastPinMessage: String?
     private(set) var lastPinFailed = false
 
+    /// Trägt eine Ablehnung so ein, wie es der Menüweg auch tut.
+    ///
+    /// Der Marken-Weg beim Ziehen braucht dieselbe Stimme: eine getroffene
+    /// Marke, deren Regel nicht geschrieben werden konnte, muss dem Nutzer
+    /// erklärt werden — nicht nur ins Protokoll. `apply(_:to:)` setzt beide
+    /// Felder selbst, aber wenn wir vor `apply` scheitern (kein Profil, keine
+    /// Konfiguration, `QuickPin.Request` nicht baubar), muss das genauso
+    /// sichtbar sein.
+    func reportPinFailure(_ message: String) {
+        lastPinFailed = true
+        lastPinMessage = message
+        Log.warn(message)
+    }
+
     /// The editing session for the loaded configuration, created on first use.
     ///
     /// Returns `nil` when there is nothing to edit. Offering an editor on a

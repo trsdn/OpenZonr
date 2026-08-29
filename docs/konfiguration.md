@@ -502,12 +502,15 @@ bekommt die oben gezeigten Werte. Jedes einzelne Feld ist ebenfalls optional.
   „ziehen immer, unterdrücken mit ⌥"-Geste ist absichtlich getauscht (Preis
   und Begründung in [dropzones.md](dropzones.md)).
 - `{"showsUnless": "option"}` – die ältere Polarität. Die Zonen erscheinen bei
-  jedem Zug; die genannte Taste silenced sie. Wer die alte Geste möchte,
+  jedem Zug; die genannte Taste blendet sie aus. Wer die alte Geste möchte,
   schaltet hierher zurück.
 
-`"none"` innerhalb der `showsUnless`-Form schaltet die Unterdrückung ab: dann
-gibt es keinen Weg zum freien Ziehen mehr, was der Nutzer wählen darf, aber
-nicht die Vorgabe ist.
+`"none"` ist in beiden Formen erlaubt, hat aber keine sinnvolle Wirkung:
+`{"showsUnless": "none"}` heißt „nie ausblenden" (die Zonen erscheinen also
+immer), `{"showsWhile": "none"}` fiele auf „nie zeigen" zurück — was
+`enabled: false` bereits sagt. OpenZonr lehnt beides nicht ab, sondern lädt
+weiter, damit eine von Hand geschriebene oder ererbte `.none` niemanden ohne
+Zonen dastehen lässt.
 
 **Alte Konfigurationen laden weiter.** Eine `config.json` mit dem früheren
 Feld `suppressionModifier: "option"` (statt `activation`) wird beim Laden auf
