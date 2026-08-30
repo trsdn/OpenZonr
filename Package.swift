@@ -57,6 +57,19 @@ let package = Package(
             dependencies: ["OpenZonrCore", "OpenZonrMac"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // Die Zustandslogik der Menüleisten-App. Kein Oberflächentest — was ein
+        // Menüeintrag anzeigt oder wie sich eine Geste anfühlt, bleibt „nicht
+        // gemessen" (siehe Issue #25). Geprüft werden Zustandsübergänge, die
+        // heute nur deshalb ungetestet waren, weil sie zufällig in einem Modul
+        // ohne Testziel lagen: `AppModel` (Meldungen für Anheft-Fehler,
+        // `apply` in Erfolg und Einspruch, Frontmost-Guard) und der
+        // Zustand-teil von `DropzoneController` (Pause-/Aus-Zusicherung, ohne
+        // Event-Tap).
+        .testTarget(
+            name: "OpenZonrAppTests",
+            dependencies: ["OpenZonrCore", "OpenZonrMac", "OpenZonrApp"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .testTarget(
             name: "OpenZonrCoreTests",
             dependencies: ["OpenZonrCore"],

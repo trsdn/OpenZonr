@@ -76,6 +76,20 @@ final class AppModel {
     private(set) var logEntries: [Log.Entry] = []
     private static let logLimit = 500
 
+    // MARK: - Shared guard sentences
+
+    /// Die zwei Sätze, die drei verschiedene Wege bei fehlender Voraussetzung
+    /// zeigen müssen: der Menüweg (``pinFrontmostWindow``), die Anheft-Marke
+    /// (``DropzoneController.pin``) und der Rechtsklick am grünen Knopf
+    /// (``ZoomButtonMenu.presentMenu``). Sie stehen hier gemeinsam, damit die
+    /// drei Wege dieselbe Stimme sprechen — der Fund aus PR #24 war, dass
+    /// zwei davon die Sätze auseinandergeschrieben hatten und nur eine
+    /// Kollation im Review es merkte.
+    enum GuardSentence {
+        static let noConfigurationLoaded = "Es ist keine Konfiguration geladen."
+        static let noActiveProfile = "Kein Profil ist aktiv — ohne Profil ist nicht bekannt, was „hier“ bedeutet."
+    }
+
     var isPaused = false {
         didSet {
             guard isPaused != oldValue else { return }
@@ -349,6 +363,18 @@ final class AppModel {
 
     var availableProfiles: [Profile] { configuration?.profiles ?? [] }
 
+    #if DEBUG
+    /// Nur für Tests: setzt `profileState` von aussen, damit die App-Zustand-
+    /// Tests einen Profil-Aktivzustand herbeiführen können, ohne einen echten
+    /// `WatchEngine` samt Bedienungshilfen zu bauen. In der App selbst gibt es
+    /// keinen zweiten Weg, `profileState` zu setzen — er kommt ausschliesslich
+    /// aus `syncFromEngine()`.
+    func _setProfileStateForTesting(_ state: WatchEngine.ProfileState) {
+        profileState = state
+        updateStatus()
+    }
+    #endif
+
     // MARK: - Editor
 
     /// The open editing session, so that reopening the window does not throw
@@ -418,11 +444,11 @@ final class AppModel {
         lastPinFailed = true
 
         guard let base = document?.configuration ?? configuration else {
-            lastPinMessage = "Es ist keine Konfiguration geladen."
+            lastPinMessage = GuardSentence.noConfigurationLoaded
             return
         }
         guard let profile = activeProfile else {
-            lastPinMessage = "Kein Profil ist aktiv — ohne Profil ist nicht bekannt, was „hier“ bedeutet."
+            lastPinMessage = GuardSentence.noActiveProfile
             return
         }
 
