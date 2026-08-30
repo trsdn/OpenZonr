@@ -71,13 +71,28 @@ public struct Configuration: Codable, Hashable, Sendable {
     /// Settings inherited by rules that do not override them.
     public var defaults: GlobalDefaults
 
+    /// Displays that must not influence profile selection.
+    ///
+    /// Software displays — OBS virtual cameras, teleprompter mirrors, screen
+    /// sharing surfaces — appear and disappear while the physical desk does not
+    /// change. Without this list every such start would alter the setup
+    /// fingerprint and swap the active profile, which is precisely the
+    /// behaviour OpenZonr exists to prevent.
+    ///
+    /// Exclusion is an explicit user decision rather than a heuristic: no public
+    /// API reliably distinguishes a virtual display from a real panel, and
+    /// guessing wrong would rearrange the whole desktop. `openzonr displays`
+    /// flags likely candidates and emits ready-made entries for this list.
+    public var ignoredDisplays: [DisplayIdentity]
+
     public init(
         version: Int,
         displays: [DisplayDescriptor],
         roles: [ZoneRole],
         profiles: [Profile],
         rules: [PlacementRule],
-        defaults: GlobalDefaults = GlobalDefaults()
+        defaults: GlobalDefaults = GlobalDefaults(),
+        ignoredDisplays: [DisplayIdentity] = []
     ) {
         self.version = version
         self.displays = displays
@@ -85,6 +100,25 @@ public struct Configuration: Codable, Hashable, Sendable {
         self.profiles = profiles
         self.rules = rules
         self.defaults = defaults
+        self.ignoredDisplays = ignoredDisplays
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, displays, roles, profiles, rules, defaults, ignoredDisplays
+    }
+
+    /// Decoded by hand so that optional sections may be omitted from the file.
+    /// A configuration without `defaults` or `ignoredDisplays` stays valid, which
+    /// keeps hand-written minimal files — and older files — loadable.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.version = try container.decode(Int.self, forKey: .version)
+        self.displays = try container.decode([DisplayDescriptor].self, forKey: .displays)
+        self.roles = try container.decode([ZoneRole].self, forKey: .roles)
+        self.profiles = try container.decode([Profile].self, forKey: .profiles)
+        self.rules = try container.decode([PlacementRule].self, forKey: .rules)
+        self.defaults = try container.decodeIfPresent(GlobalDefaults.self, forKey: .defaults) ?? GlobalDefaults()
+        self.ignoredDisplays = try container.decodeIfPresent([DisplayIdentity].self, forKey: .ignoredDisplays) ?? []
     }
 
     /// Schema version this build writes.

@@ -9,11 +9,21 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .library(name: "OpenZonrCore", targets: ["OpenZonrCore"])
+        .library(name: "OpenZonrCore", targets: ["OpenZonrCore"]),
+        .executable(name: "openzonr", targets: ["openzonr"])
     ],
     targets: [
         .target(
             name: "OpenZonrCore",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // The command line tool is the tracer bullet: it is the smallest shell
+        // around OpenZonrCore that can actually move a window. Argument parsing
+        // is done by hand — three subcommands do not justify a dependency, and
+        // a dependency-free package stays trivial to build and audit.
+        .executableTarget(
+            name: "openzonr",
+            dependencies: ["OpenZonrCore"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(

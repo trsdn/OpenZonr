@@ -18,6 +18,15 @@ public struct WindowSnapshot: Hashable, Sendable {
     public var subrole: String?
     /// Frame in global screen points, as reported by the Accessibility API.
     public var frame: WindowFrame
+    /// Window server layer, the `kCGWindowLayer` value.
+    ///
+    /// Measurements on a real desktop showed this to be the single most
+    /// effective filter: the notification centre panel is `5120 × 1440` and
+    /// passes every plausible minimum-size check — only its layer (`21`)
+    /// separates it from a real window. Dock (`20`), menu bars (`24`) and the
+    /// roughly 130 control-centre items (`25`) are the same story. Ordinary
+    /// application windows live on layer `0`, and nothing else does.
+    public var windowLayer: Int
     /// `true` if this is the first qualifying window since the app launched.
     public var isFirstWindowAfterLaunch: Bool
     /// When the window was observed.
@@ -30,6 +39,7 @@ public struct WindowSnapshot: Hashable, Sendable {
         role: String?,
         subrole: String?,
         frame: WindowFrame,
+        windowLayer: Int = 0,
         isFirstWindowAfterLaunch: Bool,
         observedAt: Date
     ) {
@@ -39,6 +49,7 @@ public struct WindowSnapshot: Hashable, Sendable {
         self.role = role
         self.subrole = subrole
         self.frame = frame
+        self.windowLayer = windowLayer
         self.isFirstWindowAfterLaunch = isFirstWindowAfterLaunch
         self.observedAt = observedAt
     }
@@ -105,13 +116,15 @@ public protocol ZoneResolver: Sendable {
         role: RoleID,
         share: ZoneShare?,
         profile: Profile,
-        configuration: Configuration
+        configuration: Configuration,
+        geometry: DisplayGeometry
     ) -> ResolvedPlacement?
 }
 
 /// A fully resolved placement target, ready to be written to a window.
 public struct ResolvedPlacement: Hashable, Sendable {
-    /// Target frame in global screen points.
+    /// Target frame in **Accessibility** coordinates (origin top-left of the
+    /// primary display), because that is the space it is written back in.
     public var frame: WindowFrame
     /// Display the frame belongs to.
     public var display: DisplayAlias
@@ -126,14 +139,6 @@ public struct ResolvedPlacement: Hashable, Sendable {
         self.zone = zone
         self.usedFallback = usedFallback
     }
-}
-
-/// Writes position and size to a window.
-///
-/// Implemented via `kAXPositionAttribute` and `kAXSizeAttribute` on the window's
-/// `AXUIElement`, wrapped in the retry loop described by ``RetryPolicy``.
-public protocol WindowPlacer: Sendable {
-    func place(_ window: WindowSnapshot, at placement: ResolvedPlacement, retry: RetryPolicy) async -> PlacementOutcome
 }
 
 /// Result of a placement attempt, used for logging and for the diagnostics UI.
