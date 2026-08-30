@@ -21,6 +21,12 @@ import OpenZonrCore
 /// zweiter Tap verlangte dieselbe Berechtigung noch einmal und wäre reine
 /// Verdoppelung. Der Rechtsklick geht durch einen **eigenen** Rückruf
 /// (``onRightClick``), damit die Zug-Zustandsmaschine unbehelligt bleibt.
+/// Wichtig — und der Grund, warum die Zusicherung aus #26/#29 auch für diesen
+/// Pfad gilt: die AX-Abfrage nach dem Zoom-Knopf läuft **nicht** im
+/// Tap-Rückruf, sondern in `Task.detached`. Erst mit fertigem Ergebnis
+/// springt der Pfad auf den MainActor zurück und ruft `onRightClick` auf.
+/// Damit blockieren weder die Abfrage noch ein anschließendes modales
+/// `NSMenu.popUp` den Thread, der den Tap bedient.
 ///
 /// ## What it costs
 ///
@@ -48,17 +54,24 @@ public final class EventTapDragTracker: WindowDragTracker {
     public var onEvent: ((WindowDragEvent) -> Void)?
     public let name = "CGEventTap"
 
-    /// Rückruf für Rechtsklicks — beide Punkte, damit der Empfänger sowohl in
-    /// AppKit-Koordinaten (für das Menü) als auch in Accessibility-Koordinaten
-    /// (für den Fenster- und Knopfrahmen-Lookup) rechnen kann, ohne den Pivot
-    /// nochmal selbst zu spiegeln.
+    /// Rückruf für Rechtsklicks — der Punkt in AppKit-Koordinaten (für die
+    /// Menüposition) plus das **schon fertige** Ergebnis der AX-Abfrage.
+    ///
+    /// Warum das Ergebnis hier reinkommt und nicht der Empfänger nachzieht: die
+    /// AX-Abfrage darf nicht im Tap-Rückruf laufen. Sie kostet gemessene
+    /// Spitzen (bis 970 ms in Issue #26), und der Runloop, der den Tap bedient,
+    /// ist derselbe, der ein `NSMenu.popUp` in seinen modalen Tracking-Loop
+    /// zwingt. Beides zusammen im Rückruf hieße: dieselbe Klasse Fehler, die
+    /// #29 für den Zug-Pfad geschlossen hat, für Rechtsklicks wieder offen.
+    /// Deshalb macht der Tracker die Abfrage in `Task.detached` und ruft
+    /// `onRightClick` erst mit dem Ergebnis auf dem MainActor auf.
     ///
     /// Warum getrennt vom Zug-Rückruf: ein Rechtsklick hat keinen Anfang, keine
     /// Bewegung und kein Ende. In die ``WindowDragEvent``-Zustandsmaschine
     /// gehört er nicht — der Tap ist nur zufällig ein guter Ort, um das
     /// Ereignis überhaupt zu sehen. Zwei Kanäle sind ehrlicher als ein
     /// überladener.
-    public var onRightClick: ((_ appKitPoint: ScreenPoint, _ accessibilityPoint: ScreenPoint) -> Void)?
+    public var onRightClick: ((_ appKitPoint: ScreenPoint, _ lookup: ZoomButtonLookup.Result) -> Void)?
 
     /// Set from the outside to record raw event arrivals for the probe.
     ///
@@ -224,13 +237,18 @@ public final class EventTapDragTracker: WindowDragTracker {
         case .leftMouseUp:
             handle(.mouseUp(point: point, modifiers: Self.modifiers(of: event)))
         case .rightMouseDown:
-            // Rechtsklick geht am Zug vorbei — der Rückruf entscheidet ganz
-            // eigenständig, ob am Zeigerpunkt ein Zoom-Knopf sitzt. Wichtig:
-            // der Tap ist `.listenOnly`, wir können den Klick nicht schlucken.
+            // Rechtsklick geht am Zug vorbei. Die AX-Abfrage darf hier nicht
+            // synchron stehen — sonst blockiert der Rückruf den Runloop, der
+            // den Tap bedient, und mit einem modalen `NSMenu.popUp` wäre die
+            // Blockade so lang, wie das Menü offen ist. Deshalb: nur anstoßen,
+            // der Rückruf an den Empfänger kommt erst mit fertigem Ergebnis
+            // auf dem MainActor (siehe `scheduleZoomButtonLookup`).
+            //
+            // Der Tap ist `.listenOnly`, wir können den Klick nicht schlucken.
             // Zeigt eine andere App an derselben Stelle ihr eigenes Menü,
             // erscheinen zwei; gemessen sind zwei Apps (TextEdit, Safari)
             // ohne Menü, nicht alle. Siehe Issue #27 und `docs/dropzones.md`.
-            onRightClick?(point, accessibilityPoint)
+            scheduleZoomButtonLookup(at: accessibilityPoint, appKitPoint: point)
         default:
             break
         }
@@ -242,6 +260,9 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// 1. Im Rückruf steht **keine** AX-Abfrage, deren Dauer von einer fremden
     ///    App abhängt — der Fenster-Lookup wird beim `mouseDown` als eigene
     ///    Task angestoßen (`scheduleWindowLookup`), nie hier synchron.
+    ///    Dasselbe gilt für den Rechtsklick-Pfad: `scheduleZoomButtonLookup`
+    ///    hebt AX-Abfrage **und** das anschließende `NSMenu.popUp` vom Tap-
+    ///    Thread weg auf einen eigenen MainActor-Turn.
     /// 2. Ein Tap-Timeout bricht einen laufenden Zug **nicht** ab. Der Tap
     ///    wird wieder eingeschaltet, alles andere bleibt. Beim nächsten
     ///    `leftMouseDragged` wird nahtlos weitergemeldet.
@@ -352,6 +373,29 @@ public final class EventTapDragTracker: WindowDragTracker {
             let window = lookup(accessibilityPoint, pivot)
             await MainActor.run {
                 self?.applyLookupResult(window, token: token)
+            }
+        }
+    }
+
+    /// Rechtsklick-Zwilling zu `scheduleWindowLookup`. Aus denselben Gründen:
+    /// die AX-Abfrage darf nicht auf dem Thread laufen, der den Tap bedient,
+    /// und `NSMenu.popUp` erst recht nicht (modaler Tracking-Loop). Nach der
+    /// Abfrage kehrt der Pfad auf den MainActor zurück und ruft `onRightClick`
+    /// dort auf. Das ist bewusst *kein* Weg über die Zug-Zustandsmaschine —
+    /// Rechtsklicks stehen für sich.
+    ///
+    /// Der Rückruf bekommt das Ergebnis der Abfrage als `Result`, damit der
+    /// Empfänger nichts mehr am AX-Baum tun muss und die Fallunterscheidung
+    /// (Fenster / kein Zoom-Knopf / kein Fenster) an einer Stelle liegt.
+    private func scheduleZoomButtonLookup(at accessibilityPoint: ScreenPoint, appKitPoint: ScreenPoint) {
+        let pivot = primaryTopY
+        Task.detached { [weak self] in
+            let result = ZoomButtonLookup.read(
+                atAccessibilityPoint: accessibilityPoint,
+                primaryTopY: pivot
+            )
+            await MainActor.run {
+                self?.onRightClick?(appKitPoint, result)
             }
         }
     }

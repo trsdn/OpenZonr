@@ -36,30 +36,30 @@ final class ZoomButtonMenu: NSObject, NSMenuDelegate {
 
     /// Öffnet das Menü, wenn am Zeigerpunkt tatsächlich der grüne Knopf sitzt.
     ///
-    /// Nimmt die beiden Punkte aus dem Ereignis-Tap, weil das Fenster in
-    /// Accessibility-Koordinaten gesucht wird und das Menü in AppKit-
-    /// Koordinaten aufgeht.
-    func show(atAppKitPoint appKitPoint: ScreenPoint, accessibilityPoint: ScreenPoint) {
-        let arrangement = ScreenArrangement(snapshots: SystemDisplays.snapshots())
-        let lookup = ZoomButtonLookup.read(
-            atAccessibilityPoint: accessibilityPoint,
-            primaryTopY: arrangement.primaryTopY
-        )
-
+    /// Nimmt das **schon vorliegende** Ergebnis der AX-Abfrage entgegen. Die
+    /// Abfrage selbst passiert im ``EventTapDragTracker`` außerhalb des
+    /// Tap-Rückrufs (`Task.detached`), damit weder sie noch das anschließende
+    /// modale `NSMenu.popUp` den Thread blockieren, der den Tap bedient —
+    /// dieselbe Zusicherung wie für den Zug-Pfad in #26/#29.
+    ///
+    /// Fehlt `kAXZoomButtonAttribute` (gemessen an einem Finder-Fenster) oder
+    /// war unter dem Punkt kein Fenster, endet die Aktion **still**. Der
+    /// Rechtsklick landet in vielen Fenstern; ein sichtbarer Fehler an dieser
+    /// Stelle träfe nicht den Nutzerwunsch „Menü am Knopf", sondern jeden
+    /// beiläufigen Rechtsklick — das wäre Lärm.
+    func show(atAppKitPoint appKitPoint: ScreenPoint, lookup: ZoomButtonLookup.Result) {
         switch lookup {
         case .noWindow:
-            // Kein Fenster — der Rechtsklick war irgendwo im Nichts. Alltag,
-            // still zu behandeln.
+            // Rechtsklick irgendwo im Nichts — Alltag.
             return
 
-        case let .zoomButtonUnavailable(window):
-            // Attribut fehlt (gemessener Fall beim Finder). Nichts passiert —
-            // aber erkennbar nichts. Die Meldung geht durch denselben Kanal
-            // wie andere sichtbare Fehler dieses Bereichs, damit der Nutzer
-            // nicht rätseln muss, warum das Menü nicht kommt.
-            model.reportPinFailure(
-                "„\(window.applicationName)“ meldet keinen Zoom-Knopf. Am grünen Knopf ist hier kein Menü möglich."
-            )
+        case .zoomButtonUnavailable:
+            // Attribut fehlt (Finder-Fenster im Messfall). Der Klick war
+            // vermutlich gar nicht am Knopf gemeint — das Attribut fehlt für
+            // das ganze Fenster, nicht für einen Ort in ihm. Still bleiben:
+            // eine Meldung hier würde bei einer App wie dem Finder auf
+            // *jeden* Rechtsklick sprechen. Siehe Issue #27, Kommentar zu
+            // PR #30.
             return
 
         case let .found(window, zoomButtonFrame):
@@ -74,6 +74,7 @@ final class ZoomButtonMenu: NSObject, NSMenuDelegate {
                 // aber der Vollständigkeit halber.
                 return
             case .hit:
+                let arrangement = ScreenArrangement(snapshots: SystemDisplays.snapshots())
                 presentMenu(for: window, at: appKitPoint, arrangement: arrangement)
             }
         }

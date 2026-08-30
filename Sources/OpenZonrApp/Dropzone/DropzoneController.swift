@@ -61,12 +61,15 @@ final class DropzoneController {
         let tap = EventTapDragTracker(primaryTopY: arrangement.primaryTopY)
         tap.minimumDragDistance = settings.minimumDragDistance
         tap.onEvent = { [weak self] event in self?.handle(event) }
-        tap.onRightClick = { [weak self] appKitPoint, accessibilityPoint in
-            // Der Rechtsklick geht am Zug vorbei. Das Menü prüft selbst, ob am
-            // Zeigerpunkt tatsächlich der grüne Knopf liegt; passt es nicht,
-            // passiert stumm nichts (oder erkennbar nichts, wenn das Fenster
-            // keinen Zoom-Knopf-Rahmen liefert — siehe Issue #27).
-            self?.zoomMenu.show(atAppKitPoint: appKitPoint, accessibilityPoint: accessibilityPoint)
+        tap.onRightClick = { [weak self] appKitPoint, lookup in
+            // Der Rechtsklick geht am Zug vorbei. Der Tracker hat die
+            // AX-Abfrage schon im Hintergrund erledigt und liefert das
+            // Ergebnis auf dem MainActor. Das Menü prüft dann selbst, ob am
+            // Zeigerpunkt tatsächlich der grüne Knopf liegt; passt es nicht
+            // (kein Knopf, kein Attribut, kein Fenster), passiert still
+            // nichts. Ein sichtbarer Fehler an dieser Stelle würde jeden
+            // beiläufigen Rechtsklick beklagen — siehe Issue #27.
+            self?.zoomMenu.show(atAppKitPoint: appKitPoint, lookup: lookup)
         }
 
         do {
