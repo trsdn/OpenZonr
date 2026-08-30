@@ -33,6 +33,16 @@ struct MenuContent: View {
         Toggle("Platzierung pausieren", isOn: $model.isPaused)
             .disabled(model.status == .needsPermission || model.status == .needsConfiguration)
 
+        Toggle("Dropzones beim Ziehen", isOn: Binding(
+            get: { model.areDropzonesEnabled },
+            set: { model.areDropzonesEnabled = $0 }
+        ))
+        .disabled(model.status == .needsPermission || model.status == .needsConfiguration)
+
+        if let problem = model.dropzoneProblem {
+            Text(problem)
+        }
+
         Divider()
 
         recentPlacements

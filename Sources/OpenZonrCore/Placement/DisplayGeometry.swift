@@ -12,8 +12,9 @@ import Foundation
 ///   special cases.
 ///
 /// ``RelativeRect`` uses a top-left origin because that is how people draw
-/// zones. The conversion between the two happens in the zone resolver and
-/// nowhere else, which is why this type is explicit about which side of the
+/// zones. The conversion between the two happens in ``ZoneGeometry`` and
+/// nowhere else — both for placing a window and for finding the zone under the
+/// pointer — which is why this type is explicit about which side of the
 /// conversion it is on.
 ///
 /// Where the frame comes from is not this layer's business: it is handed in.

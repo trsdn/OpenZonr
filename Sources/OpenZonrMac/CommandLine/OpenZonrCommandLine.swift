@@ -24,6 +24,7 @@ public enum OpenZonrCommandLine {
       openzonr windows  [--bundle <bundle-id>] [--all-apps] [--no-filter-verdict]
       openzonr watch    [--config <pfad>] [--dry-run]
       openzonr selftest [--out <pfad>] [--prompt]
+      openzonr dropzones [--config <pfad>] [--seconds <n>]
 
     UNTERBEFEHLE
       displays   Zeigt alle angeschlossenen Bildschirme mit ihrer stabilen
@@ -48,6 +49,13 @@ public enum OpenZonrCommandLine {
                  sonst verlorengeht:
                    open -n -a OpenZonr --args selftest --out /tmp/openzonr.txt
 
+      dropzones  Prüft die beiden Hälften des Ziehens einzeln: ob sich der
+                 Ereignis-Tap erstellen lässt (das braucht die Berechtigung)
+                 und ob das Overlay dort erscheint, wo die Platzierung
+                 hinrechnet (das braucht sie nicht). Zeigt die Zonen des
+                 aktiven Profils --seconds lang an und vergleicht danach den
+                 tatsächlichen Panel-Frame mit dem berechneten.
+
     KONFIGURATION
       Standardpfad: ~/Library/Application Support/OpenZonr/config.json
       Überschreibbar mit --config <pfad> oder der Umgebungsvariablen
@@ -66,7 +74,7 @@ public enum OpenZonrCommandLine {
     /// which is why it is a list rather than "anything that is not a flag":
     /// LaunchServices passes arguments of its own, and mistaking one of them for
     /// a subcommand would keep the menu bar icon from ever appearing.
-    public static let subcommands = ["displays", "windows", "watch", "selftest", "help", "--help", "-h"]
+    public static let subcommands = ["displays", "windows", "watch", "selftest", "dropzones", "help", "--help", "-h"]
 
     public static func isSubcommand(_ argument: String) -> Bool {
         subcommands.contains(argument)
@@ -108,10 +116,19 @@ public enum OpenZonrCommandLine {
                 try arguments.requireEmpty()
                 try MainActor.assumeIsolated { try command.run() }
 
-            case "selftest":
-                let command = SelftestCommand(
+            case "selftest":                let command = SelftestCommand(
                     outputPath: try arguments.consumeOption("--out"),
                     prompt: arguments.consumeFlag("--prompt")
+                )
+                try arguments.requireEmpty()
+                try MainActor.assumeIsolated { try command.run() }
+
+            case "dropzones":
+                let path = try arguments.consumeOption("--config")
+                let seconds = try arguments.consumeOption("--seconds").flatMap(Double.init) ?? 2
+                let command = DropzonesCommand(
+                    configurationURL: ConfigurationLocation.resolve(explicitPath: path),
+                    seconds: seconds
                 )
                 try arguments.requireEmpty()
                 try MainActor.assumeIsolated { try command.run() }

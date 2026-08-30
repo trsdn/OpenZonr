@@ -80,7 +80,46 @@ final class AppModel {
         didSet {
             guard isPaused != oldValue else { return }
             engine?.isPaused = isPaused
+            dropzones?.isPaused = isPaused
             updateStatus()
+        }
+    }
+
+    // MARK: - Dropzones
+
+    private(set) var dropzones: DropZoneController?
+
+    /// Kept in `UserDefaults`, not in the configuration file.
+    ///
+    /// The configuration describes the setup and is meant to be shared between
+    /// machines; whether this machine's pointer draws overlays is not part of
+    /// that. It also avoids a schema change while the rule editor is in flight.
+    private static let dropzonesDefaultsKey = "dropzones.enabled"
+
+    var areDropzonesEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: Self.dropzonesDefaultsKey) as? Bool ?? true }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Self.dropzonesDefaultsKey)
+            applyDropzonePreference()
+        }
+    }
+
+    /// Why dropzones are off, when they were asked to be on.
+    var dropzoneProblem: String? {
+        guard areDropzonesEnabled, let dropzones, !dropzones.isEnabled else { return nil }
+        return dropzones.lastFailure
+    }
+
+    private func applyDropzonePreference() {
+        guard let engine else { return }
+        if dropzones == nil {
+            dropzones = DropZoneController(engine: engine)
+        }
+        dropzones?.isPaused = isPaused
+        if areDropzonesEnabled {
+            dropzones?.enable()
+        } else {
+            dropzones?.disable()
         }
     }
 
@@ -269,6 +308,7 @@ final class AppModel {
         }
 
         engine?.start()
+        applyDropzonePreference()
         syncFromEngine()
     }
 

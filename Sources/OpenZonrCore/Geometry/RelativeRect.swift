@@ -13,8 +13,8 @@ import Foundation
 /// - the visible frame excludes the menu bar and the Dock.
 ///
 /// AppKit screen coordinates are bottom-left based; the conversion happens in
-/// the placement layer, not in the configuration format, because a top-left
-/// origin is what users intuitively draw in a zone editor.
+/// ``ZoneGeometry``, not in the configuration format, because a top-left origin
+/// is what users intuitively draw in a zone editor.
 public struct RelativeRect: Codable, Hashable, Sendable {
     /// Horizontal offset of the left edge, `0…1`.
     public var x: Double

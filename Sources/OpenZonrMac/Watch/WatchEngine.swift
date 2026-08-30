@@ -75,7 +75,13 @@ public final class WatchEngine {
 
     // MARK: - Internals
 
-    private var arrangement: ScreenArrangement
+    /// The current display arrangement.
+    ///
+    /// Readable from outside because dropzones need the same pivot and the same
+    /// visible frames the automatic path uses. Deriving a second arrangement
+    /// there would be the classic way for the overlay and the placement to drift
+    /// apart by exactly one display change.
+    public private(set) var arrangement: ScreenArrangement
     private let rules: CompiledRuleSet
     private var decider: PlacementDecider
 
@@ -756,6 +762,85 @@ public final class WatchEngine {
         let window = AccessibilityWindow(element: element, snapshot: snapshot)
         let retry = configuration.defaults.retry
 
+        execute(
+            window: window,
+            application: application,
+            snapshot: snapshot,
+            ruleID: rule.id,
+            placement: placement,
+            target: target,
+            retry: retry,
+            raiseAfterwards: rule.action.focus == .activate
+        )
+    }
+
+    /// Places a window the user dropped onto a zone.
+    ///
+    /// Deliberately the same tail as automatic placement — same retry, same
+    /// tolerance, same coordinate mirror, same activity log. A drop that took a
+    /// second route would eventually disagree with the first about where a zone
+    /// is, and the disagreement would show up as a window that lands next to
+    /// the rectangle the overlay just drew.
+    ///
+    /// `ruleID` is `nil`: a drop reached no rule. ``PlacementRecord`` already
+    /// allowed that, so the activity list shows the row with an empty rule
+    /// column rather than inventing one.
+    public func placeByHand(
+        element: AXUIElement,
+        application: NSRunningApplication,
+        snapshot: WindowSnapshot,
+        candidate: DropCandidate
+    ) {
+        let placement = ResolvedPlacement(
+            frame: candidate.frame,
+            display: candidate.display,
+            zone: candidate.zone,
+            usedFallback: false
+        )
+        Log.success("Von Hand gezogen → \(candidate.display)/\(candidate.zone)")
+
+        let target = ResolvedPlacement(
+            frame: arrangement.flipVertically(placement.frame),
+            display: placement.display,
+            zone: placement.zone,
+            usedFallback: false
+        )
+        Log.detail("Soll-Frame \(placement.frame.shortDescription) (AppKit) → \(target.frame.shortDescription) (AX)")
+
+        guard !dryRun else {
+            Log.detail("dry-run — es wird nichts gesetzt")
+            record(
+                application: application,
+                snapshot: snapshot,
+                ruleID: nil,
+                placement: placement,
+                outcome: .notExecuted("dry-run")
+            )
+            return
+        }
+
+        execute(
+            window: AccessibilityWindow(element: element, snapshot: snapshot),
+            application: application,
+            snapshot: snapshot,
+            ruleID: nil,
+            placement: placement,
+            target: target,
+            retry: configuration.defaults.retry,
+            raiseAfterwards: false
+        )
+    }
+
+    private func execute(
+        window: AccessibilityWindow,
+        application: NSRunningApplication,
+        snapshot: WindowSnapshot,
+        ruleID: RuleID?,
+        placement: ResolvedPlacement,
+        target: ResolvedPlacement,
+        retry: RetryPolicy,
+        raiseAfterwards: Bool
+    ) {
         Task { @MainActor in
             var lastDeviation: Double?
 
@@ -797,12 +882,12 @@ public final class WatchEngine {
             record(
                 application: application,
                 snapshot: snapshot,
-                ruleID: rule.id,
+                ruleID: ruleID,
                 placement: placement,
                 outcome: recorded
             )
 
-            if rule.action.focus == .activate {
+            if raiseAfterwards {
                 Accessibility.raise(window.element, pid: snapshot.processIdentifier)
             }
         }

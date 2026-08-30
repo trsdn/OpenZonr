@@ -159,6 +159,24 @@ public struct ScreenArrangement: Sendable {
         Self.flipVertically(frame, primaryTopY: primaryTopY)
     }
 
+    /// Mirrors a point between AppKit and Quartz event coordinates.
+    ///
+    /// A point has no height to subtract, which is the whole difference to the
+    /// frame variant — and the reason both exist instead of one. `CGEvent`
+    /// reports the pointer in the mirrored space while `NSScreen` reports
+    /// everything else in AppKit's, so a drag has to cross this line exactly
+    /// once, on the way in.
+    ///
+    /// Self-inverse, like its frame sibling.
+    public static func flipVertically(_ point: ScreenPoint, primaryTopY: Double) -> ScreenPoint {
+        ScreenPoint(x: point.x, y: primaryTopY - point.y)
+    }
+
+    /// Mirrors a point using this arrangement's main display as the pivot.
+    public func flipVertically(_ point: ScreenPoint) -> ScreenPoint {
+        Self.flipVertically(point, primaryTopY: primaryTopY)
+    }
+
     /// The visible frames of all displays the configuration describes, keyed by
     /// alias — the input ``ZoneResolver`` expects.
     ///

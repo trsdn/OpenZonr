@@ -189,6 +189,22 @@ public enum Accessibility {
 
     // MARK: - Attribute access
 
+    /// The window a process considers focused.
+    ///
+    /// For a drag this is the right question to ask: clicking a title bar
+    /// focuses that window, so at the moment the gesture commits, the focused
+    /// window of the frontmost application *is* the one under the pointer. The
+    /// caller still verifies that against the frame — a drag that started
+    /// somewhere else must not move whatever happens to be focused.
+    public static func focusedWindow(ofProcess pid: pid_t) -> AXUIElement? {
+        let application = AXUIElementCreateApplication(pid)
+        guard let value = copyAttribute(application, kAXFocusedWindowAttribute as String) else {
+            return nil
+        }
+        guard CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return (value as! AXUIElement)
+    }
+
     public static func copyAttribute(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else {
