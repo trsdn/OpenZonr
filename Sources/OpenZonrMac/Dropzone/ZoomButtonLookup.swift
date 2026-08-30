@@ -20,17 +20,17 @@ public enum ZoomButtonLookup {
     /// Nutzer wert (siehe Issue #27, Falle 2 — Finder-Fenster ohne
     /// `AXZoomButton`). Die anderen beiden bedeuten schlicht „hier ist nichts
     /// zu tun", und die dürfen stumm bleiben.
-    @MainActor
-    public enum Result {
+    ///
+    /// `Sendable`, damit das Ergebnis aus dem Hintergrund-Task des Trackers
+    /// heraus auf den MainActor gereicht werden kann (siehe
+    /// `EventTapDragTracker.scheduleZoomButtonLookup`).
+    public enum Result: Sendable {
         /// Es gibt ein Fenster mit einem lesbaren Zoom-Knopf-Rahmen.
         ///
         /// Der Rahmen ist in **AppKit**-Koordinaten (unten links), damit er
         /// sich mit dem AppKit-Punkt aus dem Ereignis-Tap vergleichen lässt.
         case found(window: DraggedWindow, zoomButtonFrame: WindowFrame)
         /// Ein Fenster ist da, meldet aber kein ``kAXZoomButtonAttribute``.
-        ///
-        /// Der Nutzer soll das erkennen können — nichts zu tun ist hier eine
-        /// Aussage, nicht ein Aussetzer.
         case zoomButtonUnavailable(window: DraggedWindow)
         /// Unter dem Punkt sitzt gar kein AX-Fenster (Schreibtisch, Menüleiste,
         /// eine App ohne AX-Freigabe). Alltagsfall, still zu behandeln.
@@ -39,13 +39,18 @@ public enum ZoomButtonLookup {
 
     /// Ermittelt Fenster und Zoom-Knopf-Rahmen am Zeigerpunkt.
     ///
+    /// `nonisolated`, weil die Abfrage aus dem Hintergrund-Task des Trackers
+    /// laufen soll (siehe `EventTapDragTracker.scheduleZoomButtonLookup`) —
+    /// aus demselben Grund, aus dem #29 den Fenster-Lookup dorthin verlegt
+    /// hat: die AX-Spitzen (bis 970 ms in Issue #26) dürfen nicht den Thread
+    /// belegen, der den Tap bedient.
+    ///
     /// - Parameters:
     ///   - accessibilityPoint: Zeigerposition in **Accessibility**-Koordinaten
     ///     (origin oben links). Genau die, die der Ereignis-Tap liefert.
     ///   - primaryTopY: Achse für die Spiegelung zwischen Accessibility- und
     ///     AppKit-Raum. Falscher Pivot verlegt den Rahmen nicht ein bisschen,
     ///     er verlegt ihn auf den falschen Bildschirm.
-    @MainActor
     public static func read(
         atAccessibilityPoint accessibilityPoint: ScreenPoint,
         primaryTopY: Double

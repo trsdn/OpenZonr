@@ -108,8 +108,15 @@ Der Weg dorthin:
   Ein separater Rückruf (`onRightClick`) reicht das Ereignis am Zug vorbei.
   Der Tap ist derselbe, weil zwei Taps dieselbe Berechtigung zweimal
   verlangten — reine Verdoppelung.
+- **Wichtig für die Fehlerklasse aus #26/#29:** die AX-Abfrage steht *nicht*
+  im Tap-Rückruf. `scheduleZoomButtonLookup` stößt sie in `Task.detached`
+  an; erst mit fertigem Ergebnis springt der Pfad auf den MainActor zurück
+  und ruft `onRightClick` auf. Sonst blockierten AX-Abfrage (Spitzen bis
+  970 ms) *und* das modale `NSMenu.popUp` genau den Thread, der den Tap
+  bedient — mit denselben Folgen, die #29 gerade geschlossen hat.
 - `ZoomButtonLookup.read(atAccessibilityPoint:primaryTopY:)` in `OpenZonrMac`
-  ermittelt Fenster und Zoom-Knopf-Rahmen. Drei Ausgänge: `found`,
+  ermittelt Fenster und Zoom-Knopf-Rahmen. `nonisolated`, damit sie im
+  Hintergrund-Task laufen darf. Drei Ausgänge: `found`,
   `zoomButtonUnavailable`, `noWindow` — jede Trennung ist mit Vorsatz.
 - `zoomButtonHitTest(point:zoomButtonFrame:)` in `OpenZonrCore` prüft die
   Geometrie. Reine Funktion, headless testbar — die Trefferprüfung ohne
@@ -127,10 +134,14 @@ Der Weg dorthin:
   (nur reagieren, wenn kurz kein fremdes Menüfenster erscheint) ist erst
   fällig, wenn ein Gegenbeispiel gemessen ist — nicht auf Verdacht.
 - **`kAXZoomButtonAttribute` fehlt bei manchen Fenstern.** Beim Messen zu
-  Issue #27 lieferte ein Finder-Fenster keinen. In dem Fall darf nichts
-  passieren — aber **erkennbar nichts**, nicht stumm. `ZoomButtonMenu`
-  geht durch `AppModel.reportPinFailure` mit einer Meldung, die den Namen
-  der App nennt.
+  Issue #27 lieferte ein Finder-Fenster keinen. `ZoomButtonMenu` bleibt in
+  dem Fall **still**: das Attribut fehlt für das ganze Fenster, nicht für
+  einen Ort in ihm — der Klick war praktisch mit Sicherheit gar nicht am
+  Knopf gemeint. Eine sichtbare Meldung hier würde bei Apps wie dem Finder
+  auf *jeden* Rechtsklick sprechen und wäre nur Lärm. Der Code hält den
+  Fall trotzdem als eigenen Zweig (`ZoomButtonLookup.Result.zoomButtonUnavailable`),
+  damit man ihn später ohne Umbau melden kann, wenn ein Weg gefunden ist,
+  ihn nur bei plausibler Knopfnähe zu zeigen.
 
 ## Was ausdrücklich nicht gebaut wird — und warum
 
@@ -289,7 +300,7 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | **Verhalten von ⌘-Ziehen mit der Hand** | **Nicht gemessen** | Ob es angenehm ist, ⌘ über die Dauer eines Zugs zu halten, und ob die Umkehrung „nichts drücken heißt: keine Zonen" für den Nutzer stimmig ist, ist ohne echten Zug nicht zu beurteilen. Was gemessen ist, ist der Preis: ⌘-Ziehen bringt heute schon Hintergrundfenster nicht nach vorn, und diese Nebenwirkung wandert mit. |
 | **Doppelte Menüs am grünen Knopf** | **Nicht gemessen für alle Apps** | Gemessen sind TextEdit und Safari (kein App-Menü auf Rechtsklick am Zoom-Knopf, Positivkontrolle bestanden). Für **alle anderen Apps** ist es nicht gemessen. Der Tap ist `.listenOnly` und kann nichts schlucken — zeigt eine App dort doch selbst ein Menü, erscheinen zwei. Ein Ausweichweg wird erst gebaut, wenn ein Gegenbeispiel gemessen ist. |
 | **Erscheinen und Bedienbarkeit des Menüs am Bildschirm** | **Nicht gemessen** | Ob das `NSMenu` an der berechneten Position aufgeht, ob es die richtigen Zonen zeigt und ob der ⌥-Zusatz beim *Klick* korrekt gelesen wird, braucht eine Hand an der Maus — headless nicht prüfbar. Zonenermittlung und Trefferprüfung sind headless getestet, die AppKit-Anzeige nicht. |
-| **Verhalten auf Fenstern ohne `kAXZoomButton`** | **Gemessen für ein Finder-Fenster** | Ein Finder-Fenster lieferte kein `AXZoomButton` — der Fall ist im Code als `zoomButtonUnavailable` ausdrücklich getrennt und geht durch `AppModel.reportPinFailure`. Ob **jedes** Finder-Fenster (und andere AXScrollArea-artige Fenster) es genauso hält, ist nicht gemessen. |
+| **Verhalten auf Fenstern ohne `kAXZoomButton`** | **Gemessen für ein Finder-Fenster** | Ein Finder-Fenster lieferte kein `AXZoomButton`. Der Code trennt den Fall (`ZoomButtonLookup.Result.zoomButtonUnavailable`) und behandelt ihn **still**: das Attribut fehlt für das ganze Fenster, jeder beiläufige Rechtsklick würde sonst eine Meldung erzeugen. Ob **jedes** Finder-Fenster (und andere AXScrollArea-artige Fenster) es genauso hält, ist nicht gemessen. |
 | **Systemmenü beim Schweben mit eingeschalteter macOS-Fensteranordnung** | **Nicht gemessen** | Auf dieser Maschine ist `EnableTilingByEdgeDrag = 0`. Ob das Schweben-Menü der macOS-Fensteranordnung mit dem Rechtsklick-Menü kollidiert (verschiedene Gesten, aber am selben Pixel), braucht eine Maschine mit eingeschalteter Fensteranordnung und eine Positivkontrolle für das Schweben-Menü — beides fehlt. |
 
 Kurz: Alles, was ohne einen echten Zug beweisbar ist, ist bewiesen. Alles, was
