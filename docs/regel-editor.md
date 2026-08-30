@@ -305,3 +305,107 @@ immer hier öffnen?" nach einem Ablegen leitet seine Regel über dieselbe
 `QuickPin.Request`, die auch der Menüpunkt „Aktuelles Fenster hier festhalten"
 erzeugt. Damit gibt es weiterhin genau einen Weg, aus einem Fenster eine Regel
 zu machen.
+
+## Dry-Run-Zeile und Übersicht (aus #19)
+
+[Issue #19](https://github.com/trsdn/OpenZonr/issues/19) hat zwei Dinge
+angebracht: eine Zeile, die zu einer bearbeiteten Regel sagt, was gerade
+passieren würde, und eine Übersicht, die zeigt, welche App in welcher Zone
+landet — ohne dass man die Kette Regel → Rolle → Bindung → Zone im Kopf
+zusammensetzen muss. Beide sind gebaut, mit unterschiedlicher Beweislage.
+
+### Die Zeile im Regel-Editor
+
+Unter jeder ausgewählten Regel steht eine Zeile mit einem Pfeilsymbol
+(Messung) oder einem Fragezeichen (bedingte Auskunft). Der Text kommt aus
+`DryRunPreviewFormatter.line(for:subject:configuration:)` in
+`OpenZonrCore/Placement/`, die Auswertung selbst aus
+`DryRunPreview.evaluate(...)`. Beide sind pur, headless testbar, und werden
+von `Tests/OpenZonrCoreTests/DryRunPreview{,Formatter}Tests.swift`
+abgesichert.
+
+Die zwei Fälle sind bewusst getrennt:
+
+- **Ein Fenster der App ist offen** — die Zeile ist eine **Messung**. Der
+  Snapshot wird durch dieselbe Kette geschickt, die die Platzierung selbst
+  benutzt (`DefaultWindowFilter` → `CompiledRuleSet` → `DefaultRuleEngine` →
+  `DefaultZoneResolver`). Die Zeile nennt Zone, Bildschirm, Regelname,
+  Priorität und Zielrahmen in Punkten.
+- **Die App läuft nicht** — die Zeile ist **bedingt**. Sie nennt Regel und
+  Rolle, und darunter steht eine kleine Liste unter „Nicht geprüft — die
+  Regel prüft es, aber es steht erst am offenen Fenster fest:" mit den
+  Kriterien, die ohne Fenster nicht entscheidbar sind. In der real
+  existierenden Konfiguration prüfen alle drei Regeln ausschließlich das
+  Bundle; die Liste ist dann leer, die Auskunft ist trotzdem als bedingt
+  markiert, sobald Fenstertitel, Rolle, Größen, Seitenverhältnis oder
+  „nur erstes Fenster" die Auswahl beeinflussen könnten.
+
+Der eigentliche Wert liegt in
+`RuleCriteria.report(for:defaults:)` — die Funktion, die einer
+`WindowMatch` samt globalen Voreinstellungen ansieht, welche Kriterien
+*entscheidbar* und welche *unentscheidbar* sind. Sie ist der Grund, dass
+diese Auskunft ehrlich bleibt: ein naiver Dry-Run wäre in der heutigen
+Konfiguration zufällig exakt und würde in dem Moment still falsch, in dem
+jemand die erste Titelregel oder Größenbedingung anlegt. Die Zeile im
+Editor benennt genau dieses „still falsch" — und ist deshalb der Kern des
+Nachtrags aus dem Issue-Kommentar.
+
+Die einzige Accessibility-Lesemessung des Editors passiert hier: der
+Editor fragt `WindowInventory.allWindows(bundleIdentifier:)`, um Fall A von
+Fall B zu unterscheiden. Der Aufruf ist auf die eine aktuell ausgewählte
+Regel beschränkt und passiert nicht im Leerlauf.
+
+### Die Übersicht „Wohin geht was?"
+
+Als erster Reiter im Editor (vor Regeln, Rollen & Profile, Zonen) steht ein
+Bild aller Bildschirme des gewählten Profils, jeder in seinem
+Größenverhältnis. In jeder Zone stehen die Regeln, die dort landen — quer
+über die Bindungen des Profils.
+
+Sichtbar wird damit ohne Weiteres:
+
+- Zonen, auf die *nichts* zeigt, werden gezeichnet und tragen „keine Regel
+  zeigt hierher". In der real existierenden Konfiguration betrifft das
+  z. B. `u28e590-full`; das war ohne Übersicht nur der Konfiguration selbst
+  anzusehen, und dazu nur, wenn jemand die Kette bis dorthin verfolgte.
+- Die Auffangzone des Profils ist mit „(Auffang)" beschriftet — man sieht
+  in einem Blick, ob unerkannte Fenster auf derselben Zone landen wie
+  eine benannte Regel (in der heutigen Konfiguration teilt der Auffang die
+  Zone mit der TextEdit-Regel).
+- Deaktivierte Regeln stehen mit Strichlinie im Namen: sie sind da, aber
+  wirken nicht. Sie wegzulassen wäre eine Konfiguration zu zeigen, die es
+  so nicht gibt.
+
+Die Zuordnung selbst ist eine reine Funktion, `PlacementOverview.build(for:
+configuration:)`, und ist in
+`Tests/OpenZonrCoreTests/PlacementOverviewTests.swift` gemessen.
+
+### Was hier bewusst nicht gebaut ist
+
+- **Ziehen eines App-Etiketts in eine andere Zone.** Das griffe in die
+  Regel- bzw. Rollenbindung ein und in denselben Zoneneditor, an dem eine
+  parallele Sitzung arbeitet. Trennlinie gehalten. Ohne das ist die
+  Übersicht ein *Bild*, kein Editor — das gilt es im PR zu benennen.
+- **Räumliche Anordnung (links/rechts/oben/unten) im Bild.** Die Übersicht
+  zeigt die Bildschirme *nebeneinander*, jeder in seinem *Verhältnis*, mit
+  einem Zettel „Nicht gemessen: die räumliche Anordnung". Der Grund: die
+  echte Anordnung käme aus den AppKit-Rahmen der `DisplaySnapshot`s und
+  müsste auf ein Bild abgebildet werden. Diese Abbildung lebt in
+  `Sources/OpenZonrCore/Geometry/`, dessen Verantwortung eine parallele
+  Sitzung (Issue #21) hat. Für dieses Feature ist die *Regel-zu-Zone*-Frage
+  die dringlichere; die räumliche Anordnung lässt sich später ergänzen,
+  ohne die Datei umzukrempeln.
+
+### Nicht gemessen
+
+- Wie der Reiter mit vier Bildschirmen und drei Profilen am Schirm
+  aussieht — welche Zonen zu klein für ihr Etikett werden und wie SwiftUI
+  in engen Rechtecken umbricht. Ohne Hand an der Maus lässt sich das nicht
+  belegen; die Datei enthält deshalb kein UI-Testziel für diesen Reiter.
+- Ob der Fragezeichen-Marker für die bedingte Dry-Run-Zeile am Schirm
+  besser wirkt als ein alternatives Symbol. Die Wahl beruht auf dem
+  Muster der übrigen `Image(systemName:)`-Aufrufe im Editor, nicht auf
+  einer Messung.
+- Das Verhalten bei einer Konfiguration ohne Profil (kein Auffang, keine
+  Bindungen) ist als „kein Layout beschrieben"-Meldung angelegt, aber am
+  Schirm ungeprüft.
