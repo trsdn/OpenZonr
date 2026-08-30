@@ -10,15 +10,19 @@ import SwiftUI
 struct EditorWindow: View {
 
     @Bindable var document: ConfigurationDocument
-    @State private var tab: Tab = .rules
+    @State private var tab: Tab = .overview
 
     enum Tab: Hashable {
-        case rules, roles, zones
+        case overview, rules, roles, zones
     }
 
     var body: some View {
         VStack(spacing: 0) {
             TabView(selection: $tab) {
+                OverviewEditor(document: document)
+                    .tabItem { Label("Übersicht", systemImage: "square.grid.3x3.topleft.filled") }
+                    .tag(Tab.overview)
+
                 RuleEditor(document: document)
                     .tabItem { Label("Regeln", systemImage: "list.number") }
                     .tag(Tab.rules)
