@@ -234,6 +234,14 @@ private struct RuleForm: View {
                 }
             }
 
+            Section("Was würde jetzt passieren?") {
+                RuleDryRunLine(
+                    rule: rule,
+                    configuration: document.configuration,
+                    snapshots: document.displaySnapshots
+                )
+            }
+
             if !document.findings.findings(under: .rule(rule.id)).isEmpty {
                 Section("Befunde zu dieser Regel") {
                     ForEach(document.findings.findings(under: .rule(rule.id)), id: \.self) { finding in
