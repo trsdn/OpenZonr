@@ -444,6 +444,89 @@ bezahlt wird.
 
 ---
 
+## 14. Rollenschicht bei nur einem Profil — *entschieden: sichtbar lassen*
+
+**Frage:** In der real existierenden Konfiguration ist die Kette
+Regel → Rolle → Zone strikt 1:1:1 — drei Regeln, drei Rollen, drei Zonen. Eine
+Rolle heißt `links-aussen`, trägt den Namen „Links außen" und die Notiz
+„Automatisch angelegt für „Systemeinstellungen"". Sie ist nach der Zone
+benannt, auf die sie zeigt: `QuickPin` musste ihr einen Namen geben und hatte
+nichts zu sagen. Soll die Rollenschicht in der Oberfläche verborgen werden,
+bis ein zweites Profil sie nötig macht?
+
+**Entscheidung: nein, die Rolle bleibt sichtbar. Die Übersicht aus #19 hat den
+Zwischenschritt bereits erträglich gemacht, ohne ihn zu verstecken.**
+
+Der Editor öffnet seit #19 auf dem Reiter „Übersicht" (`EditorWindow` mit
+`@State private var tab: Tab = .overview`). Dort steht ein maßstabsgetreues
+Bild der Bildschirmanordnung, in den Zonen die Namen der Zonen und darunter
+die Regeletiketten samt Bundle-Kennung. Das Wort „Rolle" kommt in der
+Zeichnung nicht **einmal** vor — die Rechnung (`PlacementOverview.build`)
+klappt die Kette Regel → Rolle → Bindung → Zone in Core zusammen, und die
+Oberfläche zeigt nur das Ergebnis. Wer den Editor aufmacht, sieht damit
+sofort „TextEdit → Rechts außen", „Outlook → Mitte", „Systemeinstellungen →
+Links außen". Der Alltagsweg begegnet der Rolle nicht mehr. Sie steht nur im
+Reiter „Rollen & Profile", und wer dort landet, will das Datenmodell sehen.
+
+Verstecken hätte an drei Stellen einen Preis, der den Gewinn übersteigt:
+
+- **Der Enthüllungspunkt fehlt.** Das Issue benennt selbst das Risiko:
+  Rollen im Datenmodell zu haben und in der Oberfläche zu verbergen zwingt
+  zu **einem** klar benannten Moment, an dem sie erscheinen — dem Anlegen
+  des zweiten Profils. Diesen Moment gibt es heute nicht. `RoleEditor`
+  iteriert `document.configuration.profiles`; einen Weg, ein Profil
+  anzulegen, hat der Editor nicht. Die Schicht zu verbergen, ohne den
+  Weg dahin zu bauen, ist genau der Schalter „Fortgeschritten", vor dem
+  das Issue warnt.
+- **`QuickPin` beschriftet Rollen nach ihrer Zone.** Das ist die Ursache
+  von „Links außen"; verstecken heilt das Symptom nur im Alltag und
+  überlässt es dem, der den Rollen-Reiter aufmacht. Der Nutzen von
+  `QuickPin` — dass der Nutzer das Wort „Rolle" nicht lernen muss —
+  besteht heute schon (`Outcome.summary` spricht von Regel und Zone,
+  nicht von Rolle). Das Missverhältnis, das das Issue beschreibt, wird
+  erst dann echt, wenn das zweite Profil da ist und die Rolle „Links
+  außen" auf dem Laptop plötzlich woanders liegen soll. Ab diesem
+  Moment ist die Rolle nicht mehr überflüssig, sondern die Antwort auf
+  eine echte Frage.
+- **Der heutige Preis ist niedrig.** Drei Rollen, drei Regeln, drei
+  Zonen — der Rollen-Reiter ist ein kurzer Zettel neben der Übersicht,
+  die die Frage „wohin geht was?" beantwortet. Das Datenformat
+  unverändert zu halten und die Schicht am zweiten Profil wieder
+  hervorzuziehen wäre teurer als sie stehenzulassen: das Verbergen
+  müsste rückwärts kompatibel bleiben, und der Moment des Wiederauftauchens
+  wäre erklärungsbedürftig.
+
+Der Kern: **die Übersicht macht die Rollenschicht erträglich, ohne sie zu
+verstecken.** Genau das war die These im letzten Absatz des Issues. Sie hat
+sich bestätigt.
+
+**Verworfene Alternative — verbergen mit dreistufigem Wiederauftauchen.**
+Das Issue schlug vor: bei einem Profil die Rolle unsichtbar (Kennung =
+Zonenkennung, Dateiformat unverändert), beim Anlegen des zweiten Profils
+die Frage „Wo liegt ‚E-Mail' in diesem Setup?" und ab dort sichtbar,
+zusätzlich ein Hinweis im `FindingIndex`, wenn eine Rolle wie ihre Zone
+heißt. Sauber gedacht, aber:
+
+- Der Enthüllungspunkt „Anlegen des zweiten Profils" existiert im
+  Editor nicht und müsste erst gebaut werden. Ohne ihn wird die
+  Enthüllung ein „Fortgeschritten"-Schalter — genau der Fehler, den das
+  Issue am eigenen Vorschlag benannt hat.
+- `QuickPin` müsste seine Ausgabe umformulieren, obwohl seine heutigen
+  Meldungen bereits nicht das Wort „Rolle" verwenden. Der Aufwand käme
+  aus dem Zwang, keine Rolle sichtbar erzeugen zu dürfen, nicht aus
+  einem Bedarf des Nutzers.
+- Ein Hinweis im `FindingIndex` „Beim zweiten Setup wird dieser Name
+  irreführend" ist ein Befund über ein hypothetisches Setup. Befunde
+  sind sonst Aussagen über die Konfiguration, wie sie ist. Der Hinweis
+  fällt aus der Reihe.
+
+**Was daraus folgt, wenn die Schicht später doch verborgen werden soll.**
+Voraussetzung ist dann der Weg zum zweiten Profil im Editor (Anlegen mit
+einer Frage je bestehender Rolle „Wo liegt sie hier?"). Vorher ist
+Verbergen ein halber Schritt und macht das Ganze schlechter, nicht besser.
+
+---
+
 Zur Nachvollziehbarkeit festgehalten:
 
 | Abweichung | Begründung |
