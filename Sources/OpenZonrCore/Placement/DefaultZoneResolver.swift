@@ -73,9 +73,18 @@ public struct DefaultZoneResolver: ZoneResolver {
             relativeFrame = zone.frame
         }
 
+        // Rand nur beim Platzieren abziehen — nicht beim Treffertest.
+        //
+        // ``DropzoneMap`` rechnet weiter mit den ungeschrumpften Zonen. Wer den
+        // Rand an beiden Stellen abzöge, bekäme optisch dasselbe Ergebnis und
+        // ein Overlay, das an jeder Naht blinkt; der Zusammenhang wäre schwer
+        // zu finden, weil die Fenster ja richtig liegen. Deshalb steht die
+        // Schrumpfung genau hier und nirgends sonst.
+        let placed = layout.margin > 0 ? relativeFrame.inset(by: layout.margin) : relativeFrame
+
         return .success(
             ResolvedPlacement(
-                frame: absoluteFrame(for: relativeFrame, in: visibleFrame),
+                frame: absoluteFrame(for: placed, in: visibleFrame),
                 display: binding.display,
                 zone: binding.zone,
                 usedFallback: usedFallback
