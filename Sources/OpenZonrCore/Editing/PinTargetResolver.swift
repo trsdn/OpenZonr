@@ -114,6 +114,26 @@ extension RelativeRect {
         return width * height
     }
 
+    /// Das Rechteck, an jeder Seite um `margin` verkleinert.
+    ///
+    /// Rand pro Layout, nicht Rand pro Zone: derselbe Wert liegt an allen
+    /// vier Seiten. Ist der Rand größer als die halbe Kante, degeneriert das
+    /// Rechteck zu einer Linie oder einem Punkt in der Mitte; die
+    /// Validierung hält Ränder deshalb eng. Der Aufrufer
+    /// (``DefaultZoneResolver``) ruft diese Funktion nur, wenn
+    /// ``Layout/margin`` echt positiv ist.
+    public func inset(by margin: Double) -> RelativeRect {
+        let m = max(0, margin)
+        let horizontal = min(m, self.width / 2)
+        let vertical = min(m, self.height / 2)
+        return RelativeRect(
+            x: x + horizontal,
+            y: y + vertical,
+            width: self.width - 2 * horizontal,
+            height: self.height - 2 * vertical
+        )
+    }
+
     /// The rectangle clamped into the unit square, keeping at least `minimum` of
     /// each dimension.
     ///

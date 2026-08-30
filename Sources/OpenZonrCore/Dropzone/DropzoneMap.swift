@@ -71,6 +71,11 @@ public enum DropzoneMap {
     /// Displays without a visible frame are skipped — they are described but not
     /// attached, and a zone on a monitor that is not there cannot be dropped
     /// into.
+    ///
+    /// ``Layout/margin`` wird hier bewusst **nicht** abgezogen. Der Rand
+    /// wirkt nur beim Platzieren (``DefaultZoneResolver``); der Treffertest
+    /// bleibt lückenlos, damit ein Zeiger auf der Naht zwischen zwei Zonen
+    /// nicht in eine Randlücke fällt und das Overlay nicht flackert.
     public static func zones(
         in configuration: Configuration,
         profile: ProfileID,

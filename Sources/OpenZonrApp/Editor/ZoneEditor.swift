@@ -8,16 +8,28 @@ import SwiftUI
 /// right half that nobody reads as one; a rectangle on a picture of the screen
 /// is the same sentence read at a glance.
 ///
-/// On release the rectangle is snapped to a twelfth of the screen and clamped
-/// to the unit square. Twelfths because halves, thirds and quarters all land on
-/// them, so the common layouts close without a gap — a two-pixel seam between
-/// two zones is invisible in the editor and very visible on the screen.
+/// Beim Loslassen rastet das Rechteck an Nachbarkanten (``EdgeSnap``) und ans
+/// Zwölftelraster; das Raster wird während der Geste eingeblendet, damit der
+/// Sprung eine sichtbare Ursache hat. Zwölftel, weil Hälften, Drittel und
+/// Viertel darauf liegen — die üblichen Aufteilungen schließen ohne Naht.
+/// Die unbedeckte Fläche wird schraffiert (``LayoutCoverage``); Überlappung
+/// ist ausdrücklich erlaubt und bleibt still. Vorlagen kommen aus
+/// ``LayoutTemplate`` und melden vor der Anwendung, welche Bindungen dadurch
+/// ins Leere zeigen würden.
 struct ZoneEditor: View {
 
     @Bindable var document: ConfigurationDocument
     @State private var display: DisplayAlias?
     @State private var profile: ProfileID?
     @State private var selection: ZoneID?
+    /// Kennung der Zone, an der gerade gezogen oder gerastet wird.
+    ///
+    /// Trägt zwei Aufgaben zugleich: das Zwölftel-Raster erscheint genau
+    /// dann, und die aktive Zone weiß es nicht selbst — die Rastentscheidung
+    /// gehört zum Editor, nicht zur einzelnen Zone.
+    @State private var activeGesture: ZoneID?
+    /// Vorschau einer Vorlagenanwendung, bevor sie bestätigt wird.
+    @State private var pendingTemplate: PendingTemplateApplication?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -68,10 +80,48 @@ struct ZoneEditor: View {
                 Text("Layout: \(id.rawValue)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                templatesMenu(display: display, layout: id)
             }
             Spacer()
         }
         .padding(10)
+        .sheet(item: $pendingTemplate) { pending in
+            TemplatePreviewSheet(
+                pending: pending,
+                onConfirm: {
+                    document.apply {
+                        $0.applying(template: pending.template, layout: pending.layout, display: pending.display)
+                    }
+                    pendingTemplate = nil
+                },
+                onCancel: { pendingTemplate = nil }
+            )
+        }
+    }
+
+    /// Menü mit den Vorlagen. Klicken ersetzt die Zonen des Layouts, zeigt
+    /// aber vorher, welche Bindungen dadurch ins Leere zeigen würden.
+    private func templatesMenu(display: DisplayAlias, layout: LayoutID) -> some View {
+        Menu("Vorlage anwenden") {
+            ForEach(LayoutTemplate.allCases, id: \.rawValue) { template in
+                Button(template.displayName) {
+                    let preview = document.configuration.previewApplying(
+                        template: template,
+                        layout: layout,
+                        display: display
+                    )
+                    pendingTemplate = PendingTemplateApplication(
+                        template: template,
+                        layout: layout,
+                        display: display,
+                        preview: preview
+                    )
+                }
+            }
+        }
+        .menuStyle(.borderlessButton)
+        .frame(maxWidth: 180)
+        .help("Ersetzt die Zonen dieses Layouts. Bindungen auf verschwundene Zonen werden vor der Anwendung ausgewiesen.")
     }
 
     // MARK: - Canvas
@@ -86,14 +136,29 @@ struct ZoneEditor: View {
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(.separator))
                     .frame(width: side.width, height: side.height)
 
+                // Schraffur der unbedeckten Fläche. Eine Beobachtung, kein
+                // Fehler: die Fläche ist real und heute unsichtbar.
+                UncoveredHatch(zones: layout.zones.map(\.frame), canvas: side)
+                    .allowsHitTesting(false)
+
+                // Zwölftel-Raster nur während einer Geste. Erklärt den Sprung
+                // beim Loslassen und stört sonst nicht.
+                if activeGesture != nil {
+                    TwelfthGrid(canvas: side)
+                        .allowsHitTesting(false)
+                }
+
                 ForEach(layout.zones) { zone in
                     ZoneHandle(
                         zone: zone,
+                        neighbours: layout.zones.filter { $0.id != zone.id }.map(\.frame),
                         canvas: side,
                         isSelected: selection == zone.id,
                         severity: document.findings.severity(under: .zone(zone.id, layout: layout.id, display: display))
                     ) {
                         selection = zone.id
+                    } onGestureChanged: { isActive in
+                        activeGesture = isActive ? zone.id : (activeGesture == zone.id ? nil : activeGesture)
                     } onChange: { frame in
                         document.apply {
                             $0.settingZoneFrame(frame, zone: zone.id, layout: layout.id, display: display)
@@ -245,10 +310,12 @@ struct ZoneEditor: View {
 private struct ZoneHandle: View {
 
     let zone: Zone
+    let neighbours: [RelativeRect]
     let canvas: CGSize
     let isSelected: Bool
     let severity: ValidationSeverity?
     let onSelect: () -> Void
+    let onGestureChanged: (Bool) -> Void
     let onChange: (RelativeRect) -> Void
 
     /// The offset of the gesture in progress, kept separate from the stored
@@ -290,11 +357,13 @@ private struct ZoneHandle: View {
                     DragGesture()
                         .onChanged { value in
                             onSelect()
+                            onGestureChanged(true)
                             resizeDelta = CGSize(width: value.translation.width, height: value.translation.height)
                         }
                         .onEnded { _ in
                             commit(rect: rect)
                             resizeDelta = .zero
+                            onGestureChanged(false)
                         }
                 )
         }
@@ -305,11 +374,13 @@ private struct ZoneHandle: View {
             DragGesture()
                 .onChanged { value in
                     onSelect()
+                    onGestureChanged(true)
                     dragOffset = value.translation
                 }
                 .onEnded { _ in
                     commit(rect: rect)
                     dragOffset = .zero
+                    onGestureChanged(false)
                 }
         )
     }
@@ -321,7 +392,12 @@ private struct ZoneHandle: View {
             width: rect.width / canvas.width,
             height: rect.height / canvas.height
         )
-        onChange(relative.snapped().clampedToUnitSquare())
+        // Zuerst an Nachbarkanten fangen, dann ans Zwölftelraster — sonst
+        // rastet ein knapp danebenliegender Zug erst auf das Zwölftel und die
+        // Nachbarkante bleibt zwei Pixel daneben. Die zusammengesetzte
+        // Rechnung liegt in ``EdgeSnap`` und ist headless bewiesen.
+        let snapped = EdgeSnap.snap(relative, neighbours: neighbours)
+        onChange(snapped.clampedToUnitSquare())
     }
 
     private var fill: Color {
@@ -424,5 +500,144 @@ private struct ZoneForm: View {
         let base = dimension == .width ? size.width : size.height
         let points = Int((fraction * base).rounded())
         return "≙ \(points) pt"
+    }
+}
+
+/// Zwölftel-Raster, gezeichnet nur während einer Geste.
+///
+/// Ein sichtbares Raster erklärt den Sprung beim Loslassen: das Rechteck
+/// rastet auf ``RelativeRect/snapped()`` — ohne Anzeige wirkt der Sprung wie
+/// eine Willkür des Editors, mit Anzeige wie das, was er ist. Zwölftel, weil
+/// Hälften (6/12), Drittel (4/12) und Viertel (3/12) alle darauf liegen.
+private struct TwelfthGrid: View {
+    let canvas: CGSize
+
+    var body: some View {
+        Canvas { context, _ in
+            let step = 1.0 / 12.0
+            let lineColour = Color.secondary.opacity(0.35)
+            for i in 1..<12 {
+                let x = Double(i) * step * canvas.width
+                var line = Path()
+                line.move(to: CGPoint(x: x, y: 0))
+                line.addLine(to: CGPoint(x: x, y: canvas.height))
+                context.stroke(line, with: .color(lineColour), lineWidth: 0.5)
+            }
+            for i in 1..<12 {
+                let y = Double(i) * step * canvas.height
+                var line = Path()
+                line.move(to: CGPoint(x: 0, y: y))
+                line.addLine(to: CGPoint(x: canvas.width, y: y))
+                context.stroke(line, with: .color(lineColour), lineWidth: 0.5)
+            }
+        }
+        .frame(width: canvas.width, height: canvas.height)
+    }
+}
+
+/// Schraffur der unbedeckten Fläche.
+///
+/// Die Rechnung liegt in ``LayoutCoverage``; hier wird nur gezeichnet. Ist
+/// nichts unbedeckt, verschwindet die Ansicht ohne Zeichnen — Überlappungen
+/// sind ausdrücklich erlaubt und dürfen nicht als Fehler erscheinen.
+private struct UncoveredHatch: View {
+    let zones: [RelativeRect]
+    let canvas: CGSize
+
+    var body: some View {
+        Canvas { context, _ in
+            let uncovered = LayoutCoverage.uncovered(zones: zones)
+            guard !uncovered.isEmpty else { return }
+            let hatchColour = Color.orange.opacity(0.45)
+            let spacing: CGFloat = 6
+
+            for rect in uncovered {
+                let x = rect.x * canvas.width
+                let y = rect.y * canvas.height
+                let w = rect.width * canvas.width
+                let h = rect.height * canvas.height
+                let cgRect = CGRect(x: x, y: y, width: w, height: h)
+                // Jedes Rechteck bekommt seine eigene Ebene, damit der Clip
+                // beim nächsten Rechteck nicht mehr wirkt. ``GraphicsContext``
+                // kennt kein Clip-Reset; die Ebene ist der vorgesehene Weg.
+                context.drawLayer { layer in
+                    layer.clip(to: Path(cgRect))
+                    let extent = w + h
+                    var stripe = -h
+                    while stripe < extent {
+                        var line = Path()
+                        line.move(to: CGPoint(x: x + stripe, y: y))
+                        line.addLine(to: CGPoint(x: x + stripe + h, y: y + h))
+                        layer.stroke(line, with: .color(hatchColour), lineWidth: 0.75)
+                        stripe += spacing
+                    }
+                }
+            }
+        }
+        .frame(width: canvas.width, height: canvas.height)
+    }
+}
+
+/// Eine gerade angeforderte Vorlagenanwendung, die auf Bestätigung wartet.
+private struct PendingTemplateApplication: Identifiable {
+    let id = UUID()
+    let template: LayoutTemplate
+    let layout: LayoutID
+    let display: DisplayAlias
+    let preview: LayoutTemplatePreview
+}
+
+/// Zeigt vor der Vorlagenanwendung, welche Bindungen ins Leere zeigen würden.
+///
+/// Der Editor meldet hängende Bindungen sonst erst *nach* der Anwendung als
+/// Befund. Für eine Vorlage ist das zu spät — sie ersetzt ein Layout in einem
+/// Schritt. Hier steht die Liste vorher, benannt, mit einem klaren Abbruch.
+private struct TemplatePreviewSheet: View {
+    let pending: PendingTemplateApplication
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Vorlage \(pending.template.displayName) anwenden")
+                .font(.headline)
+
+            Text("Ersetzt die Zonen des Layouts \(pending.layout.rawValue) auf \(pending.display.rawValue).")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            if pending.preview.danglingBindings.isEmpty {
+                Text("Keine Bindungen zeigen danach ins Leere.")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Danach hängende Bindungen:")
+                    .font(.subheadline)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(pending.preview.danglingBindings.enumerated()), id: \.offset) { _, binding in
+                            HStack {
+                                Text("Profil \(binding.profile.rawValue) · Rolle \(binding.role.rawValue) → Zone \(binding.zone.rawValue)")
+                                    .font(.system(.caption, design: .monospaced))
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 160)
+                .background(Color(nsColor: .textBackgroundColor))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(.separator))
+            }
+
+            HStack {
+                Spacer()
+                Button("Abbrechen", role: .cancel, action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Button("Anwenden", action: onConfirm)
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 420)
     }
 }

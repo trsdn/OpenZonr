@@ -200,15 +200,69 @@ nicht kosten — geprüft ist das noch nicht.
 
 ---
 
-## 8. Zonenkonfiguration und Editor
+## 8. Zonenkonfiguration und Editor — *entschieden*
 
-Offen ist, wie Zonen tatsächlich gezeichnet werden: freies Zeichnen auf einer
-Vorschau des Bildschirms, ein Raster mit einrastenden Kanten, oder mitgelieferte
-Vorlagen (Hälften, Drittel, 25/50/25), die anschließend angepasst werden können.
+**Frage:** Wie werden Zonen tatsächlich gezeichnet — freies Zeichnen, Raster
+mit einrastenden Kanten, mitgelieferte Vorlagen? Und: sollen Zonenränder und
+Abstände (Gaps) konfigurierbar sein?
 
-Ebenfalls offen: ob Zonenränder und Abstände (Gaps) konfigurierbar sein sollen.
-Das Datenmodell sieht sie derzeit nicht vor, weil sich Abstände auch als
-prozentuale Ränder in den Zonen selbst ausdrücken lassen — nur eben umständlich.
+**Entscheidung: alle drei Wege zugleich, Vorlagen als Ausgangspunkt.** Der
+Editor liefert Vorlagen für Hälften, Drittel, Viertel, 25/50/25 und Fünftel;
+darüber hinaus wird auf einem Zwölftelraster gerastet, das *während* der
+Geste sichtbar ist, und beim Loslassen zusätzlich an Kanten benachbarter
+Zonen gefangen. Die Sichtbarkeit des Rasters ist der Punkt: eine Zone rastet
+seit dem Durchstich auf Zwölftel, ohne dass jemand das gesehen hätte, und
+das Rechteck sprang beim Loslassen ohne erkennbaren Grund. Zwölftel, weil
+Hälften (6/12), Drittel (4/12) und Viertel (3/12) alle darauf liegen.
+Fünftel sind auf 5120 px Fenster von 1024 px, Drittel dort 1706 px — die
+zwei Vorlagen decken zwei Grenzfälle, die dieselbe Frage stellen.
+
+Vorlagen ersetzen die Zonen eines Layouts vollständig. **Vorher** wird
+gemeldet, welche Bindungen dadurch ins Leere zeigen würden — die
+Validierung meldet den Fall bereits als
+[`unknownZoneInBinding`](../Sources/OpenZonrCore/Validation/), das reicht
+aber erst *nach* der Anwendung. `Configuration.previewApplying(template:…)`
+liefert die Vorschau davor, `applying(template:…)` führt die Änderung aus;
+beides sind reine Funktionen und headless bewiesen
+(`LayoutTemplateTests.swift`).
+
+Unbedeckte Fläche wird im Canvas schraffiert. Überlappung ist laut
+`Zone.swift` ausdrücklich erlaubt (großes „Fokus"-Feld über zwei Hälften)
+und darf kein Fehler sein. Unbedeckte Fläche dagegen ist fast immer ein
+Versehen und war bisher unsichtbar; Schraffur statt Fehlermeldung — eine
+Beobachtung, keine Behauptung. Die Rechnung liegt in `LayoutCoverage` und
+ist an denselben Vorlagen bewiesen, für die sie exakt Null liefern muss.
+
+**Zur Gap-Frage: keine Abstände pro Zone, sondern ein Randwert pro Layout.**
+`Layout.margin` steht neben `zones`; der Standardwert `0` bewahrt das
+bisherige Verhalten, das Feld ist beim Dekodieren und Kodieren omissible.
+
+**Und die eigentliche Vorschrift, ohne die es jemand naheliegend und
+falsch baut:**
+
+- **Beim Platzieren: Rand abziehen.** `DefaultZoneResolver` verkleinert die
+  Zone um `margin` an jeder Seite; das Fenster bekommt seine Luft.
+- **Beim Treffertest: nicht.** `DropzoneMap.zones(in:…)` rechnet weiter mit
+  den ungeschrumpften Zonen. Die kacheln den Bildschirm lückenlos, jeder
+  Punkt gehört genau einer Zone, kein Flackern beim Ziehen über eine Naht.
+
+Wer den Rand an beiden Stellen abzöge, bekäme optisch dasselbe Ergebnis und
+ein Overlay, das an jeder Naht blinkt — und der Zusammenhang wäre schwer zu
+finden, weil die Fenster ja richtig liegen. Ein Test hält es fest: ein Punkt
+exakt auf der Naht zweier Zonen mit `margin > 0` liefert weiterhin genau
+eine Zone (`DropzoneMapTests`), während das aufgelöste Fenster den Rand als
+Luft trägt (`ZoneResolverTests`).
+
+**Verworfene Alternative — Gaps pro Zone.** Zwei Nachteile stehen
+gleichauf: die Zahl dupliziert sich an jeder Zone und driftet auseinander,
+sobald jemand eine Zone anfasst. Das wiegt aber weniger als das Zweite:
+Zonen kacheln den Bildschirm heute lückenlos, und die Dropzones hängen
+daran. Mit echten Lücken im Modell würde die Frage *welche Zone liegt
+unter dem Zeiger* nur da eine Antwort haben, wo keine Lücke ist — und wer
+ein Fenster quer über ein Drei-Spalten-Layout zieht, bekäme Hervorhebung —
+nichts — Hervorhebung — nichts — Hervorhebung. Das trifft genau die
+Stelle, die schon nach Punkt 13 wackelt: dort eine zu groß geratene
+Totzone, hier eine, die niemand als solche gemeint hat.
 
 ---
 
