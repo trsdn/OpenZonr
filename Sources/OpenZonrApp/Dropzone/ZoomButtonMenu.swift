@@ -86,12 +86,12 @@ final class ZoomButtonMenu: NSObject, NSMenuDelegate {
         arrangement: ScreenArrangement
     ) {
         guard let configuration = model.document?.configuration ?? model.configuration else {
-            model.reportPinFailure("Es ist keine Konfiguration geladen.")
+            model.reportPinFailure(AppModel.GuardSentence.noConfigurationLoaded)
             return
         }
         guard let profile = model.activeProfile else {
             model.reportPinFailure(
-                "Kein Profil ist aktiv — ohne Profil ist nicht bekannt, was „hier“ bedeutet."
+                AppModel.GuardSentence.noActiveProfile
             )
             return
         }
@@ -244,7 +244,7 @@ private final class ZoomButtonMenuItem: NSMenuItem {
             return
         }
         guard let base = model.document?.configuration ?? model.configuration else {
-            model.reportPinFailure("Es ist keine Konfiguration geladen.")
+            model.reportPinFailure(AppModel.GuardSentence.noConfigurationLoaded)
             return
         }
 

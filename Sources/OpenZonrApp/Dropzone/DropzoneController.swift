@@ -29,6 +29,15 @@ final class DropzoneController {
     /// instead of showing a feature that quietly does nothing.
     private(set) var problem: String?
 
+    #if DEBUG
+    /// Nur für Tests: `true`, wenn `start()` einen laufenden Tracker
+    /// installiert hat. Die App selbst braucht das nicht — der Tracker
+    /// spricht durch `onEvent`, und ohne installierten Tap kann er nicht
+    /// sprechen. Die Zusicherung „bei Pause installieren wir keinen Tap" ist
+    /// aber genau die, an der der Fund aus PR #15 hing.
+    var _hasActiveTrackerForTesting: Bool { tracker != nil }
+    #endif
+
     /// The offer shown after a drop, or `nil` when there is none.
     private(set) var offer: DropOffer?
 
@@ -202,11 +211,11 @@ final class DropzoneController {
     /// oben geschehen ist.
     private func pin(window: DraggedWindow, into zone: Dropzone) {
         guard let base = model.document?.configuration ?? model.configuration else {
-            model.reportPinFailure("Es ist keine Konfiguration geladen.")
+            model.reportPinFailure(AppModel.GuardSentence.noConfigurationLoaded)
             return
         }
         guard let profile = model.activeProfile else {
-            model.reportPinFailure("Kein Profil ist aktiv — ohne Profil ist nicht bekannt, was „hier“ bedeutet.")
+            model.reportPinFailure(AppModel.GuardSentence.noActiveProfile)
             return
         }
         switch DropRuleOffer.pin(
