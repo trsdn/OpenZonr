@@ -72,6 +72,36 @@ public enum DropzoneOverlayPlan {
         guard let profile else { return .hidden(.disabled) }
 
         let all = DropzoneMap.zones(in: configuration, profile: profile, visibleFrames: visibleFrames)
+        return plan(
+            pointer: pointer,
+            origin: origin,
+            zones: all,
+            settings: settings,
+            modifiers: modifiers
+        )
+    }
+
+    /// Decides what to show from zones that have already been resolved for the
+    /// current drag.
+    ///
+    /// The controller receives a move event for every pointer update. The set of
+    /// available zones does not change during that gesture, so callers that are
+    /// already on a drag path can compute screen geometry once and reuse it
+    /// here while the modifier and distance gates remain live per event.
+    public static func plan(
+        pointer: ScreenPoint,
+        origin: ScreenPoint,
+        zones all: [Dropzone],
+        settings: DropzoneSettings,
+        modifiers: ModifierState
+    ) -> Plan {
+        let activation = DropzoneActivator.activation(
+            settings: settings,
+            modifiers: modifiers,
+            travelled: DropzoneActivator.distance(from: origin, to: pointer)
+        )
+        guard activation.showsZones else { return .hidden(activation) }
+
         let onDisplay = DropzoneMap.zones(onDisplayUnder: pointer, in: all)
         guard !onDisplay.isEmpty else { return .hidden(.disabled) }
 

@@ -21,8 +21,8 @@ final class DropzoneController {
     private var tracker: (any WindowDragTracker)?
 
     /// The drag in progress.
-    private var origin: ScreenPoint?
     private var dragged: DraggedWindow?
+    private var dragContext: DragContext?
     private var lastPlan: DropzoneOverlayPlan.Plan = .hidden(.disabled)
 
     /// Set when the tracker could not be started, so the menu can say why
@@ -46,6 +46,11 @@ final class DropzoneController {
         let id = UUID()
         let question: String
         let request: QuickPin.Request
+    }
+
+    private struct DragContext {
+        var origin: ScreenPoint
+        var zones: [Dropzone]
     }
 
     init(model: AppModel) {
@@ -95,8 +100,8 @@ final class DropzoneController {
         tracker?.stop()
         tracker = nil
         overlay.hide()
-        origin = nil
         dragged = nil
+        dragContext = nil
     }
 
     /// Restarts after a settings change; also the way the menu switches the
@@ -123,8 +128,8 @@ final class DropzoneController {
     private func handle(_ event: WindowDragEvent) {
         switch event {
         case let .began(window, point):
-            origin = point
             dragged = window
+            dragContext = makeDragContext(origin: point)
             // A new drag retires the previous offer: answering it now would
             // pin the app to the zone of a drop two gestures ago.
             dismissOffer()
@@ -136,8 +141,8 @@ final class DropzoneController {
             update(pointer: point, modifiers: modifiers)
             drop(at: point)
             overlay.hide()
-            origin = nil
             dragged = nil
+            dragContext = nil
 
         case let .cancelled(reason):
             // Ein Abbruch trifft den Nutzer mitten in einer sichtbaren Geste:
@@ -148,28 +153,39 @@ final class DropzoneController {
             Log.detail("Zug abgebrochen: \(reason)")
             model.reportPinFailure("Der Zug wurde abgebrochen: \(reason)")
             overlay.hide()
-            origin = nil
             dragged = nil
+            dragContext = nil
         }
     }
 
     private func update(pointer: ScreenPoint, modifiers: ModifierState) {
-        guard let origin, let configuration = model.configuration, let profile = model.activeProfile else {
+        guard let dragContext else {
             overlay.hide()
             return
         }
-        let arrangement = ScreenArrangement(snapshots: SystemDisplays.snapshots())
         let plan = DropzoneOverlayPlan.plan(
             pointer: pointer,
-            origin: origin,
-            configuration: configuration,
-            profile: profile.id,
-            visibleFrames: arrangement.visibleFrames(for: configuration.displays),
+            origin: dragContext.origin,
+            zones: dragContext.zones,
             settings: settings,
             modifiers: modifiers
         )
         lastPlan = plan
         overlay.show(plan)
+    }
+
+    private func makeDragContext(origin: ScreenPoint) -> DragContext? {
+        guard let configuration = model.configuration, let profile = model.activeProfile else {
+            return nil
+        }
+
+        let arrangement = ScreenArrangement(snapshots: SystemDisplays.snapshots())
+        let zones = DropzoneMap.zones(
+            in: configuration,
+            profile: profile.id,
+            visibleFrames: arrangement.visibleFrames(for: configuration.displays)
+        )
+        return DragContext(origin: origin, zones: zones)
     }
 
     /// Puts the window in the zone under the pointer.
