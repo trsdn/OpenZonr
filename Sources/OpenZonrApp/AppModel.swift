@@ -120,14 +120,37 @@ final class AppModel {
     private var permissionTimer: Timer?
     private var logObservation: UUID?
 
+    /// Die Systemzugriffe hinter der Berechtigungsprüfung. Ein Test kann so
+    /// „Berechtigung erteilt / entzogen“ herstellen, ohne Bedienungshilfen und
+    /// ohne einen echten `WatchEngine`, der sich an laufende Apps hängt.
+    struct Platform {
+        var isTrusted: @MainActor () -> Bool
+        var probeWindowAccess: @MainActor () -> Accessibility.WindowAccess
+        var startEngine: @MainActor (WatchEngine) -> Void
+
+        @MainActor static var live: Platform {
+            Platform(
+                isTrusted: { Accessibility.isTrusted() },
+                probeWindowAccess: { Accessibility.probeWindowAccess() },
+                startEngine: { $0.start() }
+            )
+        }
+    }
+
+    @ObservationIgnored private let platform: Platform
+
     // MARK: - Lifecycle
 
     /// The one instance. A menu bar app has exactly one of everything in here,
     /// and the app delegate needs the same object the menu is bound to.
     static let shared = AppModel()
 
-    init(configurationURL: URL = ConfigurationLocation.resolve(explicitPath: nil)) {
+    init(
+        configurationURL: URL = ConfigurationLocation.resolve(explicitPath: nil),
+        platform: Platform = .live
+    ) {
         self.configurationURL = configurationURL
+        self.platform = platform
     }
 
     /// Called once the app has finished launching.
@@ -177,20 +200,26 @@ final class AppModel {
 
     /// Re-reads the permission and starts or stops the engine accordingly.
     func refreshPermission(probe: Bool) {
-        let trusted = Accessibility.isTrusted()
+        let trusted = platform.isTrusted()
         let wasUsable = windowAccess.isUsable
 
         if !trusted {
             windowAccess = .notTrusted
         } else if probe || !wasUsable || windowAccess == .notTrusted {
             // Trusted now: find out whether that trust is worth anything.
-            windowAccess = Accessibility.probeWindowAccess()
+            windowAccess = platform.probeWindowAccess()
         }
 
         if windowAccess.isUsable {
-            startEngineIfPossible()
+            // Nur der Übergang „unbrauchbar → brauchbar“ ist ein Grund, den
+            // Tracker neu aufzusetzen. Ein unveränderter Tick darf weder eine
+            // laufende Geste verwerfen noch das Overlay ausblenden (#44).
+            startEngineIfPossible(restartDropzones: !wasUsable)
         } else {
             engine?.stop()
+            // Ohne Berechtigung liefert der Tracker nichts Brauchbares mehr;
+            // beim Verlust anhalten (nur beim Übergang, nicht bei jedem Tick).
+            if wasUsable { dropzones.stop() }
         }
         updateStatus()
     }
@@ -276,9 +305,10 @@ final class AppModel {
 
     // MARK: - Engine
 
-    private func startEngineIfPossible() {
+    private func startEngineIfPossible(restartDropzones: Bool = false) {
         guard let configuration else { return }
 
+        var created = false
         if engine == nil {
             let engine = WatchEngine(configuration: configuration, dryRun: false)
             engine.isPaused = isPaused
@@ -286,12 +316,15 @@ final class AppModel {
                 self?.syncFromEngine()
             }
             self.engine = engine
+            created = true
         }
 
-        engine?.start()
+        if let engine { platform.startEngine(engine) }
         // Dragging follows the engine: both need the same permission and the
-        // same configuration, and a drop is placed by the engine itself.
-        dropzones.restart()
+        // same configuration, and a drop is placed by the engine itself. Neu
+        // aufgesetzt wird nur, wenn der Engine neu ist (Reload) oder der Aufrufer
+        // einen Übergang meldet — sonst läuft der bestehende Tracker weiter.
+        if created || restartDropzones { dropzones.restart() }
         syncFromEngine()
     }
 
