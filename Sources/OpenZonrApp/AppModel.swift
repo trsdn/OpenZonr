@@ -397,10 +397,15 @@ final class AppModel {
         let writer = makeDocument(for: current)
         writer.apply { _ in base }
         guard writer.save() else {
-            document?.applyOperational { c in
-                var c = c
-                c.defaults.dropzones.enabled = previous
-                return c
+            // Bei einer Fremdänderung hat `onExternalChange` die Sitzung schon
+            // auf den Dateistand gebracht; ein Zurückrollen würde ihn überschreiben.
+            // Bei anderen Fehlern blieb die Datei, wie sie war: dann zurückrollen.
+            if !writer.hasExternalChange {
+                document?.applyOperational { c in
+                    var c = c
+                    c.defaults.dropzones.enabled = previous
+                    return c
+                }
             }
             lastPinMessage = writer.saveProblem ?? "Speichern fehlgeschlagen."
             lastPinFailed = true
@@ -493,7 +498,10 @@ final class AppModel {
         // Ein zwischengespeicherter Editor darf nie einen Altstand liefern: hat
         // sich die Datei seit seinem Ausgangsstand geändert, wird neu geladen
         // (das gleicht die Sitzung ab, siehe `reconcileEditor`).
-        if document?.fileChangedOnDisk == true { reloadConfiguration() }
+        if document?.fileChangedOnDisk == true
+            || (document == nil && ConfigurationDocument.bytes(at: configurationURL) != loadedFileBytes) {
+            reloadConfiguration()
+        }
         if let document { return document }
         guard let configuration else { return nil }
         let document = makeDocument(for: configuration)

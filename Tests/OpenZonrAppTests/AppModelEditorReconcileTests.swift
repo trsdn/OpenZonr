@@ -122,4 +122,36 @@ struct AppModelEditorReconcileTests {
         #expect(document.save())
         #expect(try diskRoles(loaded).contains("mine"))
     }
+
+    @Test("Abgelehnter Menü-Schalter: Fremdänderung am Schalter selbst bleibt in Editor, Laufzeit und Datei gleich")
+    func refusedToggleKeepsExternalFlagEverywhere() throws {
+        var configuration = AppModelFixtures.minimalConfiguration()
+        configuration.defaults.dropzones.enabled = true
+        let loaded = try AppModelFixtures.modelWithLoadedConfiguration(configuration)
+        let document = try #require(loaded.model.editorDocument())
+        var external = AppModelFixtures.minimalConfiguration()
+        external.defaults.dropzones.enabled = false
+        external.roles.append(ZoneRole(id: "extra", name: "Extra"))
+        try ConfigurationStore().save(external, to: loaded.temp.url)
+
+        loaded.model.dropzonesEnabled = false
+
+        #expect(loaded.model.lastPinFailed == true)
+        #expect(document.configuration.defaults.dropzones.enabled == false)
+        #expect(document.configuration == external)
+        #expect(document.hasUnsavedChanges == false)
+        #expect(loaded.model.configuration == external)
+        #expect(try diskRoles(loaded).contains("extra"))
+    }
+
+    @Test("Erste Öffnung nach Fremdänderung ohne Reload: Sitzung baut auf dem Dateistand auf")
+    func firstOpenAfterExternalEditUsesDisk() throws {
+        let loaded = try AppModelFixtures.modelWithLoadedConfiguration()
+        let external = try externalEdit(loaded)
+
+        let document = try #require(loaded.model.editorDocument())
+
+        #expect(document.configuration == external)
+        #expect(document.hasUnsavedChanges == false)
+    }
 }
