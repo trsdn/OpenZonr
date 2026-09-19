@@ -44,6 +44,17 @@ final class ConfigurationDocument {
     /// sondern ein Sprung im Bild.
     let displaySnapshots: [DisplaySnapshot]
 
+    /// Der Abgleich beobachteter auf konfigurierte Identitäten für genau diese
+    /// Momentaufnahme.
+    ///
+    /// Er hängt an der bearbeiteten Konfiguration, nicht an einer gespeicherten,
+    /// damit eine gerade eingetippte Identität sofort greift. Ohne ihn zeichnete
+    /// der Editor für einen angeschlossenen Bildschirm, dessen Port-Index
+    /// verrutscht ist, eine beschriftete Schätzung statt der Messung.
+    var displayReconciler: DisplayIdentityReconciler {
+        configuration.displayReconciler(observing: displaySnapshots)
+    }
+
     /// The configuration as it was when the session started, for ``revert()``.
     private var original: Configuration
 

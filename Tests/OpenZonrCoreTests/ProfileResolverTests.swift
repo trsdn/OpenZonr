@@ -101,7 +101,7 @@ struct ProfileResolverTests {
         #expect(resolver.activeProfile(for: SetupFingerprint(displays: []), in: configuration) == nil)
     }
 
-    @Test("Die Fallback-Identität ohne Seriennummer wird ebenso exakt verglichen")
+    @Test("Die Fallback-Identität ohne Seriennummer wird exakt oder eindeutig verglichen")
     func matchesFallbackIdentity() {
         let identity = DisplayIdentity.fallback(
             vendorNumber: 4268,
@@ -142,8 +142,12 @@ struct ProfileResolverTests {
         )
         #expect(profile?.id == "dock")
 
-        // Ein anderer Port ist eine andere Identität — genau die Schwäche, vor
-        // der das Datenmodell warnt, hier als Verhalten festgehalten.
+        // Ein anderer Port war bis zur Messung vom 19.09.2026 eine andere
+        // Identität. Seitdem ist belegt, dass `CGDisplayUnitNumber` wandert,
+        // wenn Software-Displays kommen und gehen — und weil dieser Monitor
+        // sowohl in der Konfiguration als auch am Rechner der einzige seiner
+        // Bauart ist, gibt es hier nichts zu raten. Siehe
+        // ``DisplayIdentityReconciler``.
         let otherPort = DisplayIdentity.fallback(
             vendorNumber: 4268,
             modelNumber: 42145,
@@ -154,6 +158,22 @@ struct ProfileResolverTests {
         #expect(
             resolver.activeProfile(
                 for: SetupFingerprint(displays: [.builtin, otherPort]),
+                in: configuration
+            )?.id == "dock"
+        )
+
+        // Sobald ein zweiter baugleicher Monitor dazukommt, ist die Zuordnung
+        // wieder offen — und dann wird nicht geraten.
+        let sameModelThirdPort = DisplayIdentity.fallback(
+            vendorNumber: 4268,
+            modelNumber: 42145,
+            pixelWidth: 3840,
+            pixelHeight: 2160,
+            portIndex: 3
+        )
+        #expect(
+            resolver.activeProfile(
+                for: SetupFingerprint(displays: [.builtin, otherPort, sameModelThirdPort]),
                 in: configuration
             ) == nil
         )

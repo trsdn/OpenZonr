@@ -96,9 +96,25 @@ extension SetupFingerprint {
     /// The filter is the whole point of this initialiser. Without it, starting
     /// OBS adds a display, the fingerprint changes, and the active profile
     /// jumps although nothing on the desk moved.
-    public init(snapshots: [DisplaySnapshot], ignoring ignored: [DisplayIdentity] = []) {
+    ///
+    /// Every identity is put through `reconciler` **before** it is compared and
+    /// before it is stored, so the fingerprint speaks the configuration's
+    /// language: a serial-less monitor whose `CGDisplayUnitNumber` drifted
+    /// (measured, see ``DisplayIdentityReconciler``) enters the fingerprint under
+    /// the port index the configuration knows, and `ignored` matches it with the
+    /// same tolerance. ``DisplayIdentityReconciler/passthrough`` keeps the old
+    /// behaviour for callers that have no configuration to reconcile against.
+    public init(
+        snapshots: [DisplaySnapshot],
+        ignoring ignored: [DisplayIdentity] = [],
+        reconciler: DisplayIdentityReconciler = .passthrough
+    ) {
+        // `ignored` is already configuration-side; the reconciler translates the
+        // observed side onto it, which is why only the snapshots go through it.
         let ignoredSet = Set(ignored)
-        self.init(displays: Set(snapshots.map(\.identity).filter { !ignoredSet.contains($0) }))
+        self.init(
+            displays: Set(snapshots.map { reconciler.resolve($0.identity) }.filter { !ignoredSet.contains($0) })
+        )
     }
 }
 
@@ -164,10 +180,20 @@ public struct ScreenArrangement: Sendable {
     ///
     /// Displays that are attached but not described simply do not appear. The
     /// profile resolver has already decided whether that is acceptable.
-    public func visibleFrames(for descriptors: [DisplayDescriptor]) -> VisibleFrames {
+    ///
+    /// `reconciler` is the same one the fingerprint was built with. Without it a
+    /// serial-less display whose port index drifted would match a profile and
+    /// then have no frame, which is the worst of both worlds: a profile that
+    /// claims a screen it cannot draw on.
+    public func visibleFrames(
+        for descriptors: [DisplayDescriptor],
+        reconciler: DisplayIdentityReconciler = .passthrough
+    ) -> VisibleFrames {
         var frames = VisibleFrames()
         for descriptor in descriptors {
-            guard let snapshot = snapshots.first(where: { $0.identity == descriptor.identity }) else { continue }
+            guard let snapshot = snapshots.first(where: {
+                reconciler.resolve($0.identity) == descriptor.identity
+            }) else { continue }
             frames[descriptor.alias] = VisibleFrame(
                 x: snapshot.visibleFrame.x,
                 y: snapshot.visibleFrame.y,

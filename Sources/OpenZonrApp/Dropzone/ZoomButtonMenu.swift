@@ -96,7 +96,10 @@ final class ZoomButtonMenu: NSObject, NSMenuDelegate {
             return
         }
 
-        let visibleFrames = arrangement.visibleFrames(for: configuration.displays)
+        let visibleFrames = arrangement.visibleFrames(
+            for: configuration.displays,
+            reconciler: configuration.displayReconciler(observing: arrangement.snapshots)
+        )
         // Welcher Bildschirm ist gemeint? Der, auf dem das Fenster mehrheitlich
         // liegt — genau die Regel, die auch ``PinTargetResolver`` verwendet.
         guard let displayAlias = PinTargetResolver.display(

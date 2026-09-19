@@ -190,7 +190,11 @@ struct ZoneEditor: View {
         guard let descriptor = document.configuration.displays.first(where: { $0.alias == display }) else {
             return .fallback
         }
-        return OpenZonrCore.canvasAspect(for: descriptor, snapshots: document.displaySnapshots)
+        return OpenZonrCore.canvasAspect(
+            for: descriptor,
+            snapshots: document.displaySnapshots,
+            reconciler: document.displayReconciler
+        )
     }
 
     @ViewBuilder

@@ -29,6 +29,17 @@ public struct DisplayModeSample: Hashable, Sendable {
 /// recorded as `0 x 0` (unknown) rather than guessed, because the largest mode
 /// can be a scaled backing store larger than the panel. The pixel size is
 /// informational only — see ``DisplayIdentity`` equality.
+///
+/// ## The port index is not stable — measured
+///
+/// `unitNumber` is `CGDisplayUnitNumber`, and this type was written on the
+/// assumption that it is a reasonable disambiguator because it stays put while
+/// the cable does. That assumption is **measured to be wrong**: the same
+/// C49RG9x reported unit `0` on 2026-08-29 and unit `1` on 2026-09-19, because
+/// software displays present at enumeration time shift every unit number behind
+/// them. The value is still recorded — it is the only thing that tells two
+/// identical monitors apart — but matching against it is no longer strict.
+/// ``DisplayIdentityReconciler`` owns that tolerance and states its limits.
 public enum FallbackIdentityDerivation {
 
     /// Size of the single mode flagged native, or nil when the flag is absent,
