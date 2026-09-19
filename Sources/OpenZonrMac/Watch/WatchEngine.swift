@@ -95,7 +95,11 @@ public final class WatchEngine {
 
     /// For each incoming window with a running job, the occupants that job is
     /// moving away. Their claim is provisional until the job ends, so they
-    /// count as present meanwhile. Entries only matter while the job is pending.
+    /// count as present meanwhile.
+    ///
+    /// Invariant: an entry is only ever read while its own job is pending;
+    /// every submit rewrites it (and empty ones are not stored); every
+    /// stop/reset path clears it.
     private var displacedByJob: [WindowIdentifier: [WindowIdentifier]] = [:]
 
     /// Deviation from its zone beyond which a placed window counts as moved away.
@@ -213,6 +217,7 @@ public final class WatchEngine {
             scheduler.cancelAll()
             occupancy = ZoneOccupancy()
             windows.removeAll()
+            displacedByJob.removeAll()
         }
 
         guard announce else { return }
@@ -348,6 +353,7 @@ public final class WatchEngine {
         scheduler.cancelAll()
         occupancy = ZoneOccupancy()
         windows.removeAll()
+        displacedByJob.removeAll()
 
         if let launchObservation {
             NSWorkspace.shared.notificationCenter.removeObserver(launchObservation)
@@ -413,6 +419,7 @@ public final class WatchEngine {
             occupancy.forgetApplication(processIdentifier: pid)
             scheduler.cancel(where: { $0.processIdentifier == pid })
             windows = windows.filter { $0.key.processIdentifier != pid }
+            displacedByJob = displacedByJob.filter { $0.key.processIdentifier != pid }
             recentlySwept = recentlySwept.filter { !$0.key.hasPrefix("\(pid)|") }
             Log.detail("App beendet (pid \(pid)) — Beobachtung aufgeräumt.")
         }
@@ -884,7 +891,7 @@ public final class WatchEngine {
         let retry = configuration.defaults.retry
         let flipping = arrangement
 
-        displacedByJob[identifier] = displacing.map(\.window)
+        displacedByJob[identifier] = displacing.isEmpty ? nil : displacing.map(\.window)
         scheduler.submit(identifier) { [weak self] isCurrent in
             var lastDeviation: Double?
 
@@ -924,8 +931,11 @@ public final class WatchEngine {
 
             guard let self else { return }
             self.occupancy.settle(result, claims: claims, window: identifier)
-            // A newer job for the same window keeps its own entry.
-            if !self.scheduler.hasPendingJob(for: identifier) {
+            // `isCurrent()` is still true here if this job is the newest one for
+            // its window (the scheduler only retires it after this closure
+            // returns), so hasPendingJob alone would never clear on success. A
+            // superseded or cancelled job leaves a newer job's entry alone.
+            if isCurrent() || !self.scheduler.hasPendingJob(for: identifier) {
                 self.displacedByJob[identifier] = nil
             }
             self.windows = self.windows.filter { self.occupancy.trackedWindows.contains($0.key) }
