@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+	Die eine Info.plist des Bundles.
+
+	Sie liegt hier und nicht in Scripts/bundle.sh, weil der Notarisierungs-Broker
+	sie genau unter `Sources/<Produkt>/Info.plist` sucht (`assemble_menu_bar_swiftpm`).
+	`Scripts/bundle.sh` liest dieselbe Datei, damit ein lokal gebautes Bundle und
+	ein veröffentlichtes nicht auseinanderlaufen können.
+
+	`__VERSION__` ersetzt, wer baut: lokal bundle.sh, beim Veröffentlichen der
+	Broker aus dem Tag. CFBundleIdentifier und LSUIElement prüft der Broker und
+	bricht ab, wenn sie nicht stimmen — der Identifier, weil die
+	Bedienungshilfen-Freigabe an ihm hängt, LSUIElement, weil die App sonst mit
+	Dock-Symbol ausgeliefert würde.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>de</string>
+	<key>CFBundleExecutable</key>
+	<string>OpenZonrApp</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.trsdn.openzonr</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>OpenZonr</string>
+	<key>CFBundleDisplayName</key>
+	<string>OpenZonr</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
+	<key>CFBundleVersion</key>
+	<string>__VERSION__</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<!-- Kein Eintrag im Dock und kein eigenes Menü: die Oberfläche ist das
+	     Symbol in der Menüleiste. -->
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>OpenZonr</string>
+</dict>
+</plist>

@@ -1,7 +1,9 @@
 # Swift Package Manager
 .build/
 .swiftpm/
-Package.resolved
+# Package.resolved ist bewusst eingecheckt: der Notarisierungs-Broker baut mit
+# `--only-use-versions-from-resolved-file` und vergleicht die Datei Byte für
+# Byte mit seiner eigenen, geprüften Kopie (siehe README, „Veröffentlichen").
 
 # Xcode
 *.xcodeproj/xcuserdata/
