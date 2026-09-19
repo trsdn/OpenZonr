@@ -452,9 +452,7 @@ public final class EventTapDragTracker: WindowDragTracker {
         let pointer = lastDragPoint ?? pressLocation ?? ScreenPoint(x: 0, y: 0)
         Task.detached { [weak self] in
             let frame = sampler(window, pivot)
-            await MainActor.run {
-                self?.applyFrameSample(frame, pointer: pointer, token: token)
-            }
+            await self?.applyFrameSample(frame, pointer: pointer, token: token)
         }
     }
 
@@ -520,9 +518,7 @@ public final class EventTapDragTracker: WindowDragTracker {
         let lookup = windowLookup
         Task.detached { [weak self] in
             let window = lookup(accessibilityPoint, pivot)
-            await MainActor.run {
-                self?.applyLookupResult(window, token: token)
-            }
+            await self?.applyLookupResult(window, token: token)
         }
     }
 
@@ -543,10 +539,18 @@ public final class EventTapDragTracker: WindowDragTracker {
                 atAccessibilityPoint: accessibilityPoint,
                 primaryTopY: pivot
             )
-            await MainActor.run {
-                self?.onRightClick?(appKitPoint, result)
-            }
+            await self?.deliverRightClick(appKitPoint, result)
         }
+    }
+
+    /// Reicht das fertige Ergebnis auf dem MainActor an `onRightClick` weiter.
+    ///
+    /// Eine eigene Methode statt `MainActor.run { self?.onRightClick?(…) }`: der
+    /// ältere Compiler der Release-Runner (`macos-15`) lehnt `self` in dieser
+    /// Closure als möglichen Data Race ab („sending 'self' risks causing data
+    /// races“). Der `await` auf eine MainActor-Methode braucht keine Closure.
+    private func deliverRightClick(_ appKitPoint: ScreenPoint, _ result: ZoomButtonLookup.Result) {
+        onRightClick?(appKitPoint, result)
     }
 
     private func applyLookupResult(_ window: DraggedWindow?, token: UInt64) {
