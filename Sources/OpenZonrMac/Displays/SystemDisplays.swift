@@ -34,8 +34,8 @@ public enum SystemDisplays {
         let model = CGDisplayModelNumber(id)
         let serial = CGDisplaySerialNumber(id)
 
-        // Native pixel dimensions, not the current scaled mode: a Retina panel
-        // running a scaled resolution must keep the same identity.
+        // Current mode size, used for geometry and display only. The identity
+        // below deliberately does not use it: a scaled mode would change it.
         let mode = CGDisplayCopyDisplayMode(id)
         let pixelWidth = mode.map { $0.pixelWidth } ?? CGDisplayPixelsWide(id)
         let pixelHeight = mode.map { $0.pixelHeight } ?? CGDisplayPixelsHigh(id)
@@ -44,14 +44,14 @@ public enum SystemDisplays {
         if isBuiltin {
             identity = .builtin
         } else if serial == 0 {
-            identity = .fallback(
+            // Mode-independent: vendor, model and unit number, plus the native
+            // size when the driver flags one. Unit number is the closest public
+            // equivalent of a port index and can change when cabling changes.
+            identity = FallbackIdentityDerivation.identity(
                 vendorNumber: vendor,
                 modelNumber: model,
-                pixelWidth: pixelWidth,
-                pixelHeight: pixelHeight,
-                // The unit number is stable per physical connection and is the
-                // closest public equivalent of a port index.
-                portIndex: Int(CGDisplayUnitNumber(id))
+                unitNumber: Int(CGDisplayUnitNumber(id)),
+                modes: Self.modeSamples(for: id)
             )
         } else {
             identity = .edid(vendorNumber: vendor, modelNumber: model, serialNumber: serial)
@@ -81,6 +81,31 @@ public enum SystemDisplays {
                 physical: physical
             )
         )
+    }
+
+    /// The mode list of one display as plain values, for the serial-less
+    /// identity.
+    ///
+    /// Assumptions, UNVERIFIED on hardware (public headers do not specify them):
+    /// - `CGDisplayCopyAllDisplayModes` lists the display's modes independent
+    ///   of the current mode and rotation, and the driver-flagged native mode
+    ///   (`kDisplayModeNativeFlag`) keeps the same width x height when the
+    ///   display is rotated. If a rotated display reported swapped sizes, the
+    ///   fallback identity would differ per orientation; that is accepted and
+    ///   not worked around by guessing.
+    /// - `kCGDisplayShowDuplicateLowResolutionModes` is passed (the header says
+    ///   `options` is reserved, but this key is public since 10.8) so that
+    ///   HiDPI/low-resolution duplicates that may carry the flag are listed.
+    /// - Without a flagged native mode the caller records 0 x 0 (unknown); the
+    ///   native size is never guessed from the largest mode.
+    /// `CGDisplayMode.ioFlags` is the Swift name of `CGDisplayModeGetIOFlags`
+    /// and is neither deprecated nor unavailable in the current SDK.
+    private static func modeSamples(for id: CGDirectDisplayID) -> [DisplayModeSample] {
+        let options = [kCGDisplayShowDuplicateLowResolutionModes: true] as CFDictionary
+        let modes = (CGDisplayCopyAllDisplayModes(id, options) as? [CGDisplayMode]) ?? []
+        return modes.map {
+            DisplayModeSample(pixelWidth: $0.pixelWidth, pixelHeight: $0.pixelHeight, ioFlags: $0.ioFlags)
+        }
     }
 
     /// Weak, explicitly fallible hint that a display is a software display.
