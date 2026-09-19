@@ -12,7 +12,7 @@ import OpenZonrCore
 /// concrete reason. The Accessibility grant is bound to a bundle at a path, and
 /// the two front ends have to share it: the menu bar app dispatches to exactly
 /// this code when it is invoked with a subcommand, so
-/// `OpenZonr.app/Contents/MacOS/OpenZonr windows` is the *same signed binary*
+/// `OpenZonr.app/Contents/MacOS/OpenZonrApp windows` is the *same signed binary*
 /// the user granted, not a second one that would need its own approval.
 public enum OpenZonrCommandLine {
 

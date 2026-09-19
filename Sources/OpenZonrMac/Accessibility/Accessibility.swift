@@ -103,7 +103,7 @@ public enum Accessibility {
       ./Scripts/bundle.sh
       # danach einmal freigeben: Systemeinstellungen → Datenschutz &
       # Sicherheit → Bedienungshilfen → "+" → ~/Applications/OpenZonr.app
-      ~/Applications/OpenZonr.app/Contents/MacOS/OpenZonr windows --bundle com.apple.Safari
+      ~/Applications/OpenZonr.app/Contents/MacOS/OpenZonrApp windows --bundle com.apple.Safari
 
     Eine unsignierte Binärdatei einzutragen hilft dagegen nicht dauerhaft: sie
     bekommt bei jedem Neubau eine neue Prüfsumme, die nicht wiedererkannt wird.
