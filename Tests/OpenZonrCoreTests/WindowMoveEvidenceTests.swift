@@ -47,8 +47,9 @@ struct WindowMoveEvidenceTests {
         #expect(classify(opposite, to: ScreenPoint(x: 250, y: 350)) == .notMoved)
     }
 
-    @Test("Am Bildschirmrand geklemmt: nur eine Achse folgt, reicht trotzdem")
-    func clampedWindowStillCountsWhenOneAxisFollows() {
+    @Test("Nur eine Achse folgt (y unveraendert, z. B. oben geklemmt), reicht trotzdem")
+    func windowFollowingOnlyOneAxisStillCounts() {
+        // Zeiger 60 rechts / 100 hoch, Fenster nur 60 rechts: cos ~ 0,51.
         let clamped = WindowFrame(x: 160, y: 100, width: 400, height: 300)
         #expect(classify(clamped, to: ScreenPoint(x: 210, y: 450)) == .moved)
     }
@@ -57,5 +58,55 @@ struct WindowMoveEvidenceTests {
     func subPointSizeNoiseIsIgnored() {
         let noisy = WindowFrame(x: 180, y: 100, width: 401, height: 299)
         #expect(classify(noisy, to: ScreenPoint(x: 250, y: 350)) == .moved)
+    }
+
+    @Test("Kleiner Drift bei grossem Zeigerweg ist kein Fensterzug")
+    func tinyDriftWithLongPointerTravelIsNotMovement() {
+        let drift = WindowFrame(x: 102, y: 100, width: 400, height: 300)
+        #expect(classify(drift, to: ScreenPoint(x: 450, y: 350)) == .notMoved)
+    }
+
+    @Test("Fenster quer zum Zeiger (fast senkrecht, Skalarprodukt positiv) -> notMoved")
+    func perpendicularShiftIsNotMovement() {
+        let sideways = WindowFrame(x: 110, y: 160, width: 400, height: 300)
+        #expect(classify(sideways, to: ScreenPoint(x: 250, y: 350)) == .notMoved)
+        let exactlyPerpendicular = WindowFrame(x: 100, y: 160, width: 400, height: 300)
+        #expect(classify(exactlyPerpendicular, to: ScreenPoint(x: 250, y: 350)) == .notMoved)
+    }
+
+    @Test("Mindeststrecke: genau am Boden zaehlt, knapp darunter nicht")
+    func minimumTravelBoundary() {
+        let floor = WindowMoveEvidence.minimumTravel
+        let at = WindowFrame(x: 100 + floor, y: 100, width: 400, height: 300)
+        let below = WindowFrame(x: 100 + floor - 0.1, y: 100, width: 400, height: 300)
+        #expect(classify(at, to: ScreenPoint(x: 350, y: 350)) == .moved)
+        #expect(classify(below, to: ScreenPoint(x: 350, y: 350)) == .notMoved)
+    }
+
+    @Test("Groessentoleranz: genau 2 pt gilt als gleich, darueber ist resized")
+    func sizeToleranceBoundary() {
+        let tol = WindowMoveEvidence.sizeTolerance
+        let atLimit = WindowFrame(x: 180, y: 100, width: 400 + tol, height: 300)
+        let over = WindowFrame(x: 180, y: 100, width: 400 + tol + 0.5, height: 300)
+        #expect(classify(atLimit, to: ScreenPoint(x: 250, y: 350)) == .moved)
+        #expect(classify(over, to: ScreenPoint(x: 250, y: 350)) == .resized)
+    }
+
+    @Test("Reiner Vertikalzug: Fenster folgt nur in y -> moved")
+    func yOnlyDragIsMoved() {
+        let up = WindowFrame(x: 100, y: 160, width: 400, height: 300)
+        #expect(classify(up, to: ScreenPoint(x: 150, y: 410)) == .moved)
+    }
+
+    @Test("Zeiger steht still, Fenster bewegt sich -> notMoved")
+    func windowMovingWithoutPointerTravelIsNotMovement() {
+        let moved = WindowFrame(x: 180, y: 100, width: 400, height: 300)
+        #expect(classify(moved, to: from) == .notMoved)
+    }
+
+    @Test("Zug ueber Bildschirmgrenze (grosse Verschiebung) -> moved")
+    func crossDisplayDragIsMoved() {
+        let far = WindowFrame(x: 2100, y: 100, width: 400, height: 300)
+        #expect(classify(far, to: ScreenPoint(x: 2150, y: 350)) == .moved)
     }
 }

@@ -10,6 +10,7 @@ import Foundation
 /// Rein und ohne AX, damit die Regel headless beweisbar ist. Die Rahmen liefert
 /// der Tracker ausserhalb des Tap-Rueckrufs (siehe `EventTapDragTracker`,
 /// #26); beide Rahmen und beide Punkte muessen in **AppKit**-Koordinaten sein.
+/// `pointerFrom` ist der Druckpunkt, `pointerTo` der aktuelle Zeigerpunkt.
 public enum WindowMoveEvidence {
 
     public enum Verdict: Hashable, Sendable {
@@ -24,7 +25,14 @@ public enum WindowMoveEvidence {
     /// Groessenabweichung in Punkten, die noch als "gleich gross" gilt.
     public static let sizeTolerance: Double = 2
     /// Ursprungsverschiebung in Punkten, ab der von Bewegung die Rede ist.
-    public static let minimumTravel: Double = 2
+    /// 6 pt liegen klar ueber AX-/Rundungsrauschen (~1-2 pt, Groessenordnung
+    /// von `sizeTolerance`) und unter jedem bewussten Fensterzug.
+    public static let minimumTravel: Double = 6
+    /// Kleinster Kosinus zwischen Fenster- und Zeigerverschiebung (0,5 = hoechstens
+    /// 60 Grad Abweichung). An Rand/Menuebar geklemmte Fenster folgen nur einer
+    /// Achse und liegen bei ~45 Grad; quer laufende Verschiebungen (Animation,
+    /// Kacheln) fallen darunter durch.
+    public static let minimumAlignment: Double = 0.5
 
     public static func classify(
         initial: WindowFrame,
@@ -44,7 +52,11 @@ public enum WindowMoveEvidence {
         let pointerDX = pointerTo.x - pointerFrom.x
         let pointerDY = pointerTo.y - pointerFrom.y
         // Richtung statt Betrag: Fenster werden am Rand/Menuebar geklemmt, und
-        // manche Apps hinken dem Zeiger hinterher.
-        return windowDX * pointerDX + windowDY * pointerDY > 0 ? .moved : .notMoved
+        // manche Apps hinken dem Zeiger hinterher. Ohne Zeigerweg ist das Produkt 0
+        // und es gibt keinen Beleg.
+        let dot = windowDX * pointerDX + windowDY * pointerDY
+        let pointerTravel = (pointerDX * pointerDX + pointerDY * pointerDY).squareRoot()
+        let windowTravel = (windowDX * windowDX + windowDY * windowDY).squareRoot()
+        return dot > minimumAlignment * windowTravel * pointerTravel ? .moved : .notMoved
     }
 }
