@@ -15,6 +15,19 @@ struct LayoutMarginTests {
     private let display: DisplayAlias = "main"
     private let layoutID: LayoutID = "halves"
 
+    @Test("ZoneGeometry.placementFrame zieht den Rand ab, ohne Rand bleibt es die volle Zone")
+    func placementFrameAppliesMargin() {
+        let visible = VisibleFrame(x: 0, y: 0, width: 1000, height: 1000)
+        let left = RelativeRect(x: 0, y: 0, width: 0.5, height: 1)
+
+        let withMargin = ZoneGeometry.placementFrame(for: left, margin: 0.05, in: visible)
+        #expect(withMargin == WindowFrame(x: 50, y: 50, width: 400, height: 900))
+
+        let withoutMargin = ZoneGeometry.placementFrame(for: left, margin: 0, in: visible)
+        #expect(withoutMargin == ZoneGeometry.absoluteFrame(for: left, in: visible))
+        #expect(withoutMargin == WindowFrame(x: 0, y: 0, width: 500, height: 1000))
+    }
+
     private func makeConfiguration(margin: Double) -> Configuration {
         var config = TestConfigurations.minimal()
         config.displays[0].layouts[0].margin = margin
