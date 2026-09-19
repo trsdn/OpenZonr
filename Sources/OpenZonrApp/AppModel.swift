@@ -349,18 +349,40 @@ final class AppModel {
     /// the next launch and blamed on the feature.
     var dropzonesEnabled: Bool {
         get { configuration?.defaults.dropzones.enabled ?? false }
-        set {
-            guard var base = document?.configuration ?? configuration else { return }
-            base.defaults.dropzones.enabled = newValue
-            let session = document ?? makeDocument(for: base)
-            session.replace(with: base)
-            if document == nil, !session.save() {
-                lastPinMessage = session.saveProblem ?? "Speichern fehlgeschlagen."
-                lastPinFailed = true
-                return
-            }
-            dropzones.restart()
+        set { setDropzonesEnabled(newValue) }
+    }
+
+    /// Betriebliche Einstellung: wirkt sofort und wird sofort gesichert — mit
+    /// oder ohne Editor-Sitzung. Geschrieben wird immer „geladene
+    /// Konfiguration plus dieser Schalter“, nie der ungesicherte Editorstand.
+    /// Eine vorhandene Sitzung bekommt denselben Schalter in Arbeitskopie und
+    /// Ausgangsstand, damit ihre eigenen ungesicherten Änderungen bleiben.
+    private func setDropzonesEnabled(_ enabled: Bool) {
+        guard var base = configuration else { return }
+        let previous = base.defaults.dropzones.enabled
+        guard previous != enabled else { return }
+        base.defaults.dropzones.enabled = enabled
+
+        // Zuerst die Sitzung anpassen: das anschliessende Neuladen (onSave)
+        // sieht dann Datei == Ausgangsstand und nimmt keine Fremdänderung an.
+        document?.applyOperational { c in
+            var c = c
+            c.defaults.dropzones.enabled = enabled
+            return c
         }
+
+        let writer = makeDocument(for: base)
+        guard writer.save() else {
+            document?.applyOperational { c in
+                var c = c
+                c.defaults.dropzones.enabled = previous
+                return c
+            }
+            lastPinMessage = writer.saveProblem ?? "Speichern fehlgeschlagen."
+            lastPinFailed = true
+            return
+        }
+        // `onSave` hat neu geladen und dabei den Tracker neu aufgesetzt.
     }
 
     /// Other window managers that are running right now.

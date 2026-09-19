@@ -108,6 +108,19 @@ final class ConfigurationDocument {
         saveState = configuration == original ? .unchanged : .modified
     }
 
+    /// Wendet eine betriebliche Änderung an, die sofort in die Datei geht (der
+    /// Ziehen-Schalter im Menü), ohne dabei ungesicherte Editor-Änderungen
+    /// anzufassen: dieselbe Änderung geht in die Arbeitskopie *und* in den
+    /// Ausgangsstand. Der Sitzungsstand (sauber/geändert) folgt daraus und wird
+    /// durch diese eine Änderung weder schmutzig noch sauber.
+    func applyOperational(_ edit: (Configuration) -> Configuration) {
+        original = edit(original)
+        configuration = edit(configuration)
+        report = store.validate(configuration)
+        findings = FindingIndex(report)
+        saveState = configuration == original ? .unchanged : .modified
+    }
+
     /// Throws away every change of this session.
     func revert() {
         configuration = original
