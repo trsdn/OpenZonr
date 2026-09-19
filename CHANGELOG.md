@@ -12,6 +12,11 @@ existiert; dessen Text wird zu den Release-Notes.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-19
+
+Erster Release. Bestehende Installationen ohne Updater müssen einmal von Hand
+ersetzt werden; ab dem zweiten Release aktualisiert sich die App selbst.
+
 ### Hinzugefügt
 
 - **In-App-Updates aus GitHub Releases** über AppUpdater 4.1.2 (#47): Menüpunkte
