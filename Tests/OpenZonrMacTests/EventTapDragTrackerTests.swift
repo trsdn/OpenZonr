@@ -36,12 +36,14 @@ struct EventTapDragTrackerTests {
     private func makeTracker(
         window: DraggedWindow? = nil,
         lookup: (@Sendable (ScreenPoint, Double) -> DraggedWindow?)? = nil,
-        frameSampler: @escaping @Sendable (DraggedWindow, Double) -> WindowFrame? = { _, _ in nil }
+        frameSampler: @escaping @Sendable (DraggedWindow, Double) -> WindowFrame? = { _, _ in nil },
+        now: @escaping @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now }
     ) -> (tracker: EventTapDragTracker, events: EventBox) {
         let box = EventBox()
         let captured = window
         let resolver: @Sendable (ScreenPoint, Double) -> DraggedWindow? = lookup ?? { _, _ in captured }
-        let tracker = EventTapDragTracker(primaryTopY: 0, windowLookup: resolver, frameSampler: frameSampler)
+        let tracker = EventTapDragTracker(
+            primaryTopY: 0, windowLookup: resolver, frameSampler: frameSampler, now: now)
         tracker.minimumDragDistance = 5
         tracker.onEvent = { event in box.append(event) }
         return (tracker, box)
@@ -264,8 +266,11 @@ struct EventTapDragTrackerTests {
         #expect(box.events.isEmpty)
     }
 
-    @Test("Ein Beleg aus einem frueheren Druck wird verworfen")
+    @Test("Ein Beleg aus einem frueheren Druck belegt den naechsten Druck nicht")
     func staleFrameSampleIsDiscarded() {
+        // Beide Druecke laufen ueber dieselbe Strecke und dasselbe Fenster —
+        // nur die Kennung unterscheidet sie. Ohne die Kennungspruefung wuerde
+        // der Beleg des ersten Drucks den zweiten beginnen lassen.
         let window = makeWindow()
         let (tracker, box) = makeTracker(window: window)
 
@@ -275,8 +280,111 @@ struct EventTapDragTrackerTests {
         let oldToken = tracker._testCurrentSampleToken
         tracker.handle(.mouseUp(point: ScreenPoint(x: 50, y: 0), modifiers: []))
 
+        // Zweiter Druck: Fenster aufgeloest, Mindeststrecke ueberschritten —
+        // es fehlt nur noch der Beleg.
+        tracker.handle(.mouseDown(point: ScreenPoint(x: 0, y: 0), accessibilityPoint: ScreenPoint(x: 0, y: 0)))
+        tracker.applyLookupResultForTest(window)
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 50, y: 0), modifiers: []))
+
+        // Der verspaetete Beleg des ersten Drucks trifft ein.
         tracker._testApplyFrameSample(frame(movedBy: 50), pointer: ScreenPoint(x: 50, y: 0), token: oldToken)
+        #expect(box.events.isEmpty, "Ein Beleg mit alter Kennung darf den zweiten Druck nicht beginnen.")
+
+        // Der Beleg des zweiten Drucks wirkt.
+        tracker.applyFrameSampleForTest(frame(movedBy: 50), pointer: ScreenPoint(x: 50, y: 0))
+        #expect(box.kinds == ["began", "moved"])
+    }
+
+    @Test("Nach einem Kantenzug-Urteil wird fuer diesen Druck nicht mehr abgefragt")
+    func resizeVerdictStopsSampling() {
+        let window = makeWindow()
+        let (tracker, box) = makeTracker(window: window)
+
+        tracker.handle(.mouseDown(point: ScreenPoint(x: 100, y: 50), accessibilityPoint: ScreenPoint(x: 100, y: 50)))
+        tracker.applyLookupResultForTest(window)
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 160, y: 50), modifiers: []))
+        #expect(tracker._testFrameSampleRequests == 1)
+
+        tracker.applyFrameSampleForTest(
+            WindowFrame(x: 0, y: 0, width: 160, height: 100), pointer: ScreenPoint(x: 160, y: 50))
+
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 220, y: 50), modifiers: []))
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 280, y: 50), modifiers: []))
+        #expect(
+            tracker._testFrameSampleRequests == 1,
+            "Ein Kantenzug ist entschieden; weitere AX-Abfragen waeren verschwendet.")
+
+        tracker.handle(.mouseUp(point: ScreenPoint(x: 280, y: 50), modifiers: []))
         #expect(box.events.isEmpty)
+    }
+
+    @Test("Langer Stillstand innerhalb des Zeitbudgets: der spaete Beleg beginnt den Zug noch")
+    func stallWithinBudgetStillBegins() {
+        // Eine schwere App (Xcode, Electron) antwortet die erste halbe Sekunde
+        // gar nicht und bewegt das Fenster erst danach. Das darf die Geste
+        // nicht kosten — das Budget ist Zeit, nicht eine Zahl von Abfragen.
+        let window = makeWindow()
+        let clock = ClockStub()
+        let (tracker, box) = makeTracker(window: window, now: { clock.read() })
+
+        tracker.handle(.mouseDown(point: ScreenPoint(x: 0, y: 0), accessibilityPoint: ScreenPoint(x: 0, y: 0)))
+        tracker.applyLookupResultForTest(window)
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 50, y: 0), modifiers: []))
+        #expect(tracker._testFrameSampleRequests == 1)
+        // Die App haengt, der Rahmen steht noch.
+        tracker.applyFrameSampleForTest(window.frame, pointer: ScreenPoint(x: 50, y: 0))
+
+        clock.advance(.milliseconds(2000))
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 60, y: 0), modifiers: []))
+        #expect(tracker._testFrameSampleRequests == 2, "Innerhalb des Budgets wird weiter abgefragt.")
+
+        tracker.applyFrameSampleForTest(frame(movedBy: 60), pointer: ScreenPoint(x: 60, y: 0))
+        #expect(box.kinds == ["began", "moved"])
+    }
+
+    @Test("Nach Ablauf des Zeitbudgets wird nicht mehr abgefragt")
+    func samplingStopsAfterBudget() {
+        let window = makeWindow()
+        let clock = ClockStub()
+        let (tracker, box) = makeTracker(window: window, now: { clock.read() })
+
+        tracker.handle(.mouseDown(point: ScreenPoint(x: 0, y: 0), accessibilityPoint: ScreenPoint(x: 0, y: 0)))
+        tracker.applyLookupResultForTest(window)
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 50, y: 0), modifiers: []))
+        #expect(tracker._testFrameSampleRequests == 1)
+        tracker.applyFrameSampleForTest(window.frame, pointer: ScreenPoint(x: 50, y: 0))
+
+        clock.advance(tracker.frameSampleBudget + .milliseconds(1))
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 60, y: 0), modifiers: []))
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 70, y: 0), modifiers: []))
+        #expect(
+            tracker._testFrameSampleRequests == 1,
+            "Ist das Budget aufgebraucht, fragt der Tracker nicht mehr ab.")
+
+        tracker.handle(.mouseUp(point: ScreenPoint(x: 70, y: 0), modifiers: []))
+        #expect(box.events.isEmpty, "Ohne Beleg bleibt es beim Schweigen.")
+    }
+
+    @Test("Das Zeitbudget gilt je Druck und beginnt mit der ersten Abfrage neu")
+    func budgetRestartsWithEachPress() {
+        let window = makeWindow()
+        let clock = ClockStub()
+        let (tracker, box) = makeTracker(window: window, now: { clock.read() })
+
+        tracker.handle(.mouseDown(point: ScreenPoint(x: 0, y: 0), accessibilityPoint: ScreenPoint(x: 0, y: 0)))
+        tracker.applyLookupResultForTest(window)
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 50, y: 0), modifiers: []))
+        tracker.applyFrameSampleForTest(window.frame, pointer: ScreenPoint(x: 50, y: 0))
+        clock.advance(tracker.frameSampleBudget + .milliseconds(1))
+        tracker.handle(.mouseUp(point: ScreenPoint(x: 50, y: 0), modifiers: []))
+
+        tracker.handle(.mouseDown(point: ScreenPoint(x: 0, y: 0), accessibilityPoint: ScreenPoint(x: 0, y: 0)))
+        tracker.applyLookupResultForTest(window)
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 50, y: 0), modifiers: []))
+        #expect(tracker._testFrameSampleRequests == 1, "Der neue Druck faengt mit vollem Budget an.")
+
+        tracker.applyFrameSampleForTest(frame(movedBy: 50), pointer: ScreenPoint(x: 50, y: 0))
+        #expect(box.kinds == ["began", "moved"])
     }
 
     /// #26: the sampler (an AX read) must run on a background thread, never
@@ -301,6 +409,15 @@ struct EventTapDragTrackerTests {
         #expect(!probe.calls.isEmpty)
         #expect(probe.calls.allSatisfy { $0 == false }, "AX-Zugriff darf nie auf dem Hauptthread laufen.")
     }
+}
+
+/// Steuerbare Uhr fuer das Zeitbudget der Rahmenabrufe. Ein echter Stillstand
+/// von zwei Sekunden waere im Test nur Wartezeit.
+@MainActor
+final class ClockStub {
+    private var instant = ContinuousClock.now
+    func advance(_ duration: Duration) { instant += duration }
+    func read() -> ContinuousClock.Instant { instant }
 }
 
 /// Merkt sich fuer jeden Sampler-Aufruf, ob er auf dem Hauptthread lief.

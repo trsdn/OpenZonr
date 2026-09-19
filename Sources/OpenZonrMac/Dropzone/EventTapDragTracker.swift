@@ -136,16 +136,42 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// Genau ein Rahmenabruf gleichzeitig; das Ergebnis löst den nächsten
     /// `leftMouseDragged` aus.
     private var sampleInFlight = false
+    /// Nur zum Nachzählen (Tests, Diagnose) — die Obergrenze ist die Zeit,
+    /// nicht diese Zahl.
     private var sampleCount = 0
     private var sampleToken: UInt64 = 0
+    /// Zeitpunkt des ersten Rahmenabrufs dieses Drucks; der Anfang des Budgets.
+    private var sampleWindowStart: ContinuousClock.Instant?
+    /// Wahr, wenn für diesen Druck nichts mehr abzufragen ist: Budget
+    /// aufgebraucht oder das Urteil steht schon fest (Kantenzug).
+    private var samplingClosed = false
 
-    /// Obergrenze der Rahmenabrufe pro Druck. Ein Text- oder Scrollbalkenzug
-    /// soll nicht für die ganze Dauer AX-Abfragen erzeugen.
-    public var maximumFrameSamples: Int = 30
+    /// Zeitspanne ab dem **ersten** Rahmenabruf eines Drucks, in der der
+    /// Tracker Belege sammelt.
+    ///
+    /// Eine Zahl von Abfragen taugt hier nicht: bei 8–16 ms Zugereignissen und
+    /// wenigen Millisekunden je Abruf wären 30 Abrufe nach einer knappen halben
+    /// Sekunde verbraucht — eine schwere App (Xcode, Electron), die genau diese
+    /// halbe Sekunde hängt, verlöre die ganze Geste. Zeit misst das, worum es
+    /// geht: wie lange wir einem Fenster zugestehen, dem Zeiger zu folgen.
+    ///
+    /// 2,5 s, begründet an der gemessenen AX-Spitze von 970 ms (Issue #26):
+    /// zweieinhalb solcher Spitzen passen hinein, eine hängende App bekommt
+    /// also mehr als einen Versuch. Nach oben begrenzt es den Preis eines
+    /// Inhaltszugs — wer eine Minute lang Text markiert, zahlt AX-Abfragen nur
+    /// für die ersten 2,5 s. Einen eigenen AX-Zustellzeitraum setzt dieses
+    /// Programm nicht; es gilt die Systemvorgabe, und die ist länger als das
+    /// Budget, weshalb eine späte Antwort über die Kennung verfällt statt das
+    /// Budget zu verlängern.
+    public var frameSampleBudget: Duration = .milliseconds(2500)
 
     /// Liest den aktuellen Rahmen des Fensters in **AppKit**-Koordinaten.
     /// Läuft wie `windowLookup` **nur** in `Task.detached` (siehe #26).
     private let frameSampler: @Sendable (DraggedWindow, Double) -> WindowFrame?
+
+    /// Uhr für ``frameSampleBudget``. Injizierbar, damit ein Test einen langen
+    /// Stillstand behaupten kann, ohne ihn abzuwarten.
+    private let now: @MainActor () -> ContinuousClock.Instant
 
     /// Ermittelt das Fenster unter einem Punkt in **Accessibility**‑Koordinaten.
     /// Wird auf einem **Hintergrund-Thread** aufgerufen (via `Task.detached` in
@@ -168,11 +194,13 @@ public final class EventTapDragTracker: WindowDragTracker {
     init(
         primaryTopY: Double,
         windowLookup: @escaping @Sendable (ScreenPoint, Double) -> DraggedWindow?,
-        frameSampler: @escaping @Sendable (DraggedWindow, Double) -> WindowFrame? = { _, _ in nil }
+        frameSampler: @escaping @Sendable (DraggedWindow, Double) -> WindowFrame? = { _, _ in nil },
+        now: @escaping @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now }
     ) {
         self.primaryTopY = primaryTopY
         self.windowLookup = windowLookup
         self.frameSampler = frameSampler
+        self.now = now
     }
 
     /// Re-reads the pivot for the coordinate flip.
@@ -398,11 +426,24 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// Die Abfrage ist ein AX-Aufruf mit unbekannter Dauer, deshalb
     /// `Task.detached` wie bei `scheduleWindowLookup`; nie synchron hier.
     ///
-    /// Höchstens ein Abruf gleichzeitig und höchstens `maximumFrameSamples`
-    /// pro Druck: ein Inhaltszug (Text markieren, Scrollbalken) soll nicht
-    /// für seine ganze Dauer AX-Abfragen erzeugen.
+    /// Zwei Grenzen: höchstens **ein** Abruf gleichzeitig — der nächste startet
+    /// erst, wenn der vorige zurück ist, womit die AX-Umlaufzeit selbst den
+    /// Takt vorgibt — und nur innerhalb von ``frameSampleBudget`` ab dem ersten
+    /// Abruf dieses Drucks. Ein Inhaltszug (Text markieren, Scrollbalken) soll
+    /// nicht für seine ganze Dauer AX-Abfragen erzeugen.
     private func requestFrameSample() {
-        guard let window = candidate, !sampleInFlight, sampleCount < maximumFrameSamples else { return }
+        guard let window = candidate, !sampleInFlight, !samplingClosed else { return }
+        let instant = now()
+        if let start = sampleWindowStart {
+            guard instant - start < frameSampleBudget else {
+                // Aufgebraucht. Fail closed: lieber keine Geste als eine, die
+                // wir nicht belegen konnten.
+                samplingClosed = true
+                return
+            }
+        } else {
+            sampleWindowStart = instant
+        }
         sampleInFlight = true
         sampleCount += 1
         let token = sampleToken
@@ -429,6 +470,10 @@ public final class EventTapDragTracker: WindowDragTracker {
         let verdict = WindowMoveEvidence.classify(
             initial: window.frame, current: frame, pointerFrom: press, pointerTo: pointer
         )
+        // Ein Kantenzug bleibt einer, bis die Taste losgelassen wird: die
+        // Größe ändert sich, der Ursprung ist nicht der Beleg. Weiter zu
+        // fragen kostet AX-Abfragen ohne mögliche Antwort.
+        if verdict == .resized { samplingClosed = true }
         guard verdict == .moved else { return }
         candidate = nil
         begin(with: window, at: press)
@@ -443,6 +488,8 @@ public final class EventTapDragTracker: WindowDragTracker {
         candidate = nil
         sampleInFlight = false
         sampleCount = 0
+        sampleWindowStart = nil
+        samplingClosed = false
         sampleToken &+= 1
     }
 
@@ -543,6 +590,10 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// Gibt die Kennung des laufenden Rahmenabrufs frei. Für Tests, damit ein
     /// Beleg mit passender — oder bewusst veralteter — Kennung ankommt.
     var _testCurrentSampleToken: UInt64 { sampleToken }
+
+    /// Zahl der angestoßenen Rahmenabrufe im laufenden Druck. Für Tests, die
+    /// belegen, dass nach Budgetende oder Kantenzug keiner mehr dazukommt.
+    var _testFrameSampleRequests: Int { sampleCount }
 
     /// Spielt einen Rahmenbeleg ein, wie es die losgelöste Task täte.
     func _testApplyFrameSample(_ frame: WindowFrame?, pointer: ScreenPoint, token: UInt64) {
