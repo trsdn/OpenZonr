@@ -267,11 +267,14 @@ final class AppModel {
         engine = nil
         dropzones.stop()
         profileState = nil
+        let bytes = ConfigurationDocument.bytes(at: configurationURL)
+        loadedFileBytes = bytes
 
         do {
             let loaded = try ConfigurationLoading.load(from: configurationURL)
             configuration = loaded
             configurationProblem = nil
+            reconcileEditor(with: loaded, bytes: bytes)
             Log.info("Konfiguration geladen: \(configurationURL.path)")
             Log.info("\(loaded.displays.count) Displays, \(loaded.profiles.count) Profile, \(loaded.rules.filter(\.enabled).count) aktive Regeln")
         } catch let error as CommandError {
@@ -287,9 +290,25 @@ final class AppModel {
             configurationProblem = "Fehler beim Laden: \(error)"
             Log.warn("Fehler beim Laden: \(error)")
         }
+        if configuration == nil { reconcileEditor(with: nil, bytes: bytes) }
 
         if windowAccess.isUsable { startEngineIfPossible() }
         updateStatus()
+    }
+
+    /// Zieht die zwischengespeicherte Editor-Sitzung nach einem Laden nach:
+    /// sauber → neuer Dateistand, schmutzig → Änderungen bleiben und werden als
+    /// Konflikt markiert, Datei nicht ladbar und Sitzung sauber → verwerfen,
+    /// damit kein Altstand weiterlebt.
+    private func reconcileEditor(with loaded: Configuration?, bytes: Data?) {
+        guard let document else { return }
+        if let loaded {
+            document.reconcile(with: loaded, bytes: bytes)
+        } else if document.hasUnsavedChanges {
+            document.noteUnreadableDisk(bytes: bytes)
+        } else {
+            self.document = nil
+        }
     }
 
     func revealConfiguration() {
@@ -359,6 +378,7 @@ final class AppModel {
     /// Ausgangsstand, damit ihre eigenen ungesicherten Änderungen bleiben.
     private func setDropzonesEnabled(_ enabled: Bool) {
         guard var base = configuration else { return }
+        let current = base
         let previous = base.defaults.dropzones.enabled
         guard previous != enabled else { return }
         base.defaults.dropzones.enabled = enabled
@@ -371,7 +391,11 @@ final class AppModel {
             return c
         }
 
-        let writer = makeDocument(for: base)
+        // Die Wegwerf-Sitzung startet mit dem geladenen Stand und bekommt die
+        // Änderung als Bearbeitung: nur dann erkennt sie eine außerhalb
+        // geänderte Datei als Konflikt, statt sie als sauber zu übernehmen.
+        let writer = makeDocument(for: current)
+        writer.apply { _ in base }
         guard writer.save() else {
             document?.applyOperational { c in
                 var c = c
@@ -436,6 +460,12 @@ final class AppModel {
     /// away unsaved changes.
     private(set) var document: ConfigurationDocument?
 
+    /// Die Dateibytes des letzten Ladens. Jede Sitzung, die dieses Modell
+    /// erzeugt, bekommt sie als Ausgangsstand — auch die Wegwerf-Sitzungen von
+    /// Schnellanheften und Menü-Schalter, damit auch sie eine außerhalb
+    /// geänderte Datei nicht überschreiben.
+    @ObservationIgnored private var loadedFileBytes: Data?
+
     /// The result of the last quick pin, for the menu to show.
     private(set) var lastPinMessage: String?
     private(set) var lastPinFailed = false
@@ -460,6 +490,10 @@ final class AppModel {
     /// configuration that failed to load would mean editing an invented one and
     /// writing it over the user's file.
     func editorDocument() -> ConfigurationDocument? {
+        // Ein zwischengespeicherter Editor darf nie einen Altstand liefern: hat
+        // sich die Datei seit seinem Ausgangsstand geändert, wird neu geladen
+        // (das gleicht die Sitzung ab, siehe `reconcileEditor`).
+        if document?.fileChangedOnDisk == true { reloadConfiguration() }
         if let document { return document }
         guard let configuration else { return nil }
         let document = makeDocument(for: configuration)
@@ -476,11 +510,15 @@ final class AppModel {
         let document = ConfigurationDocument(
             configuration: configuration,
             url: configurationURL,
-            displaySnapshots: SystemDisplays.snapshots()
+            displaySnapshots: SystemDisplays.snapshots(),
+            baseline: loadedFileBytes
         )
         document.onSave = { [weak self] _ in
             // Reload rather than adopting the in-memory copy: what the engine
             // runs on should be what is on disk, migration and all.
+            self?.reloadConfiguration()
+        }
+        document.onExternalChange = { [weak self] in
             self?.reloadConfiguration()
         }
         return document
