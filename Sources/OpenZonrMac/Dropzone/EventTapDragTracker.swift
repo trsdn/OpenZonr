@@ -13,6 +13,15 @@ import OpenZonrCore
 /// feature hangs on knowing exactly when the user let go, and the Accessibility
 /// API has no notification for it.
 ///
+/// Seit Issue #37 reicht das allein nicht für ein `.began`: Zeigerweg plus
+/// AXWindow-Vorfahre gilt auch für Text markieren, eine Datei ziehen oder einen
+/// Scrollbalken ziehen. Gemeldet wird erst, wenn der **Fensterrahmen** sich
+/// bewegt hat (``WindowMoveEvidence``). Der Rahmen wird dafür während des Zugs
+/// abgefragt — wie der Fenster-Lookup **nie** im Tap-Rückruf, sondern in
+/// `Task.detached` (siehe `requestFrameSample`, #26). Nicht lesbarer Rahmen
+/// heißt: kein Beleg, also kein Zug. Lieber eine Geste verpassen, als eine
+/// fremde Textmarkierung zu einer Fensterplatzierung zu machen.
+///
 /// ## Second use: right-clicks on the zoom button
 ///
 /// Seit Issue #27 hört derselbe Tap zusätzlich auf `rightMouseDown` — nicht,
@@ -121,6 +130,49 @@ public final class EventTapDragTracker: WindowDragTracker {
     private var lastDragPoint: ScreenPoint?
     private var lastDragModifiers: ModifierState = []
 
+    /// Fenster, das aufgelöst wurde, dessen Bewegung aber noch nicht belegt ist
+    /// (#37). Solange es gesetzt ist, wird kein `.began` gemeldet.
+    private var candidate: DraggedWindow?
+    /// Genau ein Rahmenabruf gleichzeitig; das Ergebnis löst den nächsten
+    /// `leftMouseDragged` aus.
+    private var sampleInFlight = false
+    /// Nur zum Nachzählen (Tests, Diagnose) — die Obergrenze ist die Zeit,
+    /// nicht diese Zahl.
+    private var sampleCount = 0
+    private var sampleToken: UInt64 = 0
+    /// Zeitpunkt des ersten Rahmenabrufs dieses Drucks; der Anfang des Budgets.
+    private var sampleWindowStart: ContinuousClock.Instant?
+    /// Wahr, wenn für diesen Druck nichts mehr abzufragen ist: Budget
+    /// aufgebraucht oder das Urteil steht schon fest (Kantenzug).
+    private var samplingClosed = false
+
+    /// Zeitspanne ab dem **ersten** Rahmenabruf eines Drucks, in der der
+    /// Tracker Belege sammelt.
+    ///
+    /// Eine Zahl von Abfragen taugt hier nicht: bei 8–16 ms Zugereignissen und
+    /// wenigen Millisekunden je Abruf wären 30 Abrufe nach einer knappen halben
+    /// Sekunde verbraucht — eine schwere App (Xcode, Electron), die genau diese
+    /// halbe Sekunde hängt, verlöre die ganze Geste. Zeit misst das, worum es
+    /// geht: wie lange wir einem Fenster zugestehen, dem Zeiger zu folgen.
+    ///
+    /// 2,5 s, begründet an der gemessenen AX-Spitze von 970 ms (Issue #26):
+    /// zweieinhalb solcher Spitzen passen hinein, eine hängende App bekommt
+    /// also mehr als einen Versuch. Nach oben begrenzt es den Preis eines
+    /// Inhaltszugs — wer eine Minute lang Text markiert, zahlt AX-Abfragen nur
+    /// für die ersten 2,5 s. Einen eigenen AX-Zustellzeitraum setzt dieses
+    /// Programm nicht; es gilt die Systemvorgabe, und die ist länger als das
+    /// Budget, weshalb eine späte Antwort über die Kennung verfällt statt das
+    /// Budget zu verlängern.
+    public var frameSampleBudget: Duration = .milliseconds(2500)
+
+    /// Liest den aktuellen Rahmen des Fensters in **AppKit**-Koordinaten.
+    /// Läuft wie `windowLookup` **nur** in `Task.detached` (siehe #26).
+    private let frameSampler: @Sendable (DraggedWindow, Double) -> WindowFrame?
+
+    /// Uhr für ``frameSampleBudget``. Injizierbar, damit ein Test einen langen
+    /// Stillstand behaupten kann, ohne ihn abzuwarten.
+    private let now: @MainActor () -> ContinuousClock.Instant
+
     /// Ermittelt das Fenster unter einem Punkt in **Accessibility**‑Koordinaten.
     /// Wird auf einem **Hintergrund-Thread** aufgerufen (via `Task.detached` in
     /// `scheduleWindowLookup`) — nicht auf dem MainActor, damit die AX-Spitzen
@@ -130,17 +182,25 @@ public final class EventTapDragTracker: WindowDragTracker {
     private let windowLookup: @Sendable (ScreenPoint, Double) -> DraggedWindow?
 
     public convenience init(primaryTopY: Double) {
-        self.init(primaryTopY: primaryTopY, windowLookup: Self.window(atAccessibilityPoint:primaryTopY:))
+        self.init(
+            primaryTopY: primaryTopY,
+            windowLookup: Self.window(atAccessibilityPoint:primaryTopY:),
+            frameSampler: Self.currentFrame(of:primaryTopY:)
+        )
     }
 
-    /// Testsaat: erlaubt es, den Fenster-Lookup durch eine synchrone Attrappe
-    /// zu ersetzen und die Zustandsmaschine kopfweise durchzuspielen.
+    /// Testsaat: Fenster-Lookup und Rahmenabruf durch Attrappen ersetzen und
+    /// die Zustandsmaschine kopfweise durchspielen.
     init(
         primaryTopY: Double,
-        windowLookup: @escaping @Sendable (ScreenPoint, Double) -> DraggedWindow?
+        windowLookup: @escaping @Sendable (ScreenPoint, Double) -> DraggedWindow?,
+        frameSampler: @escaping @Sendable (DraggedWindow, Double) -> WindowFrame? = { _, _ in nil },
+        now: @escaping @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now }
     ) {
         self.primaryTopY = primaryTopY
         self.windowLookup = windowLookup
+        self.frameSampler = frameSampler
+        self.now = now
     }
 
     /// Re-reads the pivot for the coordinate flip.
@@ -195,6 +255,7 @@ public final class EventTapDragTracker: WindowDragTracker {
         lastDragPoint = nil
         lastDragModifiers = []
         lookupToken &+= 1
+        resetMovementEvidence()
         dragging = false
     }
 
@@ -293,6 +354,7 @@ public final class EventTapDragTracker: WindowDragTracker {
             lastDragPoint = nil
             lastDragModifiers = []
             dragging = false
+            resetMovementEvidence()
             scheduleWindowLookup(at: accessibilityPoint)
 
         case let .mouseDragged(point, modifiers):
@@ -304,12 +366,15 @@ public final class EventTapDragTracker: WindowDragTracker {
                     guard DropzoneActivator.distance(from: press, to: point) >= minimumDragDistance else { return }
                     readyToBegin = true
                 }
-                // Sobald die Mindeststrecke da ist, hängt der Beginn nur noch
-                // am Fenster-Lookup. Ist er fertig, geht es los; ist er noch
-                // nicht fertig, warten wir. Die Fertigstellung selbst löst
-                // den Beginn nach (`applyLookupResult`).
+                // Sobald die Mindeststrecke da ist, hängt der Beginn am
+                // Fenster-Lookup **und** am Bewegungsbeleg (#37). Ist der
+                // Lookup noch nicht fertig, warten wir; seine Fertigstellung
+                // stößt den Beleg selbst an (`applyLookupResult`). Jedes
+                // weitere `leftMouseDragged` fragt einen neuen Rahmen ab,
+                // solange keiner die Bewegung belegt hat — der Beleg kann
+                // erst später eintreffen (Fenster klemmt, App hinkt nach).
                 guard let resolved = pendingWindow else { return }
-                begin(with: resolved, at: press)
+                considerBegin(resolved, at: press)
             }
             if dragging {
                 onEvent?(.moved(point, modifiers: modifiers))
@@ -324,6 +389,7 @@ public final class EventTapDragTracker: WindowDragTracker {
             lastDragPoint = nil
             lastDragModifiers = []
             lookupToken &+= 1
+            resetMovementEvidence()
             dragging = false
             if wasDragging {
                 onEvent?(.ended(point, modifiers: modifiers))
@@ -342,6 +408,89 @@ public final class EventTapDragTracker: WindowDragTracker {
         }
         dragging = true
         onEvent?(.began(window, at: press))
+    }
+
+    /// Kein Fenster: still verwerfen wie bisher. Fenster gefunden: Beleg holen,
+    /// `.began` erst mit Beleg (`applyFrameSample`). Läuft im Tap-Rückruf und
+    /// stößt deshalb nur eine losgelöste Task an.
+    private func considerBegin(_ window: DraggedWindow?, at press: ScreenPoint) {
+        guard let window else {
+            begin(with: nil, at: press)
+            return
+        }
+        if candidate == nil { candidate = window }
+        requestFrameSample()
+    }
+
+    /// Fragt den Fensterrahmen **außerhalb** des Tap-Rückrufs ab (#26/#37).
+    /// Die Abfrage ist ein AX-Aufruf mit unbekannter Dauer, deshalb
+    /// `Task.detached` wie bei `scheduleWindowLookup`; nie synchron hier.
+    ///
+    /// Zwei Grenzen: höchstens **ein** Abruf gleichzeitig — der nächste startet
+    /// erst, wenn der vorige zurück ist, womit die AX-Umlaufzeit selbst den
+    /// Takt vorgibt — und nur innerhalb von ``frameSampleBudget`` ab dem ersten
+    /// Abruf dieses Drucks. Ein Inhaltszug (Text markieren, Scrollbalken) soll
+    /// nicht für seine ganze Dauer AX-Abfragen erzeugen.
+    private func requestFrameSample() {
+        guard let window = candidate, !sampleInFlight, !samplingClosed else { return }
+        let instant = now()
+        if let start = sampleWindowStart {
+            guard instant - start < frameSampleBudget else {
+                // Aufgebraucht. Fail closed: lieber keine Geste als eine, die
+                // wir nicht belegen konnten.
+                samplingClosed = true
+                return
+            }
+        } else {
+            sampleWindowStart = instant
+        }
+        sampleInFlight = true
+        sampleCount += 1
+        let token = sampleToken
+        let pivot = primaryTopY
+        let sampler = frameSampler
+        let pointer = lastDragPoint ?? pressLocation ?? ScreenPoint(x: 0, y: 0)
+        Task.detached { [weak self] in
+            let frame = sampler(window, pivot)
+            await MainActor.run {
+                self?.applyFrameSample(frame, pointer: pointer, token: token)
+            }
+        }
+    }
+
+    /// Nimmt einen Rahmen entgegen und entscheidet, ob er den Zug belegt.
+    ///
+    /// Die Kennung verwirft Belege aus einem früheren Druck: zwischen Anstoß
+    /// und Rückkehr kann die Geste längst vorbei sein.
+    private func applyFrameSample(_ frame: WindowFrame?, pointer: ScreenPoint, token: UInt64) {
+        guard token == sampleToken, let window = candidate, let press = pressLocation, !dragging else { return }
+        sampleInFlight = false
+        // Nicht lesbar: kein Beleg. Das nächste `leftMouseDragged` fragt neu.
+        guard let frame else { return }
+        let verdict = WindowMoveEvidence.classify(
+            initial: window.frame, current: frame, pointerFrom: press, pointerTo: pointer
+        )
+        // Ein Kantenzug bleibt einer, bis die Taste losgelassen wird: die
+        // Größe ändert sich, der Ursprung ist nicht der Beleg. Weiter zu
+        // fragen kostet AX-Abfragen ohne mögliche Antwort.
+        if verdict == .resized { samplingClosed = true }
+        guard verdict == .moved else { return }
+        candidate = nil
+        begin(with: window, at: press)
+        if dragging, let point = lastDragPoint {
+            onEvent?(.moved(point, modifiers: lastDragModifiers))
+        }
+    }
+
+    /// Setzt alles zurück, was am Bewegungsbeleg hängt. Die erhöhte Kennung
+    /// macht einen noch laufenden Abruf wirkungslos.
+    private func resetMovementEvidence() {
+        candidate = nil
+        sampleInFlight = false
+        sampleCount = 0
+        sampleWindowStart = nil
+        samplingClosed = false
+        sampleToken &+= 1
     }
 
     /// Stößt die AX-Abfrage außerhalb des Tap-Rückrufs **und außerhalb des
@@ -404,14 +553,12 @@ public final class EventTapDragTracker: WindowDragTracker {
         guard token == lookupToken, let press = pressLocation else { return }
         pendingWindow = .some(window)
         // Wenn die Mindeststrecke schon überschritten wurde, während der
-        // Lookup lief, geben wir `.began` jetzt selbst aus — sonst würde die
-        // Geste erst beim nächsten `leftMouseDragged` beginnen, was den Nutzer
-        // Pixel kosten kann.
+        // Lookup lief, holen wir den Bewegungsbeleg jetzt selbst — sonst
+        // begänne die Geste erst beim nächsten `leftMouseDragged`, was den
+        // Nutzer Pixel kostet. Das `.began` folgt mit dem Beleg
+        // (`applyFrameSample`), nicht schon hier.
         if !dragging, readyToBegin {
-            begin(with: window, at: press)
-            if dragging, let point = lastDragPoint {
-                onEvent?(.moved(point, modifiers: lastDragModifiers))
-            }
+            considerBegin(window, at: press)
         }
     }
 
@@ -423,6 +570,7 @@ public final class EventTapDragTracker: WindowDragTracker {
         readyToBegin = false
         lastDragPoint = nil
         lastDragModifiers = []
+        resetMovementEvidence()
         onEvent?(.cancelled(reason: reason))
     }
 
@@ -437,6 +585,19 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// lässt.
     func _testApplyLookupResult(_ window: DraggedWindow?, token: UInt64) {
         applyLookupResult(window, token: token)
+    }
+
+    /// Gibt die Kennung des laufenden Rahmenabrufs frei. Für Tests, damit ein
+    /// Beleg mit passender — oder bewusst veralteter — Kennung ankommt.
+    var _testCurrentSampleToken: UInt64 { sampleToken }
+
+    /// Zahl der angestoßenen Rahmenabrufe im laufenden Druck. Für Tests, die
+    /// belegen, dass nach Budgetende oder Kantenzug keiner mehr dazukommt.
+    var _testFrameSampleRequests: Int { sampleCount }
+
+    /// Spielt einen Rahmenbeleg ein, wie es die losgelöste Task täte.
+    func _testApplyFrameSample(_ frame: WindowFrame?, pointer: ScreenPoint, token: UInt64) {
+        applyFrameSample(frame, pointer: pointer, token: token)
     }
 
     /// Time between the event being stamped by the window server and this
@@ -521,6 +682,15 @@ public final class EventTapDragTracker: WindowDragTracker {
             depth += 1
         }
         return nil
+    }
+
+    /// Der Rahmen des Fensters jetzt, in **AppKit**-Koordinaten.
+    ///
+    /// `nonisolated`, weil er auf einem Hintergrund-Thread läuft (siehe
+    /// `requestFrameSample`); `nil`, wenn die App den Rahmen nicht preisgibt.
+    nonisolated static func currentFrame(of window: DraggedWindow, primaryTopY: Double) -> WindowFrame? {
+        guard let frame = Accessibility.frame(of: window.element) else { return nil }
+        return ScreenArrangement.flipVertically(frame, primaryTopY: primaryTopY)
     }
 }
 

@@ -120,14 +120,37 @@ final class AppModel {
     private var permissionTimer: Timer?
     private var logObservation: UUID?
 
+    /// Die Systemzugriffe hinter der Berechtigungsprüfung. Ein Test kann so
+    /// „Berechtigung erteilt / entzogen“ herstellen, ohne Bedienungshilfen und
+    /// ohne einen echten `WatchEngine`, der sich an laufende Apps hängt.
+    struct Platform {
+        var isTrusted: @MainActor () -> Bool
+        var probeWindowAccess: @MainActor () -> Accessibility.WindowAccess
+        var startEngine: @MainActor (WatchEngine) -> Void
+
+        @MainActor static var live: Platform {
+            Platform(
+                isTrusted: { Accessibility.isTrusted() },
+                probeWindowAccess: { Accessibility.probeWindowAccess() },
+                startEngine: { $0.start() }
+            )
+        }
+    }
+
+    @ObservationIgnored private let platform: Platform
+
     // MARK: - Lifecycle
 
     /// The one instance. A menu bar app has exactly one of everything in here,
     /// and the app delegate needs the same object the menu is bound to.
     static let shared = AppModel()
 
-    init(configurationURL: URL = ConfigurationLocation.resolve(explicitPath: nil)) {
+    init(
+        configurationURL: URL = ConfigurationLocation.resolve(explicitPath: nil),
+        platform: Platform = .live
+    ) {
         self.configurationURL = configurationURL
+        self.platform = platform
     }
 
     /// Called once the app has finished launching.
@@ -177,20 +200,26 @@ final class AppModel {
 
     /// Re-reads the permission and starts or stops the engine accordingly.
     func refreshPermission(probe: Bool) {
-        let trusted = Accessibility.isTrusted()
+        let trusted = platform.isTrusted()
         let wasUsable = windowAccess.isUsable
 
         if !trusted {
             windowAccess = .notTrusted
         } else if probe || !wasUsable || windowAccess == .notTrusted {
             // Trusted now: find out whether that trust is worth anything.
-            windowAccess = Accessibility.probeWindowAccess()
+            windowAccess = platform.probeWindowAccess()
         }
 
         if windowAccess.isUsable {
-            startEngineIfPossible()
+            // Nur der Übergang „unbrauchbar → brauchbar“ ist ein Grund, den
+            // Tracker neu aufzusetzen. Ein unveränderter Tick darf weder eine
+            // laufende Geste verwerfen noch das Overlay ausblenden (#44).
+            startEngineIfPossible(restartDropzones: !wasUsable)
         } else {
             engine?.stop()
+            // Ohne Berechtigung liefert der Tracker nichts Brauchbares mehr;
+            // beim Verlust anhalten (nur beim Übergang, nicht bei jedem Tick).
+            if wasUsable { dropzones.stop() }
         }
         updateStatus()
     }
@@ -238,11 +267,14 @@ final class AppModel {
         engine = nil
         dropzones.stop()
         profileState = nil
+        let bytes = ConfigurationDocument.bytes(at: configurationURL)
+        loadedFileBytes = bytes
 
         do {
             let loaded = try ConfigurationLoading.load(from: configurationURL)
             configuration = loaded
             configurationProblem = nil
+            reconcileEditor(with: loaded, bytes: bytes)
             Log.info("Konfiguration geladen: \(configurationURL.path)")
             Log.info("\(loaded.displays.count) Displays, \(loaded.profiles.count) Profile, \(loaded.rules.filter(\.enabled).count) aktive Regeln")
         } catch let error as CommandError {
@@ -258,9 +290,25 @@ final class AppModel {
             configurationProblem = "Fehler beim Laden: \(error)"
             Log.warn("Fehler beim Laden: \(error)")
         }
+        if configuration == nil { reconcileEditor(with: nil, bytes: bytes) }
 
         if windowAccess.isUsable { startEngineIfPossible() }
         updateStatus()
+    }
+
+    /// Zieht die zwischengespeicherte Editor-Sitzung nach einem Laden nach:
+    /// sauber → neuer Dateistand, schmutzig → Änderungen bleiben und werden als
+    /// Konflikt markiert, Datei nicht ladbar und Sitzung sauber → verwerfen,
+    /// damit kein Altstand weiterlebt.
+    private func reconcileEditor(with loaded: Configuration?, bytes: Data?) {
+        guard let document else { return }
+        if let loaded {
+            document.reconcile(with: loaded, bytes: bytes)
+        } else if document.hasUnsavedChanges {
+            document.noteUnreadableDisk(bytes: bytes)
+        } else {
+            self.document = nil
+        }
     }
 
     func revealConfiguration() {
@@ -276,9 +324,10 @@ final class AppModel {
 
     // MARK: - Engine
 
-    private func startEngineIfPossible() {
+    private func startEngineIfPossible(restartDropzones: Bool = false) {
         guard let configuration else { return }
 
+        var created = false
         if engine == nil {
             let engine = WatchEngine(configuration: configuration, dryRun: false)
             engine.isPaused = isPaused
@@ -286,12 +335,15 @@ final class AppModel {
                 self?.syncFromEngine()
             }
             self.engine = engine
+            created = true
         }
 
-        engine?.start()
+        if let engine { platform.startEngine(engine) }
         // Dragging follows the engine: both need the same permission and the
-        // same configuration, and a drop is placed by the engine itself.
-        dropzones.restart()
+        // same configuration, and a drop is placed by the engine itself. Neu
+        // aufgesetzt wird nur, wenn der Engine neu ist (Reload) oder der Aufrufer
+        // einen Übergang meldet — sonst läuft der bestehende Tracker weiter.
+        if created || restartDropzones { dropzones.restart() }
         syncFromEngine()
     }
 
@@ -316,18 +368,50 @@ final class AppModel {
     /// the next launch and blamed on the feature.
     var dropzonesEnabled: Bool {
         get { configuration?.defaults.dropzones.enabled ?? false }
-        set {
-            guard var base = document?.configuration ?? configuration else { return }
-            base.defaults.dropzones.enabled = newValue
-            let session = document ?? makeDocument(for: base)
-            session.replace(with: base)
-            if document == nil, !session.save() {
-                lastPinMessage = session.saveProblem ?? "Speichern fehlgeschlagen."
-                lastPinFailed = true
-                return
-            }
-            dropzones.restart()
+        set { setDropzonesEnabled(newValue) }
+    }
+
+    /// Betriebliche Einstellung: wirkt sofort und wird sofort gesichert — mit
+    /// oder ohne Editor-Sitzung. Geschrieben wird immer „geladene
+    /// Konfiguration plus dieser Schalter“, nie der ungesicherte Editorstand.
+    /// Eine vorhandene Sitzung bekommt denselben Schalter in Arbeitskopie und
+    /// Ausgangsstand, damit ihre eigenen ungesicherten Änderungen bleiben.
+    private func setDropzonesEnabled(_ enabled: Bool) {
+        guard var base = configuration else { return }
+        let current = base
+        let previous = base.defaults.dropzones.enabled
+        guard previous != enabled else { return }
+        base.defaults.dropzones.enabled = enabled
+
+        // Zuerst die Sitzung anpassen: das anschliessende Neuladen (onSave)
+        // sieht dann Datei == Ausgangsstand und nimmt keine Fremdänderung an.
+        document?.applyOperational { c in
+            var c = c
+            c.defaults.dropzones.enabled = enabled
+            return c
         }
+
+        // Die Wegwerf-Sitzung startet mit dem geladenen Stand und bekommt die
+        // Änderung als Bearbeitung: nur dann erkennt sie eine außerhalb
+        // geänderte Datei als Konflikt, statt sie als sauber zu übernehmen.
+        let writer = makeDocument(for: current)
+        writer.apply { _ in base }
+        guard writer.save() else {
+            // Bei einer Fremdänderung hat `onExternalChange` die Sitzung schon
+            // auf den Dateistand gebracht; ein Zurückrollen würde ihn überschreiben.
+            // Bei anderen Fehlern blieb die Datei, wie sie war: dann zurückrollen.
+            if !writer.hasExternalChange {
+                document?.applyOperational { c in
+                    var c = c
+                    c.defaults.dropzones.enabled = previous
+                    return c
+                }
+            }
+            lastPinMessage = writer.saveProblem ?? "Speichern fehlgeschlagen."
+            lastPinFailed = true
+            return
+        }
+        // `onSave` hat neu geladen und dabei den Tracker neu aufgesetzt.
     }
 
     /// Other window managers that are running right now.
@@ -381,6 +465,12 @@ final class AppModel {
     /// away unsaved changes.
     private(set) var document: ConfigurationDocument?
 
+    /// Die Dateibytes des letzten Ladens. Jede Sitzung, die dieses Modell
+    /// erzeugt, bekommt sie als Ausgangsstand — auch die Wegwerf-Sitzungen von
+    /// Schnellanheften und Menü-Schalter, damit auch sie eine außerhalb
+    /// geänderte Datei nicht überschreiben.
+    @ObservationIgnored private var loadedFileBytes: Data?
+
     /// The result of the last quick pin, for the menu to show.
     private(set) var lastPinMessage: String?
     private(set) var lastPinFailed = false
@@ -405,6 +495,13 @@ final class AppModel {
     /// configuration that failed to load would mean editing an invented one and
     /// writing it over the user's file.
     func editorDocument() -> ConfigurationDocument? {
+        // Ein zwischengespeicherter Editor darf nie einen Altstand liefern: hat
+        // sich die Datei seit seinem Ausgangsstand geändert, wird neu geladen
+        // (das gleicht die Sitzung ab, siehe `reconcileEditor`).
+        if document?.fileChangedOnDisk == true
+            || (document == nil && ConfigurationDocument.bytes(at: configurationURL) != loadedFileBytes) {
+            reloadConfiguration()
+        }
         if let document { return document }
         guard let configuration else { return nil }
         let document = makeDocument(for: configuration)
@@ -421,11 +518,15 @@ final class AppModel {
         let document = ConfigurationDocument(
             configuration: configuration,
             url: configurationURL,
-            displaySnapshots: SystemDisplays.snapshots()
+            displaySnapshots: SystemDisplays.snapshots(),
+            baseline: loadedFileBytes
         )
         document.onSave = { [weak self] _ in
             // Reload rather than adopting the in-memory copy: what the engine
             // runs on should be what is on disk, migration and all.
+            self?.reloadConfiguration()
+        }
+        document.onExternalChange = { [weak self] in
             self?.reloadConfiguration()
         }
         return document

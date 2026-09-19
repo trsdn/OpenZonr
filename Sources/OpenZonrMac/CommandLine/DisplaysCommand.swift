@@ -49,8 +49,9 @@ struct DisplaysCommand {
             if snapshot.usesSerialFallback {
                 print("""
                     ⚠️  Seriennummer 0 — es greift die Fallback-Identität aus
-                        Vendor + Modell + Auflösung + Port-Index. Das ist stabil,
-                        solange nicht zwei baugleiche Monitore die Anschlüsse tauschen.
+                        Vendor + Modell + Port-Index. Die Auflösung zählt nicht.
+                        Baugleiche Monitore werden nur über den Port unterschieden
+                        und bei vertauschten Anschlüssen verwechselt.
                 """)
             }
             if snapshot.isLikelyVirtual {

@@ -19,6 +19,34 @@ public enum ConflictResolution: Hashable, Sendable {
     case skip
 }
 
+/// What a decision claimed for one window, so a failed or cancelled placement can undo exactly that.
+///
+/// `epoch` is the window's claim counter right after the decision. A rollback
+/// applies only while the counter is unchanged, which keeps an older, cancelled
+/// job from undoing what a newer request for the same window has claimed since.
+public struct OccupancyClaim: Hashable, Sendable {
+    public var window: WindowIdentifier
+    public var epoch: Int
+    /// The placement the window held before the decision, `nil` if it held none.
+    public var restoring: ResolvedPlacement?
+
+    public init(window: WindowIdentifier, epoch: Int, restoring: ResolvedPlacement?) {
+        self.window = window
+        self.epoch = epoch
+        self.restoring = restoring
+    }
+}
+
+/// What the caller could observe about a window that occupancy still lists.
+public enum OccupantStatus: Sendable {
+    /// Still open and still where it was put.
+    case present
+    /// Open, but no longer in its zone (moved by hand, or by the app itself).
+    case movedAway
+    /// Closed, or its application ended.
+    case gone
+}
+
 public struct ZoneOccupancy: Sendable {
     private struct ZoneKey: Hashable, Sendable {
         var display: DisplayAlias
@@ -28,11 +56,13 @@ public struct ZoneOccupancy: Sendable {
     private var occupantsByZone: [ZoneKey: [WindowIdentifier]]
     private var placementsByWindow: [WindowIdentifier: ResolvedPlacement]
     private var manualOverrides: [WindowIdentifier: Date]
+    private var epochs: [WindowIdentifier: Int]
 
     public init() {
         occupantsByZone = [:]
         placementsByWindow = [:]
         manualOverrides = [:]
+        epochs = [:]
     }
 
     /// Records that `window` now occupies `placement`, removing it from any zone it held before.
@@ -40,6 +70,7 @@ public struct ZoneOccupancy: Sendable {
         removeFromCurrentZone(window)
 
         placementsByWindow[window] = placement
+        epochs[window, default: 0] += 1
         let key = ZoneKey(display: placement.display, zone: placement.zone)
         occupantsByZone[key, default: []].append(window)
     }
@@ -49,6 +80,71 @@ public struct ZoneOccupancy: Sendable {
         removeFromCurrentZone(window)
         placementsByWindow[window] = nil
         manualOverrides[window] = nil
+        epochs[window] = nil
+    }
+
+    /// Forgets a window only while nothing has claimed it since `epoch`.
+    ///
+    /// The guarded counterpart of ``forget(_:)`` for callers that decided to
+    /// forget earlier and awaited in between: a newer claim, its manual
+    /// override and its epoch must not be wiped by the older decision.
+    public mutating func forget(_ window: WindowIdentifier, ifUnchangedSince epoch: Int) {
+        guard (epochs[window] ?? 0) == epoch else { return }
+        forget(window)
+    }
+
+    /// Every window that currently holds a zone.
+    public var trackedWindows: Set<WindowIdentifier> { Set(placementsByWindow.keys) }
+
+    /// Frees the window's zone but keeps its manual override on record.
+    public mutating func release(_ window: WindowIdentifier) {
+        removeFromCurrentZone(window)
+        placementsByWindow[window] = nil
+        epochs[window, default: 0] += 1
+    }
+
+    /// The claims a decision made, taken right after it ran.
+    ///
+    /// `earlier` is a copy of the occupancy from *before* the decision; it
+    /// supplies what to restore.
+    public func claims(for windows: [WindowIdentifier], since earlier: ZoneOccupancy) -> [OccupancyClaim] {
+        windows.map {
+            OccupancyClaim(window: $0, epoch: epochs[$0] ?? 0, restoring: earlier.placement(of: $0))
+        }
+    }
+
+    /// Undoes claims whose window has not been claimed again since.
+    public mutating func rollback(_ claims: [OccupancyClaim]) {
+        for claim in claims where (epochs[claim.window] ?? 0) == claim.epoch {
+            if let previous = claim.restoring {
+                register(claim.window, at: previous)
+            } else {
+                release(claim.window)
+            }
+        }
+    }
+
+    /// Forgets every window of a process — its application terminated.
+    public mutating func forgetApplication(processIdentifier: Int32) {
+        let doomed = Set(placementsByWindow.keys).union(manualOverrides.keys)
+            .filter { $0.processIdentifier == processIdentifier }
+        for window in doomed { forget(window) }
+    }
+
+    /// Drops what the caller can no longer confirm.
+    ///
+    /// Occupancy is a claim about the screen, and the screen changes without
+    /// telling us: windows are closed, dragged away, or resized by their app.
+    /// Checking lazily, right before a decision reads the table, avoids
+    /// watching windows after placement.
+    public mutating func reconcile(_ status: (WindowIdentifier, ResolvedPlacement) -> OccupantStatus) {
+        for (window, placement) in placementsByWindow {
+            switch status(window, placement) {
+            case .present: break
+            case .movedAway: release(window)
+            case .gone: forget(window)
+            }
+        }
     }
 
     /// Windows currently held by a zone, in the order they were registered.

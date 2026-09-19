@@ -36,6 +36,12 @@ final class DropzoneController {
     /// sprechen. Die Zusicherung „bei Pause installieren wir keinen Tap" ist
     /// aber genau die, an der der Fund aus PR #15 hing.
     var _hasActiveTrackerForTesting: Bool { tracker != nil }
+
+    /// Nur für Tests: wie oft `start()` / `stop()` gelaufen sind. Ein
+    /// Event-Tap lässt sich in der Testumgebung nicht installieren; die Zähler
+    /// zeigen stattdessen, ob der Tracker angefasst wurde.
+    private(set) var _startCountForTesting = 0
+    private(set) var _stopCountForTesting = 0
     #endif
 
     /// The offer shown after a drop, or `nil` when there is none.
@@ -55,6 +61,9 @@ final class DropzoneController {
     // MARK: - Lifecycle
 
     func start() {
+        #if DEBUG
+        _startCountForTesting += 1
+        #endif
         stop()
         if let suspension = DropzoneActivator.suspension(settings: settings, isPaused: model.isPaused) {
             // Only the pause gets a line in the menu. "Switched off" is what the
@@ -92,6 +101,9 @@ final class DropzoneController {
     }
 
     func stop() {
+        #if DEBUG
+        _stopCountForTesting += 1
+        #endif
         tracker?.stop()
         tracker = nil
         overlay.hide()

@@ -80,11 +80,9 @@ public struct DefaultZoneResolver: ZoneResolver {
         // ein Overlay, das an jeder Naht blinkt; der Zusammenhang wäre schwer
         // zu finden, weil die Fenster ja richtig liegen. Deshalb steht die
         // Schrumpfung genau hier und nirgends sonst.
-        let placed = layout.margin > 0 ? relativeFrame.inset(by: layout.margin) : relativeFrame
-
         return .success(
             ResolvedPlacement(
-                frame: absoluteFrame(for: placed, in: visibleFrame),
+                frame: ZoneGeometry.placementFrame(for: relativeFrame, margin: layout.margin, in: visibleFrame),
                 display: binding.display,
                 zone: binding.zone,
                 usedFallback: usedFallback
@@ -111,15 +109,5 @@ public struct DefaultZoneResolver: ZoneResolver {
                 height: height
             )
         }
-    }
-
-    /// Converts a zone rectangle from the configuration model's top-left origin
-    /// into AppKit's bottom-left coordinate space.
-    ///
-    /// Delegated to ``ZoneGeometry`` since the drag path resolves the same zones
-    /// from a pointer position: one arithmetic, two callers, no chance of the
-    /// two disagreeing by a point.
-    private func absoluteFrame(for rect: RelativeRect, in frame: VisibleFrame) -> WindowFrame {
-        ZoneGeometry.absoluteFrame(for: rect, in: frame)
     }
 }

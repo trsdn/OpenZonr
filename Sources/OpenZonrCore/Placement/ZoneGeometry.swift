@@ -35,6 +35,22 @@ public enum ZoneGeometry {
             height: roundedTop - roundedBottom
         )
     }
+
+    /// The frame a window is placed at for a zone: the zone shrunk by the
+    /// layout's margin on every side, then converted like any zone.
+    ///
+    /// The **only** place the margin is applied. ``DefaultZoneResolver`` (rules)
+    /// and ``Dropzone/placement`` (drag/drop and zoom menu) both call it, so the
+    /// three placement routes cannot disagree. Hit testing deliberately does not
+    /// call it: ``Dropzone/frame`` stays the full zone so the overlay has no gaps.
+    public static func placementFrame(
+        for rect: RelativeRect,
+        margin: Double,
+        in frame: VisibleFrame
+    ) -> WindowFrame {
+        let placed = margin > 0 ? rect.inset(by: margin) : rect
+        return absoluteFrame(for: placed, in: frame)
+    }
 }
 
 /// A point in global screen coordinates.

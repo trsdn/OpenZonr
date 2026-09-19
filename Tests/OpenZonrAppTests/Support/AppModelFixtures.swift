@@ -91,10 +91,13 @@ enum AppModelFixtures {
     /// Bedienungshilfen. Standardaufbau für die meisten Tests: alles ausser
     /// dem Zugriff auf echte Fenster ist eingerichtet.
     @MainActor
-    static func modelWithLoadedConfiguration(_ configuration: Configuration? = nil) throws -> LoadedModel {
+    static func modelWithLoadedConfiguration(
+        _ configuration: Configuration? = nil,
+        platform: AppModel.Platform = .live
+    ) throws -> LoadedModel {
         let configuration = configuration ?? minimalConfiguration()
         let temp = try writeConfiguration(configuration)
-        let model = AppModel(configurationURL: temp.url)
+        let model = AppModel(configurationURL: temp.url, platform: platform)
         model.reloadConfiguration()
         // Ohne echten `WatchEngine` gibt es keinen Profilzustand — wir bauen ihn
         // von Hand. `apply(_:to:)` liest `activeProfile`, deshalb muss er stehen.

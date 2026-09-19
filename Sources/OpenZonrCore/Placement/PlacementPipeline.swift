@@ -191,4 +191,7 @@ public enum PlacementOutcome: Hashable, Sendable {
     case rejectedByApplication(actual: WindowFrame, attempts: Int)
     /// Placement could not run because the Accessibility permission is missing.
     case missingPermission
+    /// The request was superseded, or the engine was paused, stopped or reloaded
+    /// before the window could be written. `attempts` counts the writes made.
+    case cancelled(attempts: Int)
 }

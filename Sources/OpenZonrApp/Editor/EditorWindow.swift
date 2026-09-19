@@ -87,6 +87,11 @@ struct EditorWindow: View {
                 .help(document.isUsable
                       ? "Schreibt die Konfiguration atomar über den ConfigurationStore"
                       : "Es gibt Fehler, mit denen die Konfiguration nicht arbeiten kann")
+            if document.hasExternalChange {
+                Button("Trotzdem sichern") { document.save(overwritingExternalChanges: true) }
+                    .disabled(!document.isUsable)
+                    .help("Überschreibt die außerhalb geänderte Datei mit diesem Editorstand")
+            }
         }
         .padding(10)
     }

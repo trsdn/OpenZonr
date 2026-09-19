@@ -158,4 +158,42 @@ struct ProfileResolverTests {
             ) == nil
         )
     }
+
+    @Test("Ein in anderem Modus gespeichertes Profil wird weiterhin gefunden")
+    func legacyFallbackProfileStillMatches() {
+        // In der Konfiguration steht die Identität, wie ältere Versionen sie
+        // im skalierten Modus 2560x1440 aufgezeichnet haben.
+        let stored = DisplayIdentity.fallback(
+            vendorNumber: 19501, modelNumber: 7, pixelWidth: 2560, pixelHeight: 1440, portIndex: 1
+        )
+        // Beobachtet wird heute die native Größe.
+        let observed = DisplayIdentity.fallback(
+            vendorNumber: 19501, modelNumber: 7, pixelWidth: 3840, pixelHeight: 2160, portIndex: 1
+        )
+        var configuration = TestConfigurations.minimal()
+        configuration.displays.append(
+            DisplayDescriptor(
+                alias: "extern",
+                displayName: "Ohne Seriennummer",
+                identity: stored,
+                layouts: [Layout(id: "voll", name: "Vollbild", zones: [Zone(id: "full", name: "Vollbild", frame: .full)])],
+                defaultLayoutID: "voll"
+            )
+        )
+        configuration.profiles.append(
+            Profile(
+                id: "dock",
+                name: "Dock",
+                fingerprint: ProfileFingerprint(displays: ["main", "extern"]),
+                roleBindings: [RoleBinding(role: "editor", display: "extern", zone: "full")],
+                fallback: RoleBinding(role: "editor", display: "extern", zone: "full")
+            )
+        )
+
+        let profile = resolver.activeProfile(
+            for: SetupFingerprint(displays: [.builtin, observed]),
+            in: configuration
+        )
+        #expect(profile?.id == "dock")
+    }
 }

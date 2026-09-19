@@ -218,10 +218,19 @@ Setup vorhanden ist und nie gegen ein anderes Modell getauscht wird, ohne dass
 gleichzeitig die Maschine getauscht wird.
 
 **Fallback ohne Seriennummer:** manche Monitore melden `0` als Seriennummer.
-Dann greift Vendor + Model + native Pixelgröße + Port-Index. Das ist nicht global
-eindeutig, aber stabil, solange nicht zwei baugleiche Monitore zwischen Ports
-getauscht werden. Der Fall wird im Datenmodell ausdrücklich als `fallback`
-markiert, damit die UI genau davor warnen kann.
+Dann greift Vendor + Model + Port-Index (aus `CGDisplayUnitNumber` gelesen). Die
+Pixelgröße ist bewusst **kein** Merkmal, denn sie hängt am aktuellen
+Anzeigemodus und ändert sich beim Umschalten; sie wird nur zur Anzeige
+mitgeführt. Das ist nicht global eindeutig: baugleiche Monitore ohne
+Seriennummer sind nur über ihren Port unterscheidbar und können beim Vertauschen
+verwechselt werden; ändert sich die Port-Nummer, gilt der Monitor als unbekannt
+und es wird kein Profil gewählt. Ob es bessere öffentliche Merkmale gibt, ist
+bisher nicht untersucht; `CGDisplayScreenSize` ist nicht als stabil belegt. Die
+Modus-Unabhängigkeit ist im Code begründet und per Test abgesichert, auf echter
+Hardware aber nicht gemessen (Handprüfung in
+[konfiguration.md](konfiguration.md), Abschnitt `identity`). Der Fall wird im
+Datenmodell ausdrücklich als `fallback` markiert, damit die UI genau davor
+warnen kann.
 
 ---
 

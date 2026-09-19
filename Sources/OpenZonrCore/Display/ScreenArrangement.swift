@@ -19,9 +19,9 @@ public struct DisplaySnapshot: Hashable, Sendable {
     public var localizedName: String
     /// `CGDirectDisplayID`. Session-scoped, useful for logs, never for identity.
     public var displayID: UInt32
-    /// Native pixel width of the current mode.
+    /// Pixel width of the CURRENT mode. Informational; not part of the identity.
     public var pixelWidth: Int
-    /// Native pixel height of the current mode.
+    /// Pixel height of the CURRENT mode. Informational; not part of the identity.
     public var pixelHeight: Int
     /// `NSScreen.backingScaleFactor`.
     public var backingScaleFactor: Double

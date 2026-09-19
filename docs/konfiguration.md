@@ -84,15 +84,65 @@ Drei Varianten, unterschieden über `kind`:
   "kind": "fallback",
   "vendorNumber": 4268,
   "modelNumber": 42145,
-  "pixelWidth": 3840,
-  "pixelHeight": 2160,
+  "pixelWidth": 3840,          // nur Anzeige, zählt nicht für den Vergleich
+  "pixelHeight": 2160,         // nur Anzeige, zählt nicht für den Vergleich
   "portIndex": 0
 }
 ```
 
-Die `fallback`-Variante ist nicht global eindeutig: zwei baugleiche Monitore an
-getauschten Ports werden verwechselt. Sie ist deshalb ausdrücklich als solche
-markiert, damit die UI warnen kann.
+Die `fallback`-Variante ist nicht global eindeutig. Verglichen werden
+`vendorNumber`, `modelNumber` und `portIndex`. `pixelWidth` und `pixelHeight`
+sind reine Anzeigeinformation und zählen **nicht** für die Wiedererkennung; ein
+Wechsel der Auflösung soll denselben Monitor also nicht zu einem anderen machen.
+Das ist im Code begründet und per Unit-Test abgesichert, auf echter Hardware
+aber noch nicht gemessen (siehe Handprüfung unten).
+
+Ältere Konfigurationsdateien, in denen dort die Größe eines skalierten Modus
+steht, sollen unverändert weiter passen. Belegt ist das durch die Tests
+`legacyJSONDecodesEqual` (DisplayIdentityTests) und
+`legacyFallbackProfileStillMatches` (ProfileResolverTests); das Verhalten auf
+echter Hardware ist nicht gemessen. Neu erzeugte Fragmente
+(`openzonr displays --config-fragment`) enthalten die native Größe, wenn der
+Treiber genau einen Modus als nativ kennzeichnet, sonst `0`.
+
+**Grenzen:**
+
+- Baugleiche Monitore ohne Seriennummer unterscheiden sich nur über den
+  `portIndex`. Dieser wird aus `CGDisplayUnitNumber` gelesen, der nächstliegenden
+  öffentlichen Entsprechung eines Port-Index, nicht aus einer echten
+  Anschlussbezeichnung. Werden solche Monitore zwischen Anschlüssen vertauscht,
+  ist mit Verwechslung zu rechnen.
+- Der `portIndex` kann sich bei geänderter Verkabelung (anderer Port, anderes
+  Dock, Hub) ändern. Dann gilt der Monitor als unbekannt: es wird kein Profil
+  gewählt (keine geratene Zuordnung), und der Watch-Modus gibt einen Hinweis mit
+  dem nächsten Schritt aus. Ob die Nummer Ab-/Anstecken, Ruhezustand oder
+  Neustart übersteht, ist nicht untersucht.
+- Ob der Treiber bei einem bestimmten Monitor ein Native-Flag setzt, ist offen.
+  Fehlt es, steht `0` in den Pixelfeldern. Das betrifft nur die Anzeige, nicht
+  die Erkennung.
+- Ob es bessere öffentliche Merkmale gibt (etwa `CGDisplayScreenSize` oder
+  IOKit-Pfade), ist bisher nicht untersucht und nicht als stabil belegt.
+
+**Handprüfung auf Hardware (offen, für #39):** Bisher hat niemand dies auf
+echter Hardware geprüft. Zu erledigen und im Issue festzuhalten:
+
+- [ ] Monitor ohne Seriennummer anschließen; `openzonr displays` aufrufen und
+      Identität sowie den Fallback-Hinweis notieren.
+- [ ] `openzonr displays --config-fragment` ausgeben: stehen in
+      `pixelWidth`/`pixelHeight` die native Größe oder `0`?
+- [ ] In den Systemeinstellungen zwischen mindestens drei Modi wechseln (nativ,
+      skaliert, niedrigere Auflösung) und nach jedem Wechsel `openzonr displays`
+      aufrufen: bleiben Vendor, Modell und Port gleich, und bleibt das Profil
+      aktiv?
+- [ ] Ein Fragment mit den Pixelmaßen eines skalierten Modus (alte Datei) laden:
+      passt das Profil weiter?
+- [ ] Zwei baugleiche Monitore ohne Seriennummer, falls vorhanden: unterscheiden
+      sich die `portIndex`-Werte? Kabel tauschen und beobachten, ob die Zuordnung
+      wechselt.
+- [ ] Ab-/Anstecken, Ruhezustand, Neustart: bleibt der `portIndex` gleich?
+- [ ] Fehlt das Native-Flag (Größe `0`)? Im Issue vermerken.
+
+Ergebnis (Gerät, Beobachtung, Datum): _noch nicht erhoben_
 
 > **`serialNumber == 0` ist der Normalfall, nicht der Randfall.**
 >

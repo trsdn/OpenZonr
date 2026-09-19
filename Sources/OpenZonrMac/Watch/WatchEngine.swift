@@ -57,6 +57,7 @@ public final class WatchEngine {
     public var isPaused = false {
         didSet {
             guard isPaused != oldValue else { return }
+            if isPaused { scheduler.cancelAll() }
             Log.info(isPaused ? "Pausiert — es wird nichts mehr platziert." : "Fortgesetzt.")
             notifyChange()
         }
@@ -82,6 +83,27 @@ public final class WatchEngine {
     /// Which zone currently holds which window. Owned by the engine because a
     /// decision and the bookkeeping that follows it must not drift apart.
     private var occupancy = ZoneOccupancy()
+
+    /// Owns every pending placement. Nothing writes to a window unless a job
+    /// here is still current when it gets to it.
+    private let scheduler = PlacementScheduler()
+
+    /// The live windows the occupancy table refers to, so a displaced occupant
+    /// can be moved. Holding the element also keeps its address, which is the
+    /// identifier token, from being reused. Pruned to `occupancy.trackedWindows`.
+    private var windows: [WindowIdentifier: AccessibilityWindow] = [:]
+
+    /// For each incoming window with a running job, the occupants that job is
+    /// moving away. Their claim is provisional until the job ends, so they
+    /// count as present meanwhile.
+    ///
+    /// Invariant: an entry is only ever read while its own job is pending;
+    /// every submit rewrites it (and empty ones are not stored); every
+    /// stop/reset path clears it.
+    private var displacedByJob: [WindowIdentifier: [WindowIdentifier]] = [:]
+
+    /// Deviation from its zone beyond which a placed window counts as moved away.
+    private static let movedAwayThreshold: Double = 24
 
     /// One observer per watched application. Held for their lifetime — releasing
     /// the observer silently removes the notification.
@@ -187,6 +209,16 @@ public final class WatchEngine {
             filter: DefaultWindowFilter(rules: rules),
             profileResolver: PinnedProfileResolver(pinned: pinnedProfile)
         )
+
+        // Occupancy is keyed by display alias and zone id of the previous
+        // profile. Carrying it across a profile switch would let windows from a
+        // different layout displace each other.
+        if previous != profileState.profile?.id {
+            scheduler.cancelAll()
+            occupancy = ZoneOccupancy()
+            windows.removeAll()
+            displacedByJob.removeAll()
+        }
 
         guard announce else { return }
         switch profileState {
@@ -318,6 +350,10 @@ public final class WatchEngine {
     public func stop() {
         guard isRunning else { return }
         isRunning = false
+        scheduler.cancelAll()
+        occupancy = ZoneOccupancy()
+        windows.removeAll()
+        displacedByJob.removeAll()
 
         if let launchObservation {
             NSWorkspace.shared.notificationCenter.removeObserver(launchObservation)
@@ -380,6 +416,10 @@ public final class WatchEngine {
                 )
             }
             windowsSeen.removeValue(forKey: pid)
+            occupancy.forgetApplication(processIdentifier: pid)
+            scheduler.cancel(where: { $0.processIdentifier == pid })
+            windows = windows.filter { $0.key.processIdentifier != pid }
+            displacedByJob = displacedByJob.filter { $0.key.processIdentifier != pid }
             recentlySwept = recentlySwept.filter { !$0.key.hasPrefix("\(pid)|") }
             Log.detail("App beendet (pid \(pid)) — Beobachtung aufgeräumt.")
         }
@@ -456,7 +496,7 @@ public final class WatchEngine {
                 // `isTerminated` keeps a quitting app from being held alive in
                 // a retry loop.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, app] in
-                    guard let self, !app.isTerminated else { return }
+                    guard let self, self.isRunning, !app.isTerminated else { return }
                     MainActor.assumeIsolated {
                         self.attachObserver(to: app, retriesLeft: retriesLeft - 1)
                     }
@@ -535,6 +575,7 @@ public final class WatchEngine {
         viaSweep: Bool = false,
         frameAttempt: Int = 0
     ) {
+        guard isRunning else { return }
         var pid: pid_t = 0
         guard AXUIElementGetPid(element, &pid) == .success,
               let app = NSRunningApplication(processIdentifier: pid)
@@ -586,8 +627,12 @@ public final class WatchEngine {
             if frameAttempt == 0 {
                 Log.detail("Fenster von \(app.bundleIdentifier ?? "pid \(pid)") noch ohne Frame — die App ist vermutlich noch am Starten. Versuche es erneut.")
             }
+            let generation = scheduler.generation
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.frameReadDelay) { [weak self] in
-                self?.handleWindowCreated(element, viaSweep: viaSweep, frameAttempt: frameAttempt + 1)
+                guard let self, self.isRunning, self.scheduler.generation == generation else { return }
+                MainActor.assumeIsolated {
+                    self.handleWindowCreated(element, viaSweep: viaSweep, frameAttempt: frameAttempt + 1)
+                }
             }
             return
         }
@@ -632,9 +677,18 @@ public final class WatchEngine {
         let snapshots = SystemDisplays.snapshots()
         arrangement = ScreenArrangement(snapshots: snapshots)
 
+        let identifier = WindowIdentifier(processIdentifier: pid, token: token(for: element))
+
+        // Occupancy is a claim about the screen. Confirm it now, right before
+        // the decision reads it, rather than watching windows after placement.
+        occupancy.reconcile { [weak self] id, placement in
+            self?.status(of: id, holding: placement) ?? .gone
+        }
+        let before = occupancy
+
         let decision = decider.decide(
             for: snapshot,
-            identifier: WindowIdentifier(processIdentifier: pid, token: token(for: element)),
+            identifier: identifier,
             configuration: configuration,
             rules: rules,
             setup: SetupFingerprint(snapshots: snapshots, ignoring: configuration.ignoredDisplays),
@@ -673,10 +727,17 @@ public final class WatchEngine {
             )
 
         case let .place(placement, rule, displacing):
-            for displacement in displacing {
-                Log.detail("verdrängt \(displacement.window) nach \(displacement.newPlacement.display)/\(displacement.newPlacement.zone)")
-            }
-            place(element: element, application: app, snapshot: snapshot, rule: rule, placement: placement)
+            let claims = occupancy.claims(for: [identifier] + displacing.map(\.window), since: before)
+            place(
+                element: element,
+                identifier: identifier,
+                application: app,
+                snapshot: snapshot,
+                rule: rule,
+                placement: placement,
+                displacing: displacing,
+                claims: claims
+            )
         }
     }
 
@@ -717,11 +778,25 @@ public final class WatchEngine {
         String(UInt(bitPattern: Unmanaged.passUnretained(element).toOpaque()), radix: 16)
     }
 
+    private func status(of id: WindowIdentifier, holding placement: ResolvedPlacement) -> OccupantStatus {
+        // A claim whose write is still on its way has not reached the screen
+        // yet; its frame says nothing. That covers the incoming window and the
+        // occupants its job is moving.
+        if scheduler.hasPendingJob(for: id) { return .present }
+        for (incoming, occupants) in displacedByJob
+        where occupants.contains(id) && scheduler.hasPendingJob(for: incoming) {
+            return .present
+        }
+        guard let window = windows[id], let frame = window.readFrame() else { return .gone }
+        let expected = arrangement.flipVertically(placement.frame)
+        return frame.maximumDeviation(from: expected) <= Self.movedAwayThreshold ? .present : .movedAway
+    }
+
     /// Places a window the user dropped on a zone.
     ///
     /// Deliberately not a second placement path. Issue #10 asks for the drop to
     /// use the same logic as the automatic half, and this is how: it builds the
-    /// same snapshot and calls the same ``place(element:application:snapshot:rule:placement:)``
+    /// same snapshot and calls the same ``place(element:identifier:application:snapshot:rule:placement:displacing:claims:)``
     /// with no rule. Everything the automatic path learned the hard way — the
     /// coordinate flip, the retry policy, the tolerance, the record — applies
     /// unchanged, because it is literally the same code.
@@ -755,15 +830,27 @@ public final class WatchEngine {
             layer: 0,
             isFirstWindowAfterLaunch: false
         )
-        place(element: element, application: application, snapshot: snapshot, rule: nil, placement: placement)
+        place(
+            element: element,
+            identifier: WindowIdentifier(processIdentifier: application.processIdentifier, token: token(for: element)),
+            application: application,
+            snapshot: snapshot,
+            rule: nil,
+            placement: placement,
+            displacing: [],
+            claims: []
+        )
     }
 
     private func place(
         element: AXUIElement,
+        identifier: WindowIdentifier,
         application: NSRunningApplication,
         snapshot: WindowSnapshot,
         rule: PlacementRule?,
-        placement: ResolvedPlacement
+        placement: ResolvedPlacement,
+        displacing: [Displacement],
+        claims: [OccupancyClaim]
     ) {
         let fallbackNote = placement.usedFallback ? " (über den Profil-Fallback)" : ""
         if let rule {
@@ -788,6 +875,7 @@ public final class WatchEngine {
 
         guard !dryRun else {
             Log.detail("dry-run — es wird nichts gesetzt")
+            occupancy.rollback(claims)
             record(
                 application: application,
                 snapshot: snapshot,
@@ -799,9 +887,12 @@ public final class WatchEngine {
         }
 
         let window = AccessibilityWindow(element: element, snapshot: snapshot)
+        windows[identifier] = window
         let retry = configuration.defaults.retry
+        let flipping = arrangement
 
-        Task { @MainActor in
+        displacedByJob[identifier] = displacing.isEmpty ? nil : displacing.map(\.window)
+        scheduler.submit(identifier) { [weak self] isCurrent in
             var lastDeviation: Double?
 
             let placer = RetryingWindowPlacer(record: { attempt in
@@ -816,10 +907,42 @@ public final class WatchEngine {
                 """)
             })
 
-            let outcome = await placer.place(window, at: target, retry: retry)
+            // The target is already flipped for the AX space; displaced
+            // occupants still carry AppKit coordinates and are flipped here.
+            let job = PlacementJob(
+                placer: placer,
+                windowFor: { self?.windows[$0] },
+                toWindowSpace: { placement in
+                    ResolvedPlacement(
+                        frame: flipping.flipVertically(placement.frame),
+                        display: placement.display,
+                        zone: placement.zone,
+                        usedFallback: placement.usedFallback
+                    )
+                }
+            )
+            let result = await job.run(
+                window: window,
+                at: placement,
+                displacing: displacing,
+                retry: retry,
+                isCurrent: isCurrent
+            )
+
+            guard let self else { return }
+            self.occupancy.settle(result, claims: claims, window: identifier)
+            // `isCurrent()` is still true here if this job is the newest one for
+            // its window (the scheduler only retires it after this closure
+            // returns), so hasPendingJob alone would never clear on success. A
+            // superseded or cancelled job leaves a newer job's entry alone.
+            if isCurrent() || !self.scheduler.hasPendingJob(for: identifier) {
+                self.displacedByJob[identifier] = nil
+            }
+            self.windows = self.windows.filter { self.occupancy.trackedWindows.contains($0.key) }
+            self.report(result.displaced, in: placement)
 
             let recorded: PlacementRecord.Outcome
-            switch outcome {
+            switch result.outcome {
             case let .placed(attempts):
                 Log.success("Platziert nach \(attempts) Versuch\(attempts == 1 ? "" : "en").")
                 recorded = .placed(attempts: attempts, deviation: lastDeviation)
@@ -834,12 +957,15 @@ public final class WatchEngine {
             case .missingPermission:
                 Log.warn(Accessibility.permissionInstructions)
                 recorded = .notExecuted("keine Berechtigung")
+            case .cancelled:
+                Log.detail("Platzierung abgebrochen — pausiert, beendet, neu geladen oder durch eine neuere Anfrage ersetzt.")
+                return
             case .suggested, .notApplicable, .skippedManualOverride:
-                Log.detail("Ergebnis: \(outcome)")
-                recorded = .notExecuted("\(outcome)")
+                Log.detail("Ergebnis: \(result.outcome)")
+                recorded = .notExecuted("\(result.outcome)")
             }
 
-            record(
+            self.record(
                 application: application,
                 snapshot: snapshot,
                 ruleID: rule?.id,
@@ -848,9 +974,25 @@ public final class WatchEngine {
             )
 
             // A dropped window is already the one the user has hold of; raising
-            // it would be a no-op at best and a focus steal at worst.
-            if rule?.action.focus == .activate {
+            // it would be a no-op at best and a focus steal at worst. And a
+            // stopped engine must not steal focus either.
+            if rule?.action.focus == .activate, isCurrent() {
                 Accessibility.raise(window.element, pid: snapshot.processIdentifier)
+            }
+        }
+    }
+
+    private func report(_ displaced: [DisplacementReport], in placement: ResolvedPlacement) {
+        for report in displaced {
+            switch report.outcome {
+            case let .moved(attempts):
+                Log.detail("verdrängt \(report.window) — verschoben nach \(attempts) Versuch\(attempts == 1 ? "" : "en").")
+            case .windowGone:
+                Log.detail("verdrängt \(report.window) — Fenster existiert nicht mehr, Zone freigegeben.")
+            case let .failed(outcome):
+                Log.warn("Konnte \(report.window) nicht aus \(placement.display)/\(placement.zone) verdrängen (\(outcome)) — beide Fenster teilen sich die Zone.")
+            case .cancelled:
+                break
             }
         }
     }
