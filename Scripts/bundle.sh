@@ -34,12 +34,37 @@
 # Arbeitsverzeichnisses. Ein anderer Zielort lässt sich als Argument übergeben —
 # dann ist er einmalig neu freizugeben.
 #
+# Das Bundle hat dieselbe Gestalt wie ein veröffentlichtes.
+#
+# Seit Issue #47 baut der Notarisierungs-Broker aus demselben Quelltext, und
+# sein `assemble_menu_bar_swiftpm` legt drei Dinge fest, die hier deshalb gleich
+# sein müssen — sonst ist das, was lokal geprüft wird, nicht das, was per
+# Update ankommt:
+#
+#   * Die Info.plist kommt aus Sources/OpenZonrApp/Info.plist. Hier wird nur
+#     __VERSION__ ersetzt; der Broker setzt dieselben Schlüssel aus dem Tag.
+#   * Die Binärdatei heisst im Bundle wie das SwiftPM-Produkt: OpenZonrApp.
+#     Der Broker kennt dafür nur einen Namen und benutzt ihn für beides.
+#     Die Bedienungshilfen-Freigabe hängt an Bundle-Identifier und Team (siehe
+#     die Designated Requirement oben), nicht am Namen der Binärdatei.
+#   * AppUpdater_AppUpdater.bundle liegt unter Contents/Resources. AppUpdater
+#     bringt es als SwiftPM-Ressourcenbündel mit; ohne die Kopie fehlt es einem
+#     lokal gebauten Bundle, und der Unterschied fiele erst beim Update auf.
+#
+# Ein anderer Zielort als ~/Applications lässt sich als erstes Argument
+# übergeben — für einen Probelauf, der die freigegebene Installation nicht
+# anfasst:
+#
+#   Scripts/bundle.sh "$(mktemp -d)/OpenZonr.app"
+#
 set -euo pipefail
 
 CONFIGURATION="${CONFIGURATION:-release}"
-BUNDLE_IDENTIFIER="${BUNDLE_IDENTIFIER:-com.trsdn.openzonr}"
+VERSION="${VERSION:-0.1.0}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="${1:-$HOME/Applications/OpenZonr.app}"
+PRODUCT="OpenZonrApp"
+INFO_PLIST_SOURCE="$ROOT/Sources/$PRODUCT/Info.plist"
 
 # Ohne Identität wird zwar gebaut und gepackt, aber nicht signiert — dann
 # sieht das Ergebnis keine Fenster. Der Hinweis steht am Ende.
@@ -49,42 +74,33 @@ IDENTITY="${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev
   | sed -E 's/.*"(.*)"/\1/')}"
 
 echo "==> Baue ($CONFIGURATION)"
-swift build -c "$CONFIGURATION" --package-path "$ROOT"
+swift build -c "$CONFIGURATION" --package-path "$ROOT" --product "$PRODUCT"
 
-BINARY="$ROOT/.build/$CONFIGURATION/OpenZonrApp"
+BIN_DIR="$(swift build -c "$CONFIGURATION" --package-path "$ROOT" --show-bin-path)"
+BINARY="$BIN_DIR/$PRODUCT"
 [ -x "$BINARY" ] || { echo "Binärdatei fehlt: $BINARY" >&2; exit 1; }
+
+# AppUpdater liefert seine Vertrauensanker als SwiftPM-Ressourcenbündel. Fehlt
+# es, scheitert erst das Update — also lieber hier, laut und sofort.
+RESOURCE_BUNDLE="$BIN_DIR/AppUpdater_AppUpdater.bundle"
+[ -d "$RESOURCE_BUNDLE" ] || { echo "Ressourcenbündel fehlt: $RESOURCE_BUNDLE" >&2; exit 1; }
 
 echo "==> Packe $APP"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
-cp "$BINARY" "$APP/Contents/MacOS/OpenZonr"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$BINARY" "$APP/Contents/MacOS/$PRODUCT"
+cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
 
-cat > "$APP/Contents/Info.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleExecutable</key>
-	<string>OpenZonr</string>
-	<key>CFBundleIdentifier</key>
-	<string>$BUNDLE_IDENTIFIER</string>
-	<key>CFBundleName</key>
-	<string>OpenZonr</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
-	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
-	<!-- Kein Eintrag im Dock und kein eigenes Menü: die Oberfläche ist das
-	     Symbol in der Menüleiste. -->
-	<key>LSUIElement</key>
-	<true/>
-</dict>
-</plist>
-PLIST
+sed "s/__VERSION__/$VERSION/g" "$INFO_PLIST_SOURCE" > "$APP/Contents/Info.plist"
+printf 'APPL????' > "$APP/Contents/PkgInfo"
+
+plutil -lint "$APP/Contents/Info.plist" > /dev/null
+# Ohne LSUIElement bekäme die Menüleisten-App ein Dock-Symbol. Der Broker
+# verweigert in dem Fall die Signatur; hier wird derselbe Fehler früher laut.
+plutil -extract LSUIElement raw "$APP/Contents/Info.plist" | grep -q '^true$' || {
+	echo "Info.plist ohne LSUIElement=true — die App bekäme ein Dock-Symbol." >&2
+	exit 1
+}
 
 if [ -z "$IDENTITY" ]; then
 	cat >&2 <<'WARN'
@@ -119,7 +135,7 @@ Die Freigabe gilt diesem Pfad. Solange hierhin gebaut wird, übersteht sie
 einen Neubau in der Regel — auch aus einem anderen Klon des Repos. Wird das
 Bundle woandershin gelegt, ist es dort erneut freizugeben.
 
-Meldet "$APP/Contents/MacOS/OpenZonr selftest" (über LaunchServices gestartet:
+Meldet "$APP/Contents/MacOS/OpenZonrApp selftest" (über LaunchServices gestartet:
 open -n -a … --args selftest --out <datei>) nach einem Neubau trotzdem
 "degraded", ist der Eintrag ungültig geworden, obwohl Pfad und Signatur gleich
 geblieben sind (beobachtet am 30.08.2026, Ursache nicht geklärt). Dann den
@@ -129,7 +145,7 @@ genügt nicht.
 Starten:
   open -n "$APP"          # Menüleisten-App
 Gegenprobe — muss AXStandardWindow mit einer Größe ungleich 0x0 zeigen:
-  "$APP/Contents/MacOS/OpenZonr" windows --bundle com.apple.Safari
+  "$APP/Contents/MacOS/OpenZonrApp" windows --bundle com.apple.Safari
 
 Dieselbe Binärdatei, einmal mit und einmal ohne Unterbefehl. Was die
 Gegenprobe misst, ist deshalb genau das Programm, das auch die App ist.

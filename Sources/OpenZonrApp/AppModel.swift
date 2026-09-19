@@ -127,12 +127,18 @@ final class AppModel {
         var isTrusted: @MainActor () -> Bool
         var probeWindowAccess: @MainActor () -> Accessibility.WindowAccess
         var startEngine: @MainActor (WatchEngine) -> Void
+        /// Das Gegenstück zu ``startEngine``. Eigene Naht, weil das Anhalten vor
+        /// einem Update-Tausch die Zusicherung trägt und ein Test es deshalb
+        /// beobachten können muss — ein echter ``WatchEngine`` läuft im Test
+        /// nicht und liesse sich an seinem Anhalten nicht erkennen.
+        var stopEngine: @MainActor (WatchEngine) -> Void = { $0.stop() }
 
         @MainActor static var live: Platform {
             Platform(
                 isTrusted: { Accessibility.isTrusted() },
                 probeWindowAccess: { Accessibility.probeWindowAccess() },
-                startEngine: { $0.start() }
+                startEngine: { $0.start() },
+                stopEngine: { $0.stop() }
             )
         }
     }
@@ -147,18 +153,20 @@ final class AppModel {
 
     init(
         configurationURL: URL = ConfigurationLocation.resolve(explicitPath: nil),
-        platform: Platform = .live
+        platform: Platform = .live,
+        updates: UpdateManager = UpdateManager()
     ) {
         self.configurationURL = configurationURL
         self.platform = platform
+        self.updates = updates
     }
 
     /// Called once the app has finished launching.
     func bootstrap() {
         signing = CodeSigningStatus.current()
 
-        logObservation = Log.addObserver { entry in
-            Task { @MainActor [weak self] in
+        logObservation = Log.addObserver { [weak self] entry in
+            Task { @MainActor in
                 self?.append(entry)
             }
         }
@@ -170,6 +178,9 @@ final class AppModel {
         reloadConfiguration()
         refreshPermission(probe: true)
         startPermissionPolling()
+        // Erst hier, nicht im Initialisierer: ein `AppModel` in einem Test soll
+        // nicht ins Netz greifen.
+        updates.startAutomaticChecks()
     }
 
     private func append(_ entry: Log.Entry) {
@@ -216,7 +227,7 @@ final class AppModel {
             // laufende Geste verwerfen noch das Overlay ausblenden (#44).
             startEngineIfPossible(restartDropzones: !wasUsable)
         } else {
-            engine?.stop()
+            stopEngine()
             // Ohne Berechtigung liefert der Tracker nichts Brauchbares mehr;
             // beim Verlust anhalten (nur beim Übergang, nicht bei jedem Tick).
             if wasUsable { dropzones.stop() }
@@ -263,7 +274,7 @@ final class AppModel {
     // MARK: - Configuration
 
     func reloadConfiguration() {
-        engine?.stop()
+        stopEngine()
         engine = nil
         dropzones.stop()
         profileState = nil
@@ -323,6 +334,13 @@ final class AppModel {
     }
 
     // MARK: - Engine
+
+    /// Hält den Engine an, wenn es einen gibt — über die Naht, damit ein Test
+    /// es sehen kann.
+    private func stopEngine() {
+        guard let engine else { return }
+        platform.stopEngine(engine)
+    }
 
     private func startEngineIfPossible(restartDropzones: Bool = false) {
         guard let configuration else { return }
@@ -458,6 +476,70 @@ final class AppModel {
         updateStatus()
     }
     #endif
+
+    // MARK: - Updates
+
+    /// Die Update-Suche. Siehe ``UpdateManager``.
+    @ObservationIgnored let updates: UpdateManager
+
+    /// Wahr, solange die App für einen Bundle-Tausch angehalten ist.
+    ///
+    /// Sichtbarer Zustand und nicht nur eine lokale Variable, weil genau er die
+    /// Zusicherung trägt, um die es hier geht: beim Tausch darf kein Fenster
+    /// mehr unterwegs sein.
+    private(set) var isStoppedForUpdate = false
+
+    /// Die Naht, an der ein Test den echten Bundle-Tausch ersetzt.
+    ///
+    /// `nil` heisst: der echte Weg über ``UpdateManager``. Ein Test setzt hier
+    /// eine Attrappe ein und kann darin nachsehen, ob vorher wirklich angehalten
+    /// wurde — der echte Weg beendet den Prozess und kehrt nie zurück, ist also
+    /// nicht beobachtbar.
+    @ObservationIgnored var installAction: (@MainActor () async -> Bool)?
+
+    /// Hält alles an, was ein Fenster noch bewegen könnte.
+    ///
+    /// Zwei Dinge, und beide zählen. ``WatchEngine/stop()`` löst die
+    /// Fensterbeobachtung *und* leert den ``PlacementScheduler`` — ein Auftrag,
+    /// der auf sein Fenster wartet, würde sonst mitten im Bundle-Tausch
+    /// zuschlagen und die Fenster halb verschoben zurücklassen. Der
+    /// ``DropzoneController`` hängt am selben Zugriff und am selben Ereignis-Tap
+    /// und muss deshalb ebenfalls weg.
+    func stopForUpdate() {
+        isStoppedForUpdate = true
+        stopEngine()
+        dropzones.stop()
+        Log.info("Fensterbeobachtung für den Update-Tausch angehalten.")
+    }
+
+    /// Nimmt die Arbeit wieder auf, wenn der Tausch nicht stattgefunden hat.
+    private func resumeAfterFailedInstall() {
+        isStoppedForUpdate = false
+        refreshPermission(probe: true)
+        if windowAccess.isUsable { dropzones.restart() }
+        Log.info("Update nicht installiert — Fensterbeobachtung läuft weiter.")
+    }
+
+    /// Hält die eigene Arbeit an und tauscht dann das Bundle.
+    ///
+    /// Die Reihenfolge ist der ganze Punkt: erst anhalten, dann installieren.
+    /// Im Erfolgsfall kehrt das hier nie zurück, weil die App neu startet.
+    ///
+    /// Ein zweiter Anstoss während eines laufenden Tauschs prallt ab. Das ist
+    /// keine Feinheit: es gibt zwei Wege hierher (Menüknopf und Hinweisfenster),
+    /// und der zweite Aufruf fände in ``UpdateManager`` nichts Vorbereitetes
+    /// mehr vor, bekäme `false` zurück und würde Fensterbeobachtung und
+    /// Ziehen-Tracker mitten im Bundle-Tausch wieder anwerfen — also genau das
+    /// herbeiführen, wogegen ``stopForUpdate()`` schützt.
+    @discardableResult
+    func installUpdate() async -> Bool {
+        guard !isStoppedForUpdate else { return false }
+        stopForUpdate()
+        let install = installAction ?? { [updates] in await updates.installAndRelaunch() }
+        if await install() { return true }
+        resumeAfterFailedInstall()
+        return false
+    }
 
     // MARK: - Editor
 

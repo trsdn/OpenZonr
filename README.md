@@ -78,6 +78,8 @@ Zwei Dinge sind der Kern:
 
 ```
 Package.swift                 SwiftPM-Manifest (macOS 14+)
+Package.resolved              Eingecheckt: der Notarisierungs-Broker baut
+                              dagegen (siehe „Updates und Veröffentlichen")
 Sources/OpenZonrCore/
   Geometry/                   RelativeRect, Zone, Layout
   Display/                    DisplayIdentity, SetupFingerprint, Anordnung
@@ -97,6 +99,10 @@ Sources/OpenZonrMac/          Die macOS-Anbindung, von beiden Oberflächen genut
   CommandLine/                Die Unterbefehle
   Support/                    Protokoll, Konfigurationspfad, Signaturstatus
 Sources/OpenZonrApp/          Menüleisten-App (MenuBarExtra, LSUIElement)
+  Info.plist                  Die Info.plist des Bundles — der Broker erwartet
+                              sie genau hier
+  Update/                     In-App-Updates (AppUpdater), Fälligkeit und
+                              Menütext als reine Entscheidung
 Sources/openzonr/             `swift run openzonr` für die Entwicklung
 Tests/OpenZonrCoreTests/      Unit-Tests; Support/ enthält Fixtures
 Tests/OpenZonrMacTests/       Die rein rechnenden Teile der macOS-Schicht
@@ -272,7 +278,7 @@ fehlt die Bedienungshilfen-Freigabe oder es wurde nicht gezogen.
 # 1. Bauen, signieren und freigeben (siehe oben — ohne Signatur sieht
 #    das Werkzeug keine Fenster)
 Scripts/bundle.sh
-OZ=~/Applications/OpenZonr.app/Contents/MacOS/OpenZonr
+OZ=~/Applications/OpenZonr.app/Contents/MacOS/OpenZonrApp
 
 # 2. Die echten Displays ermitteln und als Fragment ausgeben
 "$OZ" displays --config-fragment > /tmp/displays.json
@@ -315,11 +321,97 @@ Im Menü:
 - **Letzte Platzierungen** — was zuletzt wohin ging, samt vollständigem
   Protokollstrom in einem eigenen Fenster.
 - **Beim Anmelden starten** — über `SMAppService`.
+- **Nach Updates suchen …** und **Automatisch nach Updates suchen** — siehe
+  [Updates und Veröffentlichen](#updates-und-veröffentlichen). Liegt ein Update
+  bereit, sagt das eine Zeile im Menü, auch ohne dass jemand gesucht hat.
 
 Fehlt die Berechtigung, öffnet sich beim Start einmal ein Fenster, das den
 konkreten Zustand erklärt und den Weg dorthin anbietet. Das ist die häufigste
 Hürde und in [docs/menueleisten-app.md](docs/menueleisten-app.md) im Detail
 beschrieben — dort steht auch, was von der App gemessen ist und was nicht.
+
+## Updates und Veröffentlichen
+
+OpenZonr aktualisiert sich aus den GitHub Releases dieses Repositories
+([#47](https://github.com/trsdn/OpenZonr/issues/47)). Darunter liegt
+[mxcl/AppUpdater](https://github.com/mxcl/AppUpdater) 4.1.2, genau festgenagelt,
+mit eingecheckter `Package.resolved`.
+
+### Was die App tut
+
+Sie wacht stündlich auf und sucht höchstens einmal am Tag. Findet sie ein
+neueres Release, lädt und prüft sie es im Hintergrund und bietet dann
+**Installieren und neu starten** an. Vor dem Tausch hält sie ihre eigene Arbeit
+an: Fensterbeobachtung aus, ausstehende Platzierungen verworfen, Ziehen-Tracker
+aus — sonst bewegte ein halb erledigter Auftrag noch Fenster, während das Bundle
+ausgetauscht wird.
+
+Der Schalter **Automatisch nach Updates suchen** steht voreingestellt an und
+wird in den Voreinstellungen gesichert.
+
+Übernommen wird ein Update nur, wenn Developer-ID-Team, Signatur-Identifier und
+Bundle-Identifier mit der laufenden App übereinstimmen. Eine
+GitHub-Attestierung (`GitHubAttestationPolicy`) wird bewusst **nicht** verlangt:
+das Release entsteht im Repository des Notarisierungs-Brokers, es gibt also gar
+keine Provenienz aus `trsdn/OpenZonr` — und bei `swift build`-Produkten endet
+AppUpdaters Attestierungsprüfung ohnehin in einem `fatalError`
+([OpenWritr#31](https://github.com/trsdn/OpenWritr/issues/31)).
+
+### Ein Release herausgeben
+
+Das Bauen, Signieren, Notarisieren und Hochladen macht der
+[Notarisierungs-Broker](https://github.com/trsdn/macos-notarization-broker), von
+Hand angestossen — **aus dem Broker-Repository heraus, von einem Menschen**:
+
+```bash
+scripts/request.sh openzonr vX.Y.Z --publish
+```
+
+Das Broker-Profil heisst `openzonr`. Es baut aus diesem Repository, benutzt
+`Sources/OpenZonrApp/Info.plist`, prüft `Package.resolved` Byte für Byte gegen
+seine eigene geprüfte Kopie (`dependency_lock`) und kopiert
+`AppUpdater_AppUpdater.bundle` nach `Contents/Resources`
+(`nested_resource_bundles`). Unter den Artefakten muss eines genau
+`OpenZonr-{version}.dmg` heissen — AppUpdater nimmt nur ein Anhängsel mit diesem
+Namen.
+
+Hat sich `Package.resolved` hier geändert, ist zuerst die Kopie im Broker
+nachzuziehen; sonst bricht der Lauf ab, bevor er baut.
+
+### Die ersten beiden Releases
+
+- **Das erste Release wird von Hand installiert.** Was heute installiert ist,
+  hat noch keinen Updater und kann sich deshalb nicht selbst dorthin bringen.
+- **Erst ab dem zweiten Release** ist der Weg über das Menü überhaupt
+  beobachtbar. Vorher gibt es nichts, wogegen geprüft werden könnte — ein
+  vollständiger Durchlauf ist deshalb bis dahin **nicht gemessen**.
+- **Die Bedienungshilfen-Freigabe bleibt nur**, wenn das Release mit derselben
+  Developer ID und derselben Designated Requirement signiert ist wie das, was
+  installiert war:
+
+  ```
+  identifier "com.trsdn.openzonr" and anchor apple generic
+    and certificate leaf[subject.OU] = <TEAM>
+  ```
+
+  Der Wechsel von einer Ad-hoc-Signatur auf Developer ID erfüllt das nicht —
+  wer bisher ein ad-hoc signiertes Bundle benutzt hat, muss einmal neu
+  freigeben. Ein Neubau am selben Pfad mit derselben Developer ID übersteht die
+  Freigabe in der Regel, zugesichert ist auch das nicht
+  ([#35](https://github.com/trsdn/OpenZonr/issues/35)).
+
+### Lokal gebaut = veröffentlicht
+
+`Scripts/bundle.sh` baut dasselbe Bundle, das der Broker baut: dieselbe
+`Sources/OpenZonrApp/Info.plist` (nur `__VERSION__` wird ersetzt), die
+Binärdatei unter `Contents/MacOS/OpenZonrApp` und `AppUpdater_AppUpdater.bundle`
+unter `Contents/Resources`. Ein anderer Zielort lässt sich als erstes Argument
+übergeben — nützlich für einen Probelauf, der die freigegebene Installation
+nicht anfasst:
+
+```bash
+Scripts/bundle.sh "$(mktemp -d)/OpenZonr.app"
+```
 
 ## Fahrplan
 
@@ -334,6 +426,7 @@ beschrieben — dort steht auch, was von der App gemessen ist und was nicht.
 | Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit 1 Versuch; Outlook 2 Versuche, sobald das Fenster wirklich zu ziehen ist — die Schleife wird in Anspruch genommen |
 | Menüleisten-App mit Autostart | gebaut, [#8](https://github.com/trsdn/OpenZonr/issues/8) — Zustand, Profilwahl, Pause, Autostart, letzte Platzierungen; Platzierung mit laufender App **nachgemessen** (29.08.2026), siehe [docs/menueleisten-app.md](docs/menueleisten-app.md) |
 | Regeln bearbeiten ohne JSON | gebaut, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster hier festhalten" plus Editor für Regeln, Rollen und Zonen; Kern headless gemessen, die Oberfläche nicht nachgemessen — sie braucht eine Hand an der Maus, nicht mehr die Freigabe, siehe [docs/regel-editor.md](docs/regel-editor.md) |
+| In-App-Updates aus GitHub Releases | gebaut, [#47](https://github.com/trsdn/OpenZonr/issues/47) — AppUpdater 4.1.2, Menüeinträge, Anhalten vor dem Bundle-Tausch; Fälligkeit, Voreinstellung, Menütext und die Reihenfolge „erst anhalten, dann installieren" sind getestet. Ein **echter Durchlauf ist nicht gemessen**: dafür fehlen Broker-Profil und ein erstes Release |
 | Dropzones zum Hineinziehen | gebaut, [#10](https://github.com/trsdn/OpenZonr/issues/10) — Overlay beim Ziehen, Ablegen über dieselbe Platzierung wie die Automatik, danach „immer hier öffnen?"; `CGEventTap` gegen `kAXMovedNotification` gemessen (der Tap meldet das Loslassen, Accessibility nicht), ein echter Zug nicht nachgemessen — er braucht eine Hand an der Maus, nicht mehr die Freigabe, siehe [docs/dropzones.md](docs/dropzones.md) |
 
 Die Reihenfolge war bewusst gewählt: erst die Signierung, damit die Platzierung

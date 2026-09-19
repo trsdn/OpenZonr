@@ -27,7 +27,7 @@ struct OpenZonrMenuBarApp: App {
     /// One binary, one signature, one Accessibility grant. The grant is bound to
     /// a bundle at a path, so a separate CLI binary — even signed with the same
     /// identifier — would have to be approved separately. Answering to
-    /// subcommands here means `OpenZonr.app/Contents/MacOS/OpenZonr windows` is
+    /// subcommands here means `OpenZonr.app/Contents/MacOS/OpenZonrApp windows` is
     /// the diagnostic tool *and* the approved program, which is exactly what the
     /// cross-check in the README needs it to be.
     ///

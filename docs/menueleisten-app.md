@@ -20,6 +20,7 @@ getrennt davon — was von der App tatsächlich gemessen ist und was nicht.
 | **Letzte Platzierungen** | Die letzten Entscheidungen als Liste, dazu der vollständige Protokollstrom. |
 | **Festhalten** | „Aktuelles Fenster hier festhalten" schreibt Regel und Bindung für das vorderste Fenster. Siehe [docs/regel-editor.md](regel-editor.md). |
 | **Regeln bearbeiten** | Ein eigenes Fenster für Regeln, Rollen & Profile und Zonen. Siehe [docs/regel-editor.md](regel-editor.md). |
+| **Updates** | „Nach Updates suchen …" und „Automatisch nach Updates suchen" (voreingestellt an). Liegt etwas bereit, sagt es eine Zeile im Menü. Vor dem Bundle-Tausch hält die App Fensterbeobachtung, ausstehende Platzierungen und den Ziehen-Tracker an. Ablauf und Voraussetzungen stehen im [README](../README.md#updates-und-veröffentlichen); **ein echter Durchlauf ist nicht gemessen**, solange es kein Release gibt. |
 
 ## Entscheidungen
 
@@ -48,7 +49,7 @@ Im Bundle liegt genau ein Programm. Ohne Argumente startet es als Menüleisten-A
 mit einem bekannten Unterbefehl als Kommandozeilenwerkzeug:
 
 ```bash
-~/Applications/OpenZonr.app/Contents/MacOS/OpenZonr windows --bundle com.apple.Safari
+~/Applications/OpenZonr.app/Contents/MacOS/OpenZonrApp windows --bundle com.apple.Safari
 ```
 
 Das ist keine Spielerei, sondern folgt aus der Art, wie macOS die Berechtigung
@@ -221,7 +222,7 @@ Der Startweg-Unterschied, wörtlich aus zwei Läufen derselben Binärdatei:
   AXIsProcessTrusted():   false
   probeWindowAccess():    notTrusted — keine Freigabe für dieses Bundle
 
-# …/Contents/MacOS/OpenZonr selftest
+# …/Contents/MacOS/OpenZonrApp selftest
   Start:                  aus einer Shell — erbt fremdes Vertrauen
   AXIsProcessTrusted():   true
   probeWindowAccess():    degraded — Vertrauen gemeldet, aber nur Stellvertreter

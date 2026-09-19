@@ -14,6 +14,19 @@ let package = Package(
         .executable(name: "openzonr", targets: ["openzonr"]),
         .executable(name: "OpenZonrApp", targets: ["OpenZonrApp"])
     ],
+    dependencies: [
+        // In-App-Updates aus GitHub Releases (Issue #47). Genau festgenagelt:
+        // der Notarisierungs-Broker baut mit
+        // `--only-use-versions-from-resolved-file` gegen seine eigene, geprüfte
+        // Kopie von Package.resolved. Eine offene Anforderung würde dort nur
+        // scheitern — und die Datei ist deshalb auch hier eingecheckt.
+        //
+        // Die Abhängigkeit hängt ausschliesslich am ausführbaren Ziel
+        // `OpenZonrApp`. `OpenZonrCore` und `OpenZonrMac` bleiben
+        // abhängigkeitsfrei: sie tragen die Logik, die auch ohne Menüleiste
+        // gebaut und geprüft werden muss.
+        .package(url: "https://github.com/mxcl/AppUpdater.git", exact: "4.1.2")
+    ],
     targets: [
         .target(
             name: "OpenZonrCore",
@@ -45,7 +58,15 @@ let package = Package(
         // system means `swift build` and `swift test` remain the whole story.
         .executableTarget(
             name: "OpenZonrApp",
-            dependencies: ["OpenZonrCore", "OpenZonrMac"],
+            dependencies: [
+                "OpenZonrCore",
+                "OpenZonrMac",
+                .product(name: "AppUpdater", package: "AppUpdater")
+            ],
+            // Info.plist liegt hier, weil der Notarisierungs-Broker sie genau
+            // unter `Sources/<Produkt>/Info.plist` erwartet (siehe README,
+            // „Veröffentlichen"). Für SwiftPM ist sie kein Quelltext.
+            exclude: ["Info.plist"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // The macOS layer is mostly untestable without a screen and a granted
