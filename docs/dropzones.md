@@ -305,7 +305,7 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | **Erscheinen und Bedienbarkeit des Menüs am Bildschirm** | **Nicht gemessen** | Ob das `NSMenu` an der berechneten Position aufgeht, ob es die richtigen Zonen zeigt und ob der ⌥-Zusatz beim *Klick* korrekt gelesen wird, braucht eine Hand an der Maus — headless nicht prüfbar. Zonenermittlung und Trefferprüfung sind headless getestet, die AppKit-Anzeige nicht. |
 | **Verhalten auf Fenstern ohne `kAXZoomButton`** | **Gemessen für ein Finder-Fenster** | Ein Finder-Fenster lieferte kein `AXZoomButton`. Der Code trennt den Fall (`ZoomButtonLookup.Result.zoomButtonUnavailable`) und behandelt ihn **still**: das Attribut fehlt für das ganze Fenster, jeder beiläufige Rechtsklick würde sonst eine Meldung erzeugen. Ob **jedes** Finder-Fenster (und andere AXScrollArea-artige Fenster) es genauso hält, ist nicht gemessen. |
 | **Systemmenü beim Schweben mit eingeschalteter macOS-Fensteranordnung** | **Nicht gemessen** | Auf dieser Maschine ist `EnableTilingByEdgeDrag = 0`. Ob das Schweben-Menü der macOS-Fensteranordnung mit dem Rechtsklick-Menü kollidiert (verschiedene Gesten, aber am selben Pixel), braucht eine Maschine mit eingeschalteter Fensteranordnung und eine Positivkontrolle für das Schweben-Menü — beides fehlt. |
-| **Fensterzug vs. Inhaltszug (#37) in echten Apps** | **Nicht gemessen** | Wie echte Apps ihren AX-Rahmen während des Zugs melden (Verzögerung, Sprünge, Klemmen am Rand) und ob Inhaltsgesten den Rahmen wirklich unverändert lassen, belegt kein Unit-Test. Bleibt **Nicht gemessen**, bis die Liste unter „Manuelle Prüfung #37“ abgehakt ist; Apps, die nicht probiert wurden, werden nie als bewiesen geführt. |
+| **Fensterzug vs. Inhaltszug (#37) in echten Apps** | **Gemessen für TextEdit (synthetische Ereignisse), sonst Nicht gemessen** | In TextEdit lösen Titelleistenzüge `began` nach 143 bis 175 ms aus, Textzüge, Zug am Fensterrand und Größenänderung an Kante oder Ecke lösen nichts aus (Tabelle unter „Manuelle Prüfung #37“). Nicht gemessen: alle anderen Apps (Finder, Safari, Chrome, Terminal, Xcode, VS Code), Datei-Züge, Hilfstasten, Bildschirmrand und zwei Displays, das Overlay selbst und jede Bedienung mit der Hand. Apps, die nicht probiert wurden, werden nie als bewiesen geführt. |
 
 Kurz: Alles, was ohne einen echten Zug beweisbar ist, ist bewiesen. Alles, was
 einen braucht, ist als ungemessen ausgewiesen. Der Schnitt zwischen beidem war
@@ -323,8 +323,8 @@ die eigentliche Entwurfsarbeit.
 Unit-Tests belegen den Klassifikator und die Zustandsmaschine mit eingespielten
 Rahmen. Sie belegen nicht, wie echte Apps den AX-Rahmen während eines Zugs
 melden, und nicht, dass Inhaltsgesten den Rahmen wirklich in Ruhe lassen. Das
-ist **Nicht gemessen** und von Hand abzuarbeiten. Die Ergebnisspalten sind
-absichtlich leer.
+ist bis auf die TextEdit-Zeilen unten **Nicht gemessen** und von Hand
+abzuarbeiten.
 
 **Vorbereitung.** `swift build`, App starten, Bedienungshilfen erteilt,
 Dropzones an. `openzonr dragprobe` bestätigt, dass der Tap existiert.
@@ -379,11 +379,33 @@ beim Ablegen, Anheften beim Ablegen auf der Marke.
    Zeile „Ereignis-Tap wegen Timeout kurz abgeschaltet; Zug wird fortgesetzt.“
    nicht häufiger erscheinen als vorher.
 
-**Ergebnisse.** Leer, bis ein Mensch sie einträgt.
+**Ergebnisse.** Nur TextEdit ist gemessen, alle anderen Apps und Fälle sind
+offen. Die Messung vom 19.09.2026 lief mit dem echten `EventTapDragTracker`
+gegen ein echtes TextEdit-Fenster, aber mit **synthetischen** Mausereignissen
+(`CGEvent`, kein Mensch an der Maus), ohne die App und ohne Overlay. Gemessen
+sind also die Tracker-Ereignisse (`began`/`moved`/`ended`) und der AX-Rahmen
+des Fensters vor und nach dem Zug, nicht das Zeichnen des Overlays. Die
+„Verzögerung“ ist die Zeit von der ersten Mausbewegung bis `began`.
 
-| Fall (Nr.) | App | Version | Bestanden / nicht bestanden | Gemessene Verzögerung bis Overlay |
+Rechner: macOS 26.6.2, Bildschirm C49RG9x (5120×1440).
+
+| Fall (Nr.) | App | Version | Bestanden / nicht bestanden | Gemessene Verzögerung bis `began` |
 |---|---|---|---|---|
-| | | | | |
+| Positiv 1, Titelleiste schnell, 300 pt | TextEdit | 1.20 | bestanden (`began`, `moved`, `ended`, Fenster bewegt) | 175 ms |
+| Positiv 1, Titelleiste langsam, 200 pt (30 ms je Schritt) | TextEdit | 1.20 | bestanden | 153 ms |
+| Positiv 1, Titelleiste rein senkrecht, 120 pt | TextEdit | 1.20 | bestanden | 143 ms |
+| Positiv 1, Titelleiste kurz, 20 pt in etwa 80 ms | TextEdit | 1.20 | **nicht erkannt**: Fenster bewegt, aber kein `began` | endet vor der ersten Rahmenantwort |
+| Negativ 2, Text markieren, 300 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Fenster unverändert) | – |
+| Negativ 2, senkrecht im Text ziehen, 250 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Fenster unverändert) | – |
+| Negativ 2, Zug am rechten Fensterrand (7 pt vom Rand), 200 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Fenster unverändert); **ob dort ein Scrollbalken getroffen wurde, ist nicht geprüft** | – |
+| Negativ 7, Eckenzug unten rechts, 80 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Größe geändert) | – |
+| Negativ 7, Kantenzug rechts, 80 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Größe geändert) | – |
+
+Der kurze, schnelle Zug zeigt die Kehrseite des Belegs: Er braucht eine
+AX-Rahmenantwort, und die dauert hier etwa 140 bis 175 ms. Eine
+Titelleistenbewegung, die vorher endet, bietet keine Zonen an. Für einen
+Zonenzug ist das unkritisch, es ist aber eine Folge der Entscheidung
+„geschlossen statt offen“.
 
 **Bekannte Grenzen.**
 

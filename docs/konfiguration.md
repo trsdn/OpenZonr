@@ -142,7 +142,14 @@ echter Hardware geprüft. Zu erledigen und im Issue festzuhalten:
 - [ ] Ab-/Anstecken, Ruhezustand, Neustart: bleibt der `portIndex` gleich?
 - [ ] Fehlt das Native-Flag (Größe `0`)? Im Issue vermerken.
 
-Ergebnis (Gerät, Beobachtung, Datum): _noch nicht erhoben_
+Ergebnis (Gerät, Beobachtung, Datum): Teilweise erhoben am 19.09.2026, macOS 26.6.2,
+C49RG9x (Seriennummer 0, `port=1`), aktueller Modus 5120×1440. Die Modusliste
+enthält genau ein Flag für die native Größe (5120×1440), mit und ohne
+`kCGDisplayShowDuplicateLowResolutionModes`. Nach einem Wechsel in 4608×1296
+(nur Sitzung, danach zurückgestellt) blieb die Identität in `openzonr displays`
+unverändert (`fallback vendor=19501 model=3996 5120×1440 port=1`). **Nicht
+erhoben:** Drehung um 90° oder 270°, Verhalten der Unit-Nummer nach Neustart,
+Umstecken oder Dock-Wechsel, zwei baugleiche Monitore ohne Seriennummer.
 
 > **`serialNumber == 0` ist der Normalfall, nicht der Randfall.**
 >
