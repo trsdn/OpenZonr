@@ -170,13 +170,18 @@ final class DropzoneController {
             overlay.hide()
             return
         }
-        let arrangement = ScreenArrangement(snapshots: SystemDisplays.snapshots())
+        let snapshots = SystemDisplays.snapshots()
+        let arrangement = ScreenArrangement(snapshots: snapshots)
+        // Derselbe Abgleich wie bei der Profilwahl: ein Bildschirm ohne
+        // Seriennummer, dessen Port-Index verrutscht ist, muss auch seine Zonen
+        // bekommen — sonst passt das Profil und das Overlay bleibt leer.
+        let reconciler = configuration.displayReconciler(observing: snapshots)
         let plan = DropzoneOverlayPlan.plan(
             pointer: pointer,
             origin: origin,
             configuration: configuration,
             profile: profile.id,
-            visibleFrames: arrangement.visibleFrames(for: configuration.displays),
+            visibleFrames: arrangement.visibleFrames(for: configuration.displays, reconciler: reconciler),
             settings: settings,
             modifiers: modifiers
         )

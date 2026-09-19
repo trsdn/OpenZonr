@@ -12,6 +12,14 @@ struct DisplaysCommand {
 
     var emitFragment: Bool
 
+    /// Pfad einer Konfiguration, gegen die die Identitäten abgeglichen werden.
+    ///
+    /// Ohne Konfiguration hat dieser Unterbefehl keinen Vergleichsmaßstab: er
+    /// weiß dann, was angeschlossen ist, aber nicht, was davon konfiguriert
+    /// wäre. Der Bericht sagt das dann auch, statt die Auskunft stillschweigend
+    /// wegzulassen.
+    var configurationPath: String?
+
     @MainActor
     func run() throws {
         let snapshots = SystemDisplays.snapshots()
@@ -22,14 +30,27 @@ struct DisplaysCommand {
         if emitFragment {
             printFragment(snapshots)
         } else {
-            printReport(snapshots)
+            printReport(snapshots, configuration: loadedConfiguration())
         }
+    }
+
+    /// Lädt die Konfiguration, wenn eine da ist — und bricht nicht ab, wenn nicht.
+    ///
+    /// `displays` ist der Befehl, den man gerade *dann* aufruft, wenn die
+    /// Konfiguration noch fehlt oder kaputt ist. Er darf daran nicht scheitern.
+    /// Nur gelesen wird, nie geschrieben.
+    private func loadedConfiguration() -> Configuration? {
+        let url = ConfigurationLocation.resolve(explicitPath: configurationPath)
+        guard case let .loaded(configuration, _, _) = ConfigurationStore().load(at: url) else { return nil }
+        return configuration
     }
 
     // MARK: - Human readable report
 
-    private func printReport(_ snapshots: [DisplaySnapshot]) {
+    private func printReport(_ snapshots: [DisplaySnapshot], configuration: Configuration?) {
         print("Aktive Displays: \(snapshots.count)\n")
+
+        let reconciler = configuration?.displayReconciler(observing: snapshots)
 
         for snapshot in snapshots {
             let markers = [
@@ -50,9 +71,15 @@ struct DisplaysCommand {
                 print("""
                     ⚠️  Seriennummer 0 — es greift die Fallback-Identität aus
                         Vendor + Modell + Port-Index. Die Auflösung zählt nicht.
-                        Baugleiche Monitore werden nur über den Port unterschieden
-                        und bei vertauschten Anschlüssen verwechselt.
+                        Der Port-Index ist gemessen unbeständig: er verschiebt sich,
+                        wenn Software-Displays kommen und gehen. Eindeutige Monitore
+                        werden deshalb auch bei abweichendem Port erkannt; baugleiche
+                        Monitore hängen weiter am Port und werden bei vertauschten
+                        Anschlüssen verwechselt.
                 """)
+                if let drift = reconciler?.portDrift(for: snapshot.identity) {
+                    print("    ℹ️  \(drift.sentence)")
+                }
             }
             if snapshot.isLikelyVirtual {
                 print("""
@@ -66,7 +93,27 @@ struct DisplaysCommand {
             print("")
         }
 
-        let fingerprint = SetupFingerprint(snapshots: snapshots)
+        if let reconciler {
+            if reconciler.portDrifts.isEmpty {
+                print("Abgleich mit der Konfiguration: alle Identitäten stimmen exakt überein.\n")
+            } else {
+                print("Abgleich mit der Konfiguration:")
+                for drift in reconciler.portDrifts {
+                    print("    \(describe(drift.configured)) — \(drift.sentence)")
+                }
+                print("")
+            }
+        } else {
+            print("""
+            Ohne geladene Konfiguration gibt es hier keinen Abgleich: dieser Bericht
+            zeigt, was angeschlossen ist, nicht, was davon konfiguriert wäre. Ob ein
+            Port-Index abweicht, lässt sich deshalb nicht sagen — mit
+            "openzonr displays --config <pfad>" schon.
+
+            """)
+        }
+
+        let fingerprint = SetupFingerprint(snapshots: snapshots, reconciler: reconciler ?? .passthrough)
         print("Setup-Fingerprint (alle \(fingerprint.displays.count) Displays):")
         for identity in fingerprint.displays.sorted(by: { describe($0) < describe($1) }) {
             print("    \(describe(identity))")
@@ -74,7 +121,7 @@ struct DisplaysCommand {
 
         let physical = snapshots.filter { !$0.isLikelyVirtual }
         if physical.count != snapshots.count {
-            let reduced = SetupFingerprint(snapshots: physical)
+            let reduced = SetupFingerprint(snapshots: physical, reconciler: reconciler ?? .passthrough)
             print("\nOhne die vermutlichen Software-Displays (\(reduced.displays.count)):")
             for identity in reduced.displays.sorted(by: { describe($0) < describe($1) }) {
                 print("    \(describe(identity))")

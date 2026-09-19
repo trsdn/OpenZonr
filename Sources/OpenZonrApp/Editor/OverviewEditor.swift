@@ -94,7 +94,11 @@ private struct Canvas: View {
     /// hier deshalb bewusst *nicht* gebaut.
     private func content(in size: CGSize, panels: [PlacementOverview.DisplayPanel]) -> some View {
         let items = panels.map { panel -> Item in
-            let aspect = canvasAspect(for: panel.descriptor, snapshots: document.displaySnapshots)
+            let aspect = canvasAspect(
+                for: panel.descriptor,
+                snapshots: document.displaySnapshots,
+                reconciler: document.displayReconciler
+            )
             return Item(panel: panel, aspect: aspect)
         }
 

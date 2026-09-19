@@ -215,13 +215,20 @@ public enum DryRunPreview {
         guard !snapshots.isEmpty else {
             return .failure(.missingVisibleFrame(DisplayAlias(rawValue: "")))
         }
-        let fingerprint = SetupFingerprint(snapshots: snapshots, ignoring: configuration.ignoredDisplays)
+        // Einmal je Vorschau gebaut und an beide Nachschlagewege gereicht —
+        // Fingerprint und sichtbare Rahmen müssen denselben Abgleich sehen.
+        let reconciler = configuration.displayReconciler(observing: snapshots)
+        let fingerprint = SetupFingerprint(
+            snapshots: snapshots,
+            ignoring: configuration.ignoredDisplays,
+            reconciler: reconciler
+        )
         let profileResolver = DefaultProfileResolver()
         guard let profile = profileResolver.activeProfile(for: fingerprint, in: configuration) else {
             return .failure(.missingVisibleFrame(DisplayAlias(rawValue: "")))
         }
         let arrangement = ScreenArrangement(snapshots: snapshots)
-        let visibleFrames = arrangement.visibleFrames(for: configuration.displays)
+        let visibleFrames = arrangement.visibleFrames(for: configuration.displays, reconciler: reconciler)
         let zoneResolver = DefaultZoneResolver()
         return zoneResolver.resolve(
             role: role,

@@ -637,7 +637,10 @@ final class AppModel {
 
         let snapshots = SystemDisplays.snapshots()
         let arrangement = ScreenArrangement(snapshots: snapshots)
-        let frames = arrangement.visibleFrames(for: base.displays)
+        let frames = arrangement.visibleFrames(
+            for: base.displays,
+            reconciler: base.displayReconciler(observing: snapshots)
+        )
 
         let window: FrontmostWindow.Snapshot
         switch FrontmostWindow.read(primaryTopY: arrangement.primaryTopY) {

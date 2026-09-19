@@ -223,14 +223,34 @@ Pixelgröße ist bewusst **kein** Merkmal, denn sie hängt am aktuellen
 Anzeigemodus und ändert sich beim Umschalten; sie wird nur zur Anzeige
 mitgeführt. Das ist nicht global eindeutig: baugleiche Monitore ohne
 Seriennummer sind nur über ihren Port unterscheidbar und können beim Vertauschen
-verwechselt werden; ändert sich die Port-Nummer, gilt der Monitor als unbekannt
-und es wird kein Profil gewählt. Ob es bessere öffentliche Merkmale gibt, ist
+verwechselt werden. Ob es bessere öffentliche Merkmale gibt, ist
 bisher nicht untersucht; `CGDisplayScreenSize` ist nicht als stabil belegt. Die
 Modus-Unabhängigkeit ist im Code begründet und per Test abgesichert, auf echter
 Hardware aber nicht gemessen (Handprüfung in
 [konfiguration.md](konfiguration.md), Abschnitt `identity`). Der Fall wird im
 Datenmodell ausdrücklich als `fallback` markiert, damit die UI genau davor
 warnen kann.
+
+**Der Port-Index wandert — gemessen am 19.09.2026.** Die Annahme, `portIndex`
+sei ein brauchbarer Unterscheider, weil er an einem Anschluss klebt, ist
+widerlegt: derselbe Monitor (C49RG9x, Vendor 19501, Modell 3996, Seriennummer 0)
+meldete am 29.08.2026 die Unit-Nummer `0` und am 19.09.2026 die `1`, ohne dass
+ein Kabel bewegt wurde. `CGDisplayUnitNumber` wird in Aufzählungsreihenfolge
+vergeben, und Software-Displays („AAA“, „Teleprompter Source“), die kommen und
+gehen, verschieben dabei alles, was hinter ihnen aufgezählt wird. Die Folge war
+kein passendes Profil und damit der vollständige Ausfall der Dropzones.
+
+Die Konsequenz ist bewusst eng gefasst und lebt in einer eigenen reinen Funktion
+(`DisplayIdentityReconciler`): **ein Monitor ohne Seriennummer wird unabhängig
+vom Port-Index erkannt, wenn seine Kombination aus Vendor und Modell sowohl in
+der Konfiguration als auch unter den angeschlossenen Bildschirmen genau einmal
+vorkommt.** Ein exakter Treffer gewinnt zuerst; sind mehrere Kandidaten oder
+mehrere Anwärter im Spiel, bleibt es beim exakten Vergleich. **Baugleiche
+Monitore ohne Seriennummer hängen also weiterhin am Port-Index und können beim
+Vertauschen verwechselt werden** — diese Einschränkung ist unverändert. Das ist
+ausdrücklich keine Zusage, dass die Unit-Nummer stabil wäre; sie ist es nicht,
+die Erkennung kommt nur in den eindeutigen Fällen ohne sie aus. `edid` und
+`builtin` bleiben unberührt exakt.
 
 ---
 

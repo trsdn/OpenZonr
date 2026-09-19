@@ -51,6 +51,14 @@ public enum DisplayIdentity: Codable, Sendable {
     ///
     /// Not globally unique: two identical monitors are told apart only by the
     /// port index and are confused when swapped between ports.
+    ///
+    /// The port index is `CGDisplayUnitNumber` and is **measured to drift**
+    /// (2026-09-19: the same monitor moved from unit 0 to unit 1 because
+    /// software displays shifted the enumeration). `==` below still compares it,
+    /// on purpose — that is what keeps identical monitors apart. The tolerance
+    /// for the unambiguous case lives in ``DisplayIdentityReconciler``, and
+    /// every lookup that translates an observed identity into a configured one
+    /// goes through it.
     case fallback(vendorNumber: UInt32, modelNumber: UInt32, pixelWidth: Int, pixelHeight: Int, portIndex: Int)
 
     // MARK: - Equatable / Hashable

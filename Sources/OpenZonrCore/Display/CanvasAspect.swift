@@ -85,11 +85,20 @@ public struct CanvasAspect: Hashable, Sendable {
 /// Reine Funktion, kein Zugriff auf `NSScreen` oder Ähnliches. Die Bedingung,
 /// dass sie ohne angeschlossenen Bildschirm testbar ist, ist der Grund, warum
 /// sie in Core lebt und nicht im Editor.
+///
+/// Der Vergleich läuft über ``DisplayIdentityReconciler``: ein Bildschirm ohne
+/// Seriennummer, dessen Port-Index sich verschoben hat, ist angeschlossen und
+/// soll auch so gezeichnet werden. Eine Schätzung, obwohl der Bildschirm
+/// dasteht, wäre genau die unbeschriftete Notlösung, gegen die dieser Typ
+/// geschrieben ist.
 public func canvasAspect(
     for descriptor: DisplayDescriptor,
-    snapshots: [DisplaySnapshot]
+    snapshots: [DisplaySnapshot],
+    reconciler: DisplayIdentityReconciler = .passthrough
 ) -> CanvasAspect {
-    guard let snapshot = snapshots.first(where: { $0.identity == descriptor.identity }) else {
+    guard let snapshot = snapshots.first(where: {
+        reconciler.resolve($0.identity) == descriptor.identity
+    }) else {
         return .fallback
     }
     let width = snapshot.visibleFrame.width

@@ -20,7 +20,7 @@ public enum OpenZonrCommandLine {
     openzonr — Fenster landen dort, wo sie hingehören.
 
     AUFRUF
-      openzonr displays [--config-fragment]
+      openzonr displays [--config-fragment] [--config <pfad>]
       openzonr windows  [--bundle <bundle-id>] [--all-apps] [--no-filter-verdict]
       openzonr watch    [--config <pfad>] [--dry-run]
       openzonr selftest [--out <pfad>] [--prompt]
@@ -31,6 +31,10 @@ public enum OpenZonrCommandLine {
                  Identität und dem daraus berechneten Setup-Fingerprint.
                  --config-fragment gibt ein fertiges "displays"-Fragment aus,
                  das direkt in die Konfiguration übernommen werden kann.
+                 Liegt eine Konfiguration vor (Standardpfad oder --config), wird
+                 zusätzlich gemeldet, welche Bildschirme trotz abweichendem
+                 Port-Index erkannt wurden. Ohne Konfiguration sagt der Bericht,
+                 dass es dazu keine Auskunft gibt.
 
       windows    Listet die Fenster laufender Apps mit genau den Merkmalen, die
                  die Regelauswertung liest: Bundle ID, Titel, Rolle, Subrole,
@@ -95,7 +99,8 @@ public enum OpenZonrCommandLine {
             switch subcommand {
             case "displays":
                 let command = DisplaysCommand(
-                    emitFragment: arguments.consumeFlag("--config-fragment")
+                    emitFragment: arguments.consumeFlag("--config-fragment"),
+                    configurationPath: try arguments.consumeOption("--config")
                 )
                 try arguments.requireEmpty()
                 try MainActor.assumeIsolated { try command.run() }

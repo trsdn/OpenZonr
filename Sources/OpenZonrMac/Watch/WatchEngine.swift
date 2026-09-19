@@ -77,6 +77,15 @@ public final class WatchEngine {
     // MARK: - Internals
 
     private var arrangement: ScreenArrangement
+
+    /// Translates what the machine reports into what the configuration knows.
+    ///
+    /// Rebuilt whenever the arrangement is re-read and never anywhere else, so
+    /// fingerprint, visible frames and diagnostics all answer from the same
+    /// mapping. See ``DisplayIdentityReconciler`` for the measured drift it
+    /// exists for.
+    private var reconciler: DisplayIdentityReconciler
+
     private let rules: CompiledRuleSet
     private var decider: PlacementDecider
 
@@ -152,6 +161,7 @@ public final class WatchEngine {
 
         let snapshots = SystemDisplays.snapshots()
         self.arrangement = ScreenArrangement(snapshots: snapshots)
+        self.reconciler = configuration.displayReconciler(observing: snapshots)
         self.profileState = .unmatched(explanation: "")
 
         if announce {
@@ -159,11 +169,17 @@ public final class WatchEngine {
                 Log.warn("Regel \"\(unusable.rule)\" wird übersprungen: \(unusable.reason) Muster: \(unusable.pattern)")
             }
 
-            let fingerprint = SetupFingerprint(snapshots: snapshots, ignoring: configuration.ignoredDisplays)
+            let fingerprint = SetupFingerprint(
+                snapshots: snapshots,
+                ignoring: configuration.ignoredDisplays,
+                reconciler: reconciler
+            )
             Log.info("Angeschlossene Displays: \(snapshots.count), davon \(fingerprint.displays.count) im Fingerprint")
             for snapshot in snapshots {
-                let ignored = configuration.ignoredDisplays.contains(snapshot.identity)
-                Log.detail("\(snapshot.localizedName) — \(describe(snapshot.identity))\(ignored ? "  [ignoriert]" : "")")
+                let known = reconciler.resolve(snapshot.identity)
+                let ignored = configuration.ignoredDisplays.contains(known)
+                let drift = reconciler.portDrift(for: snapshot.identity).map { " — \($0.sentence)" } ?? ""
+                Log.detail("\(snapshot.localizedName) — \(describe(snapshot.identity))\(ignored ? "  [ignoriert]" : "")\(drift)")
             }
         }
 
@@ -176,10 +192,15 @@ public final class WatchEngine {
     // not something to paper over. Both front ends call ``stop()``.
 
     /// The current fingerprint, recomputed from the attached displays.
+    ///
+    /// Builds its own reconciler because it re-reads the displays; the cached
+    /// one belongs to the last ``resolveProfile(announce:)``.
     public var setupFingerprint: SetupFingerprint {
-        SetupFingerprint(
-            snapshots: SystemDisplays.snapshots(),
-            ignoring: configuration.ignoredDisplays
+        let snapshots = SystemDisplays.snapshots()
+        return SetupFingerprint(
+            snapshots: snapshots,
+            ignoring: configuration.ignoredDisplays,
+            reconciler: configuration.displayReconciler(observing: snapshots)
         )
     }
 
@@ -189,8 +210,20 @@ public final class WatchEngine {
     // MARK: - Profile
 
     /// Determines the active profile and rebuilds the decider around it.
+    ///
+    /// Reads the displays **once** and derives arrangement, reconciler and
+    /// fingerprint from that one reading. Three separate readings would be three
+    /// chances to disagree with each other, and the identity mapping is exactly
+    /// the place where disagreement costs a profile.
     private func resolveProfile(announce: Bool) {
-        let fingerprint = setupFingerprint
+        let snapshots = SystemDisplays.snapshots()
+        arrangement = ScreenArrangement(snapshots: snapshots)
+        reconciler = configuration.displayReconciler(observing: snapshots)
+        let fingerprint = SetupFingerprint(
+            snapshots: snapshots,
+            ignoring: configuration.ignoredDisplays,
+            reconciler: reconciler
+        )
         let automatic = DefaultProfileResolver().activeProfile(for: fingerprint, in: configuration)
 
         let previous = profileState.profile?.id
@@ -201,7 +234,11 @@ public final class WatchEngine {
             profileState = .matched(automatic)
         } else {
             profileState = .unmatched(
-                explanation: Self.explainMissingProfile(fingerprint, configuration: configuration)
+                explanation: Self.explainMissingProfile(
+                    fingerprint,
+                    configuration: configuration,
+                    reconciler: reconciler
+                )
             )
         }
 
@@ -234,7 +271,7 @@ public final class WatchEngine {
     }
 
     private func warnAboutMissingFrames(for profile: Profile) {
-        let frames = arrangement.visibleFrames(for: configuration.displays)
+        let frames = arrangement.visibleFrames(for: configuration.displays, reconciler: reconciler)
         let missing = Set(profile.fingerprint.normalized).subtracting(frames.aliases)
         if !missing.isEmpty {
             Log.warn("Für diese Displays liegt kein sichtbarer Frame vor: \(missing.map(\.rawValue).sorted().joined(separator: ", "))")
@@ -255,18 +292,25 @@ public final class WatchEngine {
     /// it. Windows already placed are left alone — that is a watching behaviour
     /// the concept rules out.
     public func refreshProfile() {
-        arrangement = ScreenArrangement(snapshots: SystemDisplays.snapshots())
+        // `resolveProfile` re-reads the displays itself and rebuilds both the
+        // arrangement and the identity mapping from that one reading.
         resolveProfile(announce: true)
         notifyChange()
     }
 
     /// The loud, specific complaint that replaces silently guessing a profile.
+    ///
+    /// `reconciler` is the mapping the fingerprint was built with. It is what
+    /// lets the complaint distinguish "this display is unknown" from "this
+    /// display was recognised although its port index moved" — the difference
+    /// between a configuration that needs editing and one that does not.
     public static func explainMissingProfile(
         _ fingerprint: SetupFingerprint,
-        configuration: Configuration
+        configuration: Configuration,
+        reconciler: DisplayIdentityReconciler = .passthrough
     ) -> String {
         let known = Set(configuration.displays.map(\.identity))
-        let unknown = fingerprint.displays.filter { !known.contains($0) }
+        let unknown = fingerprint.displays.filter { !known.contains(reconciler.resolve($0)) }
 
         var text = """
         Kein Profil passt zum aktuellen Setup — es wird nichts platziert.
@@ -275,6 +319,12 @@ public final class WatchEngine {
         """
         for identity in fingerprint.displays.map(describe).sorted() {
             text += "\n    \(identity)"
+        }
+        if !reconciler.portDrifts.isEmpty {
+            text += "\n\nTrotz abweichendem Port-Index erkannt:"
+            for drift in reconciler.portDrifts {
+                text += "\n    \(describe(drift.configured)) — \(drift.sentence)"
+            }
         }
         if !unknown.isEmpty {
             text += "\n\nDavon in der Konfiguration unbekannt:"
@@ -676,6 +726,7 @@ public final class WatchEngine {
         // to placing a window on a monitor that is no longer there.
         let snapshots = SystemDisplays.snapshots()
         arrangement = ScreenArrangement(snapshots: snapshots)
+        reconciler = configuration.displayReconciler(observing: snapshots)
 
         let identifier = WindowIdentifier(processIdentifier: pid, token: token(for: element))
 
@@ -691,8 +742,12 @@ public final class WatchEngine {
             identifier: identifier,
             configuration: configuration,
             rules: rules,
-            setup: SetupFingerprint(snapshots: snapshots, ignoring: configuration.ignoredDisplays),
-            visibleFrames: arrangement.visibleFrames(for: configuration.displays),
+            setup: SetupFingerprint(
+                snapshots: snapshots,
+                ignoring: configuration.ignoredDisplays,
+                reconciler: reconciler
+            ),
+            visibleFrames: arrangement.visibleFrames(for: configuration.displays, reconciler: reconciler),
             occupancy: &occupancy,
             now: Date()
         )
