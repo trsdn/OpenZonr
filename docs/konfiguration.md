@@ -90,12 +90,53 @@ Drei Varianten, unterschieden über `kind`:
 }
 ```
 
-Die `fallback`-Variante ist nicht global eindeutig. Verglichen werden
-`vendorNumber`, `modelNumber` und `portIndex`. `pixelWidth` und `pixelHeight`
-sind reine Anzeigeinformation und zählen **nicht** für die Wiedererkennung; ein
-Wechsel der Auflösung soll denselben Monitor also nicht zu einem anderen machen.
-Das ist im Code begründet und per Unit-Test abgesichert, auf echter Hardware
-aber noch nicht gemessen (siehe Handprüfung unten).
+Die `fallback`-Variante ist nicht global eindeutig. Gespeichert und verglichen
+werden `vendorNumber`, `modelNumber` und `portIndex`. `pixelWidth` und
+`pixelHeight` sind reine Anzeigeinformation und zählen **nicht** für die
+Wiedererkennung; ein Wechsel der Auflösung soll denselben Monitor also nicht zu
+einem anderen machen. Das ist im Code begründet und per Unit-Test abgesichert,
+auf echter Hardware aber noch nicht gemessen (siehe Handprüfung unten).
+
+### Der `portIndex` wandert — gemessen
+
+Der `portIndex` kommt aus `CGDisplayUnitNumber`. Die Annahme, dass diese Nummer
+an einem Anschluss klebt, ist **widerlegt**:
+
+| Datum | Monitor | Unit-Nummer |
+| --- | --- | --- |
+| 29.08.2026 | C49RG9x (Vendor 19501, Modell 3996, Seriennummer 0) | `0` |
+| 19.09.2026 | derselbe Monitor, dasselbe Kabel | `1` |
+
+Am Schreibtisch hatte sich nichts geändert. Geändert hatte sich, dass zur
+Aufzählungszeit Software-Displays da waren: die Nummern 0, 1, 2, 3 gingen in
+Aufzählungsreihenfolge an „AAA“ (Vendor 21252, Modell 0), C49RG9x, U28E590 und
+„Teleprompter Source“. Jedes Software-Display, das vor einem echten Panel
+aufgezählt wird, verschiebt dessen Nummer. In der Konfiguration stand
+`portIndex: 0`, die Maschine meldete `1`, kein Profil passte — und damit war die
+gesamte Dropzone-Funktion weg (Overlay und Rechtsklickmenü steigen beide bei
+„kein aktives Profil“ aus).
+
+**Was daraus folgt (`DisplayIdentityReconciler`):**
+
+- Ein Monitor ohne Seriennummer wird **unabhängig vom `portIndex`** erkannt,
+  wenn seine Kombination aus `vendorNumber` und `modelNumber` sowohl in der
+  Konfiguration als auch unter den angeschlossenen Bildschirmen **genau einmal**
+  vorkommt. Dann gibt es nur einen Kandidaten und nur einen Anwärter; da ist
+  nichts zu raten.
+- Ein exakter Treffer (Vendor, Modell **und** Port) gewinnt immer zuerst.
+- **Baugleiche Monitore ohne Seriennummer hängen weiter am `portIndex`** und
+  können beim Vertauschen der Anschlüsse verwechselt werden. Diese Einschränkung
+  bleibt unverändert bestehen; sie wird ausdrücklich nicht weggeraten.
+- `edid` und `builtin` bleiben unberührt und werden ausschließlich exakt
+  verglichen.
+- Das ist **keine Stabilitätszusage** für die Unit-Nummer. Sie wandert; die
+  Erkennung kommt nur in den eindeutigen Fällen ohne sie aus.
+
+Liegt eine Konfiguration vor, meldet `openzonr displays` einen so aufgefangenen
+Fall als eine Zeile: `konfiguriert als port=0, aktuell port=1: erkannt, weil
+eindeutig`. Ohne Konfiguration sagt der Bericht stattdessen, dass es dazu keine
+Auskunft gibt — eine Konfiguration lässt sich mit `--config <pfad>` angeben.
+Dieselbe Zeile erscheint in der Watch-Diagnose.
 
 Ältere Konfigurationsdateien, in denen dort die Größe eines skalierten Modus
 steht, sollen unverändert weiter passen. Belegt ist das durch die Tests
@@ -111,12 +152,15 @@ Treiber genau einen Modus als nativ kennzeichnet, sonst `0`.
   `portIndex`. Dieser wird aus `CGDisplayUnitNumber` gelesen, der nächstliegenden
   öffentlichen Entsprechung eines Port-Index, nicht aus einer echten
   Anschlussbezeichnung. Werden solche Monitore zwischen Anschlüssen vertauscht,
-  ist mit Verwechslung zu rechnen.
-- Der `portIndex` kann sich bei geänderter Verkabelung (anderer Port, anderes
-  Dock, Hub) ändern. Dann gilt der Monitor als unbekannt: es wird kein Profil
-  gewählt (keine geratene Zuordnung), und der Watch-Modus gibt einen Hinweis mit
-  dem nächsten Schritt aus. Ob die Nummer Ab-/Anstecken, Ruhezustand oder
-  Neustart übersteht, ist nicht untersucht.
+  ist mit Verwechslung zu rechnen — daran ändert der Abgleich oben nichts, weil
+  er in genau diesem Fall nicht greift.
+- Der `portIndex` ändert sich nachweislich auch ohne Umstecken (siehe oben) und
+  kann sich zusätzlich bei geänderter Verkabelung (anderer Port, anderes Dock,
+  Hub) ändern. Bleibt der Monitor dabei eindeutig, wird er trotzdem erkannt. Ist
+  er es nicht, gilt er als unbekannt: es wird kein Profil gewählt (keine
+  geratene Zuordnung), und der Watch-Modus gibt einen Hinweis mit dem nächsten
+  Schritt aus. Ob die Nummer Ab-/Anstecken, Ruhezustand oder Neustart übersteht,
+  ist weiterhin nicht systematisch untersucht.
 - Ob der Treiber bei einem bestimmten Monitor ein Native-Flag setzt, ist offen.
   Fehlt es, steht `0` in den Pixelfeldern. Das betrifft nur die Anzeige, nicht
   die Erkennung.
@@ -147,9 +191,15 @@ C49RG9x (Seriennummer 0, `port=1`), aktueller Modus 5120×1440. Die Modusliste
 enthält genau ein Flag für die native Größe (5120×1440), mit und ohne
 `kCGDisplayShowDuplicateLowResolutionModes`. Nach einem Wechsel in 4608×1296
 (nur Sitzung, danach zurückgestellt) blieb die Identität in `openzonr displays`
-unverändert (`fallback vendor=19501 model=3996 5120×1440 port=1`). **Nicht
-erhoben:** Drehung um 90° oder 270°, Verhalten der Unit-Nummer nach Neustart,
-Umstecken oder Dock-Wechsel, zwei baugleiche Monitore ohne Seriennummer.
+unverändert (`fallback vendor=19501 model=3996 5120×1440 port=1`).
+
+Ebenfalls am 19.09.2026 erhoben — und der Anlass für den Abgleich oben: derselbe
+Monitor trug am 29.08.2026 die Unit-Nummer `0` und am 19.09.2026 die `1`, ohne
+dass ein Kabel bewegt wurde. Ursache waren die zwischenzeitlich vorhandenen
+Software-Displays („AAA“, „Teleprompter Source“), die die Nummernvergabe
+verschieben. **Nicht erhoben:** Drehung um 90° oder 270°, Verhalten der
+Unit-Nummer nach Neustart, Umstecken oder Dock-Wechsel, zwei baugleiche Monitore
+ohne Seriennummer.
 
 > **`serialNumber == 0` ist der Normalfall, nicht der Randfall.**
 >
