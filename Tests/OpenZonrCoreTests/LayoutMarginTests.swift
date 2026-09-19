@@ -146,3 +146,78 @@ struct LayoutMarginCodingTests {
         #expect(decoded.margin == 0.05)
     }
 }
+
+/// Automatik, Ablegen und Zoom-Menue muessen dasselbe Ziel ergeben (#43).
+struct ManualPlacementMarginTests {
+
+    private let display: DisplayAlias = "main"
+    private let visible = VisibleFrame(x: 0, y: 0, width: 1000, height: 1000)
+
+    private func config(margin: Double) -> Configuration {
+        var config = TestConfigurations.minimal()
+        config.displays[0].layouts[0].margin = margin
+        return config
+    }
+
+    private func automaticFrame(_ config: Configuration) throws -> WindowFrame {
+        try DefaultZoneResolver().resolve(
+            role: "editor", share: nil, profile: config.profiles[0],
+            configuration: config, visibleFrames: [display: visible]
+        ).get().frame
+    }
+
+    /// Exactly the construction ZoomButtonMenu.swift:113 uses: zones of the
+    /// window's display, filtered, then `zone.placement`.
+    private func zoomMenuZones(_ config: Configuration) -> [Dropzone] {
+        DropzoneMap.zones(in: config, profile: config.profiles[0].id, visibleFrames: [display: visible])
+            .filter { $0.display == display }
+    }
+
+    @Test("Rand 0.05: Ablegen und Zoom-Menue liefern denselben Rahmen wie die Automatik (400x900 bei 50/50)")
+    func nonZeroMarginAllRoutesAgree() throws {
+        let config = config(margin: 0.05)
+        let automatic = try automaticFrame(config)
+        #expect(automatic == WindowFrame(x: 50, y: 50, width: 400, height: 900))
+
+        let dropTarget = try #require(zoomMenuZones(config).first { $0.zone == "left" })
+        #expect(dropTarget.placement.frame == automatic)
+        #expect(dropTarget.placement.zone == "left")
+        #expect(dropTarget.placement.display == display)
+        #expect(dropTarget.placement.usedFallback == false)
+    }
+
+    @Test("Rand 0: alle Wege liefern die volle Zone, wie bisher")
+    func zeroMarginAllRoutesAgree() throws {
+        let config = config(margin: 0)
+        let automatic = try automaticFrame(config)
+        #expect(automatic == WindowFrame(x: 0, y: 0, width: 500, height: 1000))
+
+        let dropTarget = try #require(zoomMenuZones(config).first { $0.zone == "left" })
+        #expect(dropTarget.placement.frame == automatic)
+        #expect(dropTarget.placement.frame == dropTarget.frame)
+    }
+
+    @Test("Trefferpruefung bleibt volle Zone: Naht und Randstreifen gehoeren einer Zone")
+    func hitTestGeometryStaysFullSize() throws {
+        let config = config(margin: 0.05)
+        let zones = zoomMenuZones(config)
+        let left = try #require(zones.first { $0.zone == "left" })
+        #expect(left.frame == WindowFrame(x: 0, y: 0, width: 500, height: 1000))
+        #expect(left.placement.frame != left.frame)
+
+        // Punkt im 50-pt-Randstreifen der Platzierung, aber in der Trefferzone.
+        #expect(DropzoneMap.zone(at: ScreenPoint(x: 10, y: 500), in: zones)?.zone == "left")
+        // Naht bei x = 500: genau eine Zone (rechte Kante schliesst aus).
+        #expect(DropzoneMap.zone(at: ScreenPoint(x: 499.5, y: 500), in: zones)?.zone == "left")
+        #expect(DropzoneMap.zone(at: ScreenPoint(x: 500, y: 500), in: zones)?.zone == "right")
+    }
+
+    @Test("Pin-Marke haengt weiter an der vollen Zone, nicht an der Platzierung")
+    func pinBadgeUsesFullZone() throws {
+        let zones = zoomMenuZones(config(margin: 0.05))
+        let left = try #require(zones.first { $0.zone == "left" })
+        let badge = try #require(DropzoneMap.pinBadgeFrame(for: left))
+        // Oben rechts der vollen Zone (x-Ende 500-4-8), unabhaengig vom Rand.
+        #expect(badge.x + badge.width == left.frame.x + left.frame.width - 4 - 8)
+    }
+}

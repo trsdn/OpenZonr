@@ -76,6 +76,8 @@ Normal loslassen: einmalige Platzierung, keine Regel, keine Frage. Auf der
 Marke loslassen: dieselbe Platzierung und `QuickPin` schreibt die Regel — in
 derselben Bewegung.
 
+Ablegen und Zoom-Menü platzieren mit `Dropzone.placement` (Layout-Rand abgezogen, identisch zur Automatik, #43); Treffertest und Overlay nutzen `Dropzone.frame` (volle Zone).
+
 Die Trefferprüfung ist eine **reine Funktion** neben `DropzoneMap`
 (`DropzoneMap.pinBadgeFrame(for:)` und `DropzoneMap.isOnPinBadge(_:of:)`), damit
 sie ohne die Bedienungshilfen-Freigabe geprüft werden kann — dieselbe Trennung,

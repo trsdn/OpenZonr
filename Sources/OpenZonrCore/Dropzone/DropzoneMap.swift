@@ -23,6 +23,12 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
     /// overlay that vanished whenever the pointer crossed a gap would flicker
     /// through every drag.
     public var visibleFrame: VisibleFrame
+    /// ``Layout/margin`` of the zone's layout, as a fraction of the display.
+    ///
+    /// Not applied to ``frame``: the hit test stays gap-free. Applied only by
+    /// ``placement``, through ``ZoneGeometry/placementFrame(for:margin:in:)``,
+    /// so a dropped window lands where automatic placement would put it.
+    public var margin: Double
 
     public init(
         display: DisplayAlias,
@@ -30,7 +36,8 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
         name: String,
         relativeFrame: RelativeRect,
         frame: WindowFrame,
-        visibleFrame: VisibleFrame
+        visibleFrame: VisibleFrame,
+        margin: Double = 0
     ) {
         self.display = display
         self.zone = zone
@@ -38,6 +45,7 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
         self.relativeFrame = relativeFrame
         self.frame = frame
         self.visibleFrame = visibleFrame
+        self.margin = margin
     }
 
     public var id: String { "\(display)/\(zone)" }
@@ -49,7 +57,11 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
     /// ``RetryingWindowPlacer`` in exactly the same way. `usedFallback` is
     /// `false` because nothing fell back: the user pointed at this zone.
     public var placement: ResolvedPlacement {
-        ResolvedPlacement(frame: frame, display: display, zone: zone, usedFallback: false)
+        // Margin 0 keeps the exact zone frame (also for hand-built test zones).
+        let placed = margin > 0
+            ? ZoneGeometry.placementFrame(for: relativeFrame, margin: margin, in: visibleFrame)
+            : frame
+        return ResolvedPlacement(frame: placed, display: display, zone: zone, usedFallback: false)
     }
 }
 
@@ -72,10 +84,8 @@ public enum DropzoneMap {
     /// attached, and a zone on a monitor that is not there cannot be dropped
     /// into.
     ///
-    /// ``Layout/margin`` wird hier bewusst **nicht** abgezogen. Der Rand
-    /// wirkt nur beim Platzieren (``DefaultZoneResolver``); der Treffertest
-    /// bleibt lückenlos, damit ein Zeiger auf der Naht zwischen zwei Zonen
-    /// nicht in eine Randlücke fällt und das Overlay nicht flackert.
+    /// Der Rand wirkt nicht auf ``Dropzone/frame`` (Treffertest bleibt lückenlos),
+    /// sondern nur auf ``Dropzone/placement``.
     public static func zones(
         in configuration: Configuration,
         profile: ProfileID,
@@ -95,7 +105,8 @@ public enum DropzoneMap {
                         name: zone.name,
                         relativeFrame: zone.frame,
                         frame: ZoneGeometry.absoluteFrame(for: zone.frame, in: visibleFrame),
-                        visibleFrame: visibleFrame
+                        visibleFrame: visibleFrame,
+                        margin: layout.margin
                     )
                 )
             }
