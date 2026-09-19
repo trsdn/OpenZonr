@@ -141,7 +141,8 @@ designated => identifier "com.trsdn.openzonr" and anchor apple generic
   and certificate leaf[subject.OU] = G69Z5BNY97
 ```
 
-Damit überlebt die Freigabe jeden Neubau. `Scripts/bundle.sh` baut, packt und
+Damit übersteht die Freigabe einen Neubau in der Regel (siehe den Nachtrag vom
+30.08.2026 weiter unten: zugesichert ist das nicht). `Scripts/bundle.sh` baut, packt und
 signiert in einem Schritt. Ein Ad-hoc-Zertifikat genügt nicht, es hat keine
 solche Kette.
 
@@ -192,6 +193,20 @@ Unterschied ausmacht. Zwei Läufe derselben Binärdatei aus
 
 `--out` ist dabei kein Komfort, sondern Notwendigkeit: LaunchServices verwirft die
 Standardausgabe, und ohne Datei bliebe genau der maßgebliche Fall unbeobachtbar.
+
+**Nachtrag, 30.08.2026 (Issue #35): „überlebt jeden Neubau“ war zu weit gefasst.**
+Nach einem `Scripts/bundle.sh` auf `ec34da5` an denselben Pfad meldete der
+Selbsttest über LaunchServices (Elternprozess `launchd`) `degraded`, dreimal im
+Abstand von etwa 45 s. Pfad, Identifier, Team und Designated Requirement waren
+Zeichen für Zeichen dieselben wie vorher, und an den zwei Neubauten davor
+(29.08. 18:38 und 30.08. 03:45) hatte die Freigabe gehalten. Es ist also ein
+gelegentliches Verhalten, kein durchgängiges. **Warum** der Eintrag ungültig
+wurde, ist nicht bekannt: die TCC-Datenbank ist SIP-geschützt und nicht lesbar.
+Die Häufigkeit der Neubauten oder ein Zeitfenster als Ursache sind nicht
+gemessen und stehen deshalb nicht als Vermutung hier. Abhilfe: den Eintrag in
+den Bedienungshilfen entfernen und neu hinzufügen; Haken aus und wieder an
+genügt nicht. Die Hilfetexte (Selbsttest, `Scripts/bundle.sh`, README) sagen
+seitdem „übersteht einen Neubau in der Regel“.
 
 Bemerkenswert und für die spätere Fehlersuche wichtig: **Benachrichtigungen
 funktionieren auch im degradierten Zustand.** `AXObserverAddNotification`

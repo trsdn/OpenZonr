@@ -172,8 +172,12 @@ Warum der Umweg über ein Bundle:
 
 - **Eine unsignierte Binärdatei bekommt bei jedem `swift build` eine neue
   Prüfsumme.** Der Haken bleibt gesetzt und meint ein anderes Programm. Die
-  Signatur bindet stattdessen an Bundle-Identifier und Team und überlebt jeden
-  Neubau.
+  Signatur bindet stattdessen an Bundle-Identifier und Team und übersteht einen
+  Neubau in der Regel. Zugesichert ist das nicht: am 30.08.2026 war der Eintrag
+  nach einem Neubau ungültig, obwohl Pfad und Signatur gleich blieben. Meldet
+  `openzonr selftest` dann „degradiert“, den Eintrag in den Bedienungshilfen
+  **entfernen und neu hinzufügen**; den Haken nur aus- und einzuschalten genügt
+  nicht. Warum, ist nicht geklärt (Issue #35).
 - **Die Freigabe gilt dem Bundle an seinem Pfad.** Deshalb legt
   `Scripts/bundle.sh` es unter `~/Applications` ab und nicht in `.build`: dort
   überlebt es `swift package clean`, einen zweiten Klon des Repos und den Umzug
@@ -326,7 +330,7 @@ beschrieben — dort steht auch, was von der App gemessen ist und was nicht.
 | Display-Identität und Setup-Fingerprint | fertig, am echten Schreibtisch geprüft |
 | Fenstererkennung über `NSWorkspace` und `AXObserver` | fertig, gemessen: 124 ms bis zum Observer bei TextEdit, 2,2 s bei Outlook |
 | Diagnose per Kommandozeile (`displays`, `windows`) | fertig |
-| Signierung, damit der Grant Neubauten übersteht | fertig, `Scripts/bundle.sh` |
+| Signierung, damit der Grant Neubauten in der Regel übersteht | fertig, `Scripts/bundle.sh`; nicht zugesichert (Issue #35) |
 | Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit 1 Versuch; Outlook 2 Versuche, sobald das Fenster wirklich zu ziehen ist — die Schleife wird in Anspruch genommen |
 | Menüleisten-App mit Autostart | gebaut, [#8](https://github.com/trsdn/OpenZonr/issues/8) — Zustand, Profilwahl, Pause, Autostart, letzte Platzierungen; Platzierung mit laufender App **nachgemessen** (29.08.2026), siehe [docs/menueleisten-app.md](docs/menueleisten-app.md) |
 | Regeln bearbeiten ohne JSON | gebaut, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster hier festhalten" plus Editor für Regeln, Rollen und Zonen; Kern headless gemessen, die Oberfläche nicht nachgemessen — sie braucht eine Hand an der Maus, nicht mehr die Freigabe, siehe [docs/regel-editor.md](docs/regel-editor.md) |

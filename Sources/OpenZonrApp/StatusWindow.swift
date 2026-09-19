@@ -140,7 +140,9 @@ struct StatusWindow: View {
                 Text("""
                 Die Signatur bindet an Bundle-Identifier und Team statt an die \
                 Prüfsumme. Die Freigabe gilt deshalb diesem Bundle an diesem Pfad \
-                und übersteht jeden Neubau dorthin — aber keinen Umzug.
+                und übersteht einen Neubau dorthin in der Regel — aber keinen \
+                Umzug. Ist sie nach einem Neubau doch ungültig, hilft nur: \
+                Eintrag entfernen und neu hinzufügen.
                 """)
                 .foregroundStyle(.secondary)
             }

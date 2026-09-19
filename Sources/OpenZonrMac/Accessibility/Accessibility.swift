@@ -87,8 +87,18 @@ public enum Accessibility {
     meldet AXIsProcessTrusted() irreführend true, die Fensterzugriffe erben es
     aber nicht.
 
+    Wurde dagegen das signierte Bundle über LaunchServices gestartet
+    (Elternprozess launchd; 'openzonr selftest' zeigt es unter "Start") und die
+    Meldung kommt trotzdem, ist der Eintrag in den Bedienungshilfen ungültig
+    geworden. Beobachtet am 30.08.2026 nach einem Neubau, bei dem Pfad,
+    Identifier, Team und Designated Requirement unverändert waren; warum, ist
+    nicht geklärt. Abhilfe: den vorhandenen Eintrag in den Bedienungshilfen
+    ENTFERNEN und das Bundle neu hinzufügen. Den Haken nur aus- und wieder
+    einzuschalten genügt nicht.
+
     Der verlässliche Weg ist das signierte Bundle, denn dessen Freigabe hängt
-    an Pfad und Signatur und überlebt jeden Neubau:
+    an Pfad und Signatur und übersteht einen Neubau in der Regel (nicht
+    zugesichert, siehe oben):
 
       ./Scripts/bundle.sh
       # danach einmal freigeben: Systemeinstellungen → Datenschutz &
@@ -136,8 +146,11 @@ public enum Accessibility {
             und neu hinzuzufügen; den Haken nur neu zu setzen genügt nicht.
 
             Die Freigabe gilt diesem Pfad, nicht dem Identifier allein. Solange
-            hierhin gebaut wird, überlebt sie jeden Neubau — auch aus einem
-            anderen Klon des Repos.
+            hierhin gebaut wird, übersteht sie einen Neubau in der Regel — auch
+            aus einem anderen Klon des Repos. Meldet der Selbsttest nach einem
+            Neubau trotzdem "degradiert", ist der Eintrag ungültig geworden:
+            dann entfernen und neu hinzufügen, den Haken nur zu setzen genügt
+            nicht.
             """
         } else {
             body = """
@@ -155,7 +168,9 @@ public enum Accessibility {
               ./Scripts/bundle.sh
               open -n ~/Applications/OpenZonr.app
 
-            Dort einmal freigegeben, überlebt die Freigabe jeden Neubau.
+            Dort einmal freigegeben, übersteht die Freigabe einen Neubau in der
+            Regel. Meldet der Selbsttest danach trotzdem "degradiert", den
+            Eintrag entfernen und neu hinzufügen.
             """
         }
 

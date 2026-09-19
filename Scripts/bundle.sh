@@ -21,8 +21,9 @@
 #   identifier "com.trsdn.openzonr" and anchor apple generic
 #     and certificate leaf[subject.OU] = <TEAM>
 #
-# Damit überlebt die Freigabe jeden Neubau am selben Ort. Ein Ad-hoc-Zertifikat
-# genügt nicht — es hat keine solche Kette.
+# Damit übersteht die Freigabe einen Neubau am selben Ort in der Regel; zugesichert
+# ist das nicht (siehe unten, Issue #35). Ein Ad-hoc-Zertifikat genügt nicht — es
+# hat keine solche Kette.
 #
 # Der Ort zählt aber trotzdem. Gemessen: ein frisch gebautes, identisch
 # signiertes Bundle an einem neuen Pfad ist nicht freigegeben — beim Start über
@@ -114,9 +115,16 @@ Einmalig freigeben:
 Bei einem bestehenden Eintrag aus einem unsignierten Lauf: Eintrag
 entfernen und neu hinzufügen. Den Haken nur neu zu setzen genügt nicht.
 
-Die Freigabe gilt diesem Pfad. Solange hierhin gebaut wird, überlebt sie
-jeden Neubau — auch aus einem anderen Klon des Repos. Wird das Bundle
-woandershin gelegt, ist es dort erneut freizugeben.
+Die Freigabe gilt diesem Pfad. Solange hierhin gebaut wird, übersteht sie
+einen Neubau in der Regel — auch aus einem anderen Klon des Repos. Wird das
+Bundle woandershin gelegt, ist es dort erneut freizugeben.
+
+Meldet "$APP/Contents/MacOS/OpenZonr selftest" (über LaunchServices gestartet:
+open -n -a … --args selftest --out <datei>) nach einem Neubau trotzdem
+"degraded", ist der Eintrag ungültig geworden, obwohl Pfad und Signatur gleich
+geblieben sind (beobachtet am 30.08.2026, Ursache nicht geklärt). Dann den
+Eintrag entfernen und neu hinzufügen; den Haken nur aus- und einzuschalten
+genügt nicht.
 
 Starten:
   open -n "$APP"          # Menüleisten-App
