@@ -139,6 +139,8 @@ struct PlacementJobTests {
 
         #expect(result.displaced.first?.outcome == .windowGone)
         #expect(result.outcome == .placed(attempts: 1))
+        #expect(scenario.occupancy.placement(of: scenario.occupant) == nil)
+        #expect(scenario.occupancy.occupants(of: "left", on: "main") == [scenario.newcomer])
     }
 
     @Test("Ein abgebrochener Auftrag schreibt nichts und nimmt alle Anspruecke zurueck")
@@ -187,5 +189,68 @@ struct PlacementJobTests {
         #expect(scenario.occupancy.placement(of: scenario.newcomer) == nil)
         // Der Bewohner wurde bereits erfolgreich verschoben und bleibt dort.
         #expect(scenario.occupancy.occupants(of: "right", on: "main") == [scenario.occupant])
+    }
+
+    @Test("Eine neuere Anfrage fuer den verschwundenen Bewohner bleibt beim Abschluss erhalten")
+    func newerClaimSurvivesForgetOfVanishedOccupant() async {
+        var scenario = Scenario()
+        let occupantWindow = FakeWindow(frame: Self.left.frame)
+        occupantWindow.isVanished = true
+        let newcomerWindow = FakeWindow(frame: WindowFrame(x: 300, y: 300, width: 500, height: 400))
+
+        let result = await job(windows: [scenario.occupant: occupantWindow]).run(
+            window: newcomerWindow,
+            at: Self.left,
+            displacing: scenario.displacements,
+            retry: Self.retry,
+            isCurrent: { true }
+        )
+        // Waehrend des Auftrags belegt eine neuere Anfrage den Bewohner erneut.
+        scenario.occupancy.register(scenario.occupant, at: Self.right)
+        scenario.occupancy.settle(result, claims: scenario.claims, window: scenario.newcomer)
+
+        #expect(result.displaced.first?.outcome == .windowGone)
+        #expect(scenario.occupancy.placement(of: scenario.occupant) == Self.right)
+    }
+
+    @Test("Abbruch nach dem Verschieben: Bewohner bleibt in der Fallback-Zone, neues Fenster unberuehrt")
+    func cancellationBetweenDisplacementAndIncomingPlacement() async {
+        var scenario = Scenario()
+        let occupantWindow = FakeWindow(frame: Self.left.frame)
+        let newcomerWindow = FakeWindow(frame: WindowFrame(x: 300, y: 300, width: 500, height: 400))
+
+        let result = await job(windows: [scenario.occupant: occupantWindow]).run(
+            window: newcomerWindow,
+            at: Self.left,
+            displacing: scenario.displacements,
+            retry: Self.retry,
+            isCurrent: { occupantWindow.writes.isEmpty }
+        )
+        scenario.occupancy.settle(result, claims: scenario.claims, window: scenario.newcomer)
+
+        #expect(result.displaced == [DisplacementReport(window: scenario.occupant, outcome: .moved(attempts: 1))])
+        #expect(result.outcome == .cancelled(attempts: 0))
+        #expect(newcomerWindow.writes.isEmpty)
+        #expect(scenario.occupancy.occupants(of: "right", on: "main") == [scenario.occupant])
+        #expect(scenario.occupancy.placement(of: scenario.newcomer) == nil)
+    }
+
+    @Test("Ein durch eine neuere Anfrage ersetzter Anspruch wird nicht zurueckgenommen")
+    func staleClaimIsNotRolledBack() async {
+        var scenario = Scenario()
+        let occupantWindow = FakeWindow(frame: Self.left.frame)
+        let newcomerWindow = FakeWindow(frame: WindowFrame(x: 300, y: 300, width: 500, height: 400))
+
+        let result = await job(windows: [scenario.occupant: occupantWindow]).run(
+            window: newcomerWindow,
+            at: Self.left,
+            displacing: scenario.displacements,
+            retry: Self.retry,
+            isCurrent: { false }
+        )
+        scenario.occupancy.register(scenario.newcomer, at: Self.right)
+        scenario.occupancy.settle(result, claims: scenario.claims, window: scenario.newcomer)
+
+        #expect(scenario.occupancy.placement(of: scenario.newcomer) == Self.right)
     }
 }

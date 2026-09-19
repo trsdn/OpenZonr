@@ -83,6 +83,16 @@ public struct ZoneOccupancy: Sendable {
         epochs[window] = nil
     }
 
+    /// Forgets a window only while nothing has claimed it since `epoch`.
+    ///
+    /// The guarded counterpart of ``forget(_:)`` for callers that decided to
+    /// forget earlier and awaited in between: a newer claim, its manual
+    /// override and its epoch must not be wiped by the older decision.
+    public mutating func forget(_ window: WindowIdentifier, ifUnchangedSince epoch: Int) {
+        guard (epochs[window] ?? 0) == epoch else { return }
+        forget(window)
+    }
+
     /// Every window that currently holds a zone.
     public var trackedWindows: Set<WindowIdentifier> { Set(placementsByWindow.keys) }
 

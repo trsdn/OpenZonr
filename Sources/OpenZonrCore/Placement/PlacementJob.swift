@@ -136,7 +136,7 @@ extension ZoneOccupancy {
             case .moved:
                 continue
             case .windowGone:
-                forget(claim.window)
+                forget(claim.window, ifUnchangedSince: claim.epoch)
             case .failed, .cancelled:
                 undo.append(claim)
             }
