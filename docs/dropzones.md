@@ -283,6 +283,7 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | Trefferprüfung auf dem Zoom-Knopf | **Bewiesen**, headless | `ZoomButtonHitTests`; drei-wertig (`hit`/`missed`/`buttonUnavailable`), damit fehlendes `AXZoomButton` nicht mit „daneben" verwechselt wird |
 | Marken-Pfad umgeht den `offerRule`-Schalter | **Bewiesen**, headless | `DropRuleOfferPinTests`; sonst würde bei ausgeschaltetem Panel jede Marke stumm nichts tun |
 | Mindeststrecke vor dem Einblenden | **Bewiesen**, headless | verhindert Flackern beim bloßen Anklicken |
+| Fensterzug vs. Inhaltszug (#37): Klassifikator und Zustandsmaschine | **Bewiesen**, headless | `WindowMoveEvidenceTests` (Größe unverändert und Rahmen folgt dem Zeiger → `moved`; Inhaltszug, Zittern, Gegenrichtung, Quer-Verschiebung → `notMoved`; Kantenzug → `resized`; Grenzwerte von `minimumTravel` und Größentoleranz) und `EventTapDragTrackerTests` (`contentDragNeverBegins`, `evidenceArrivingLaterStillBegins`, `resizeAndUnreadableFrameDoNotBegin`, `stallWithinBudgetStillBegins`, `samplingStopsAfterBudget`, `budgetRestartsWithEachPress`, `samplerRunsOffMainThread`); geprüft wird mit eingespielten Rahmen, nicht mit echten Apps |
 | Ableitung Ablegen → Regel | **Bewiesen**, headless | `DropRuleOfferTests`; zweimal Ablegen verdoppelt die Regel nicht |
 | Alte Konfiguration ohne `dropzones` lädt | **Bewiesen**, headless | sonst wäre nicht der Schlüssel kaputt, sondern die ganze Datei |
 | Pause schaltet auch das Ziehen ab | **Bewiesen**, headless | `DropzoneActivator.suspension`; die Entscheidung liegt an einer Stelle, nicht in Controller und Menütext getrennt |
@@ -304,6 +305,7 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | **Erscheinen und Bedienbarkeit des Menüs am Bildschirm** | **Nicht gemessen** | Ob das `NSMenu` an der berechneten Position aufgeht, ob es die richtigen Zonen zeigt und ob der ⌥-Zusatz beim *Klick* korrekt gelesen wird, braucht eine Hand an der Maus — headless nicht prüfbar. Zonenermittlung und Trefferprüfung sind headless getestet, die AppKit-Anzeige nicht. |
 | **Verhalten auf Fenstern ohne `kAXZoomButton`** | **Gemessen für ein Finder-Fenster** | Ein Finder-Fenster lieferte kein `AXZoomButton`. Der Code trennt den Fall (`ZoomButtonLookup.Result.zoomButtonUnavailable`) und behandelt ihn **still**: das Attribut fehlt für das ganze Fenster, jeder beiläufige Rechtsklick würde sonst eine Meldung erzeugen. Ob **jedes** Finder-Fenster (und andere AXScrollArea-artige Fenster) es genauso hält, ist nicht gemessen. |
 | **Systemmenü beim Schweben mit eingeschalteter macOS-Fensteranordnung** | **Nicht gemessen** | Auf dieser Maschine ist `EnableTilingByEdgeDrag = 0`. Ob das Schweben-Menü der macOS-Fensteranordnung mit dem Rechtsklick-Menü kollidiert (verschiedene Gesten, aber am selben Pixel), braucht eine Maschine mit eingeschalteter Fensteranordnung und eine Positivkontrolle für das Schweben-Menü — beides fehlt. |
+| **Fensterzug vs. Inhaltszug (#37) in echten Apps** | **Nicht gemessen** | Wie echte Apps ihren AX-Rahmen während des Zugs melden (Verzögerung, Sprünge, Klemmen am Rand) und ob Inhaltsgesten den Rahmen wirklich unverändert lassen, belegt kein Unit-Test. Bleibt **Nicht gemessen**, bis die Liste unter „Manuelle Prüfung #37“ abgehakt ist; Apps, die nicht probiert wurden, werden nie als bewiesen geführt. |
 
 Kurz: Alles, was ohne einen echten Zug beweisbar ist, ist bewiesen. Alles, was
 einen braucht, ist als ungemessen ausgewiesen. Der Schnitt zwischen beidem war
@@ -315,6 +317,84 @@ die eigentliche Entwurfsarbeit.
 > Berechtigung, sondern an einer Hand an der Maus**. Wer die Zeilen anders liest
 > und in den Systemeinstellungen nach einem fehlenden Haken sucht, sucht
 > vergeblich.
+
+### Manuelle Prüfung #37
+
+Unit-Tests belegen den Klassifikator und die Zustandsmaschine mit eingespielten
+Rahmen. Sie belegen nicht, wie echte Apps den AX-Rahmen während eines Zugs
+melden, und nicht, dass Inhaltsgesten den Rahmen wirklich in Ruhe lassen. Das
+ist **Nicht gemessen** und von Hand abzuarbeiten. Die Ergebnisspalten sind
+absichtlich leer.
+
+**Vorbereitung.** `swift build`, App starten, Bedienungshilfen erteilt,
+Dropzones an. `openzonr dragprobe` bestätigt, dass der Tap existiert.
+Aktivierung in beiden Formen prüfen: Vorgabe `showsWhile(.command)` und Altform
+`showsUnless(.option)`.
+
+**Stellgrößen, falls ein Positivfall scheitert.**
+`WindowMoveEvidence.minimumTravel` (6 pt), `WindowMoveEvidence.minimumAlignment`
+(0,5, Kosinus zwischen Fensterverschiebung und Zeigerweg) und
+`EventTapDragTracker.frameSampleBudget` (2500 ms Wanduhr ab der ersten
+Rahmenabfrage eines Drucks, Uhr injizierbar). Eine gescheiterte Positivprobe
+wird als Folge-Issue geführt, die Negativfälle werden dafür nicht aufgeweicht.
+
+**Negativfälle.** Jeweils: kein Overlay, kein Platzieren und kein Anheften beim
+Loslassen über einer Zone oder Marke.
+
+1. Finder: Datei aus einem Fenster auf Zone/Marke ziehen; Gummiband in der
+   Symbolansicht; Scrollbalken des Fensters.
+2. TextEdit: Text über mehr als 3 pt markieren und über einer Zone loslassen;
+   bereits markierten Text ziehen; vertikaler Scrollbalken.
+3. Safari: Seitentext markieren; Link ziehen; Bild ziehen; Scrollbalken der
+   Seite, auch auf einer langen Seite.
+4. Terminal: Text markieren; Scroller ziehen.
+5. Chrome: Seitentext markieren; Link ziehen; Scrollbalken.
+6. Preview oder Xcode / VS Code (Electron, eigene Titelleiste): Text im Editor
+   markieren; Minimap oder Scrollbalken ziehen.
+7. Kanten- und Eckenzug zur Größenänderung in TextEdit und Safari
+   (Klassifikator: `resized`).
+
+**Positivfälle.** Jeweils: Overlay in den ersten Momenten des Zugs, Platzieren
+beim Ablegen, Anheften beim Ablegen auf der Marke.
+
+1. Titelleistenzug in TextEdit, Finder, Safari (native Leiste), Terminal.
+2. Leerer Bereich der Chrome-/Safari-Werkzeugleiste, der das Fenster bewegt;
+   Chrome-Tab-Zug bei Fenster mit einem Tab.
+3. VS Code und Xcode, eigene Titelleiste. Electron-Apps melden den Rahmen
+   womöglich spät: die Verzögerung bis zum Overlay notieren.
+4. Fensterzug per Hilfstaste: Ctrl+Cmd + Zug im Fensterinhalt (Systemgeste)
+   sowie die eingestellte Aktivierungstaste bei einem Titelleistenzug (beide
+   Formen, siehe Vorbereitung).
+5. Fenster bis ganz nach oben (Menüleisten-Klemme) und über zwei Displays
+   ziehen: Overlay bleibt, Ablegen platziert.
+6. **Am Bildschirmrand geklemmt:** Fenster überwiegend senkrecht nach oben in
+   die Menüleiste ziehen, bei kaum waagerechter Bewegung. **Bekannte Grenze,
+   zu messen:** Der Klassifikator verlangt einen Kosinus von mindestens 0,5
+   zwischen Fensterverschiebung und Zeigerweg. Bleibt das Fenster oben
+   stehen, während der Zeiger weiterläuft, kann der Wert darunter fallen und
+   der Beleg schlägt fehl. Der Ausgang ist dann **kein Overlay; das Fenster
+   bewegt sich normal**. Ob und bei welchen Apps das vorkommt, ist offen.
+7. Langsame App (Beachball oder träges AX): Das Overlay darf später kommen,
+   aber weder Maus noch Tap einfrieren. Im Protokoll (`Log.detail`) darf die
+   Zeile „Ereignis-Tap wegen Timeout kurz abgeschaltet; Zug wird fortgesetzt.“
+   nicht häufiger erscheinen als vorher.
+
+**Ergebnisse.** Leer, bis ein Mensch sie einträgt.
+
+| Fall (Nr.) | App | Version | Bestanden / nicht bestanden | Gemessene Verzögerung bis Overlay |
+|---|---|---|---|---|
+| | | | | |
+
+**Bekannte Grenzen.**
+
+- Ist der AX-Rahmen nicht lesbar, schlägt der Beleg geschlossen fehl: kein
+  Overlay, kein Ablegen (Entscheidung „geschlossen statt offen“).
+- Kanten- und Eckenzüge zählen als Größenänderung und bieten nie Zonen an.
+- Apps, deren Fenster sich erst nach dem Zeitbudget (2,5 s) zu bewegen beginnt,
+  werden übersehen.
+- Fenster am Rand, die nur auf einer Achse folgen, können unter die
+  Richtungsschwelle fallen (Positivfall 6).
+- Alle Schwellen sind Faustwerte, bis die Liste abgearbeitet ist.
 
 ---
 
@@ -329,6 +409,7 @@ Sources/OpenZonrCore/
   Dropzone/DropRuleOffer.swift        Ablegen → QuickPin.Request.
   Dropzone/ZoomButtonHit.swift        Trefferprüfung am grünen Knopf (Issue #27).
   Dropzone/CompetingWindowManagers.swift
+  Dropzone/WindowMoveEvidence.swift   Fensterzug oder Inhaltszug? Reiner Klassifikator (#37).
 
 Sources/OpenZonrMac/
   Dropzone/WindowDragTracker.swift    Gemeinsame Typen beider Wege.
