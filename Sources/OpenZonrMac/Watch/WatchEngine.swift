@@ -834,6 +834,9 @@ public final class WatchEngine {
             case .missingPermission:
                 Log.warn(Accessibility.permissionInstructions)
                 recorded = .notExecuted("keine Berechtigung")
+            case .cancelled:
+                Log.detail("Platzierung abgebrochen.")
+                recorded = .notExecuted("abgebrochen")
             case .suggested, .notApplicable, .skippedManualOverride:
                 Log.detail("Ergebnis: \(outcome)")
                 recorded = .notExecuted("\(outcome)")

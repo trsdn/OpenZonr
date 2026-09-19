@@ -190,4 +190,62 @@ struct RetryingWindowPlacerTests {
 
         #expect(outcome == .placed(attempts: 1))
     }
+
+    @Test("Wird waehrend der Anfangsverzoegerung abgebrochen, wird nie geschrieben")
+    @MainActor
+    func cancelDuringInitialDelayWritesNothing() async {
+        let flag = CancelFlag()
+        let window = FakeWindow(frame: WindowFrame(x: 500, y: 500, width: 800, height: 600))
+        let placer = RetryingWindowPlacer(wait: { _ in await MainActor.run { flag.isCurrent = false } })
+
+        let outcome = await placer.place(
+            window,
+            at: Self.target,
+            retry: RetryPolicy(attempts: 3, initialDelay: 0.5, interval: 0.5, tolerance: 2),
+            isCurrent: { flag.isCurrent }
+        )
+
+        #expect(outcome == .cancelled(attempts: 0))
+        #expect(window.writes.isEmpty)
+    }
+
+    @Test("Wird zwischen zwei Versuchen abgebrochen, folgt kein weiterer Schreibzugriff")
+    @MainActor
+    func cancelBetweenRetriesStopsWriting() async {
+        let flag = CancelFlag()
+        let window = FakeWindow(frame: WindowFrame(x: 500, y: 500, width: 800, height: 600))
+        window.resistUntilAttempt = .max
+        let placer = RetryingWindowPlacer(wait: { _ in await MainActor.run { flag.isCurrent = false } })
+
+        let outcome = await placer.place(
+            window,
+            at: Self.target,
+            retry: RetryPolicy(attempts: 5, initialDelay: 0, interval: 0.2, tolerance: 2),
+            isCurrent: { flag.isCurrent }
+        )
+
+        #expect(outcome == .cancelled(attempts: 1))
+        #expect(window.writes.count == 1)
+    }
+
+    @Test("Ein abgebrochener Task schreibt nicht mehr")
+    @MainActor
+    func cancelledTaskWritesNothing() async {
+        let window = FakeWindow(frame: WindowFrame(x: 500, y: 500, width: 800, height: 600))
+        let placer = RetryingWindowPlacer(wait: { _ in })
+
+        let task = Task { @MainActor in
+            await placer.place(window, at: Self.target, retry: RetryPolicy(), isCurrent: { !Task.isCancelled })
+        }
+        task.cancel()
+        let outcome = await task.value
+
+        #expect(outcome == .cancelled(attempts: 0))
+        #expect(window.writes.isEmpty)
+    }
+}
+
+@MainActor
+final class CancelFlag {
+    var isCurrent = true
 }

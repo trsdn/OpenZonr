@@ -93,7 +93,8 @@ public struct RetryingWindowPlacer {
     public func place(
         _ window: any PlaceableWindow,
         at placement: ResolvedPlacement,
-        retry: RetryPolicy
+        retry: RetryPolicy,
+        isCurrent: () -> Bool = { true }
     ) async -> PlacementOutcome {
         let target = placement.frame
         var lastActual: WindowFrame?
@@ -107,6 +108,13 @@ public struct RetryingWindowPlacer {
             // almost guaranteed to be overwritten.
             let delay = attempt == 1 ? retry.initialDelay : retry.interval
             if delay > 0 { await wait(.seconds(delay)) }
+
+            // The wait is where a pause, stop, reload or newer request for the
+            // same window lands. Checking here, and not only at entry, is what
+            // keeps the delayed write from happening after the user said stop.
+            guard !Task.isCancelled, isCurrent() else {
+                return .cancelled(attempts: attempt - 1)
+            }
 
             window.write(frame: target)
 
