@@ -109,6 +109,36 @@ struct ConfigurationDocumentBaselineTests {
         #expect(document.fileChangedOnDisk == false)
     }
 
+    @Test("reconcile ist idempotent: ein zweiter Abgleich hebt den Konflikt nicht auf")
+    func reconcileTwiceKeepsConflict() throws {
+        let (document, temp, base) = try makeDocument()
+        document.apply { var c = $0; c.defaults.dropzones.enabled = true; return c }
+        let external = try externalEdit(base, at: temp.url)
+        let bytes = ConfigurationDocument.bytes(at: temp.url)
+
+        document.reconcile(with: external, bytes: bytes)
+        document.reconcile(with: external, bytes: bytes)
+
+        #expect(document.hasExternalChange)
+        #expect(document.save() == false)
+        #expect(try diskRoles(temp.url).contains("extra"))
+    }
+
+    @Test("Unlesbare Datei beim Sichern blockiert und behält die Arbeitskopie")
+    func unreadableDiskBlocksSave() throws {
+        let (document, temp, _) = try makeDocument()
+        document.apply { var c = $0; c.defaults.dropzones.enabled = true; return c }
+        try Data("kein json".utf8).write(to: temp.url)
+
+        #expect(document.save() == false)
+
+        #expect(document.hasExternalChange)
+        #expect(document.configuration.defaults.dropzones.enabled == true)
+        // Auch ein zweiter Versuch bleibt gesperrt (Baseline ist nachgezogen).
+        #expect(document.save() == false)
+        #expect(document.save(overwritingExternalChanges: true))
+    }
+
     @Test("reconcile: schmutziger Editor behält Änderungen und meldet den Konflikt")
     func reconcileDirtyKeepsEdits() throws {
         let (document, temp, base) = try makeDocument()

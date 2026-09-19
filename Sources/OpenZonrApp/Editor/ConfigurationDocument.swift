@@ -209,12 +209,14 @@ final class ConfigurationDocument {
         }
         // Konflikt nur, wenn die Datei semantisch von dem abweicht, worauf die
         // Sitzung aufsetzt (ein bloss anders formatierter Dateistand ist keiner).
+        // Ein einmal erkannter Konflikt bleibt bestehen (idempotent), bis die
+        // Arbeitskopie dem Dateistand gleicht, verworfen oder überschrieben wird.
         let diskChanged = disk != original
         original = disk
-        hasExternalChange = diskChanged && configuration != disk
+        hasExternalChange = (hasExternalChange || diskChanged) && configuration != disk
         if configuration == disk {
             saveState = .unchanged
-        } else if case .failed = saveState {
+        } else if case let .failed(message) = saveState, message != Self.externalChangeMessage || hasExternalChange {
             // Die Meldung des gescheiterten Sicherns bleibt stehen.
         } else {
             saveState = .modified
