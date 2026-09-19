@@ -28,12 +28,17 @@ struct AppModelUpdateInstallTests {
         var trusted = true
         var access: Accessibility.WindowAccess = .granted
         var engineStarts = 0
+        var engineStops = 0
 
         var platform: AppModel.Platform {
             AppModel.Platform(
                 isTrusted: { self.trusted },
                 probeWindowAccess: { self.trusted ? self.access : .notTrusted },
-                startEngine: { _ in self.engineStarts += 1 }
+                startEngine: { _ in self.engineStarts += 1 },
+                stopEngine: { engine in
+                    self.engineStops += 1
+                    engine.stop()
+                }
             )
         }
     }
@@ -55,20 +60,24 @@ struct AppModelUpdateInstallTests {
         return loaded
     }
 
-    @Test("Installiert wird erst, nachdem angehalten wurde")
+    @Test("Installiert wird erst, nachdem Engine und Ziehen-Tracker angehalten sind")
     func stopsBeforeInstalling() async throws {
         let stub = Stub()
         let loaded = try runningModel(stub)
         let model = loaded.model
         let controller = model.dropzones
-        let stopsBefore = controller._stopCountForTesting
+        let dropzoneStopsBefore = controller._stopCountForTesting
+        let engineStopsBefore = stub.engineStops
 
         // Was die Attrappe im Moment des Installierens vorfindet, ist die
-        // eigentliche Messung.
+        // eigentliche Messung: nicht „hinterher war angehalten“, sondern
+        // „vorher war es schon“.
         var stoppedWhenInstalling: Bool?
+        var engineStopsWhenInstalling: Int?
         var dropzoneStopsWhenInstalling: Int?
         model.installAction = {
             stoppedWhenInstalling = model.isStoppedForUpdate
+            engineStopsWhenInstalling = stub.engineStops
             dropzoneStopsWhenInstalling = controller._stopCountForTesting
             return true
         }
@@ -77,7 +86,44 @@ struct AppModelUpdateInstallTests {
 
         #expect(installed)
         #expect(stoppedWhenInstalling == true)
-        #expect((dropzoneStopsWhenInstalling ?? 0) > stopsBefore)
+        #expect((engineStopsWhenInstalling ?? 0) > engineStopsBefore)
+        #expect((dropzoneStopsWhenInstalling ?? 0) > dropzoneStopsBefore)
+    }
+
+    /// Es gibt zwei Wege zum Installieren — den Menüknopf und das
+    /// Hinweisfenster nach einer Suche. Beide zusammen dürfen nicht dazu
+    /// führen, dass der zweite Anstoss die Beobachtung wieder anwirft, während
+    /// der erste das Bundle tauscht.
+    @Test("Ein zweiter Anstoss während des Tauschs prallt ab")
+    func aSecondTriggerDuringTheSwapIsIgnored() async throws {
+        let stub = Stub()
+        let loaded = try runningModel(stub)
+        let model = loaded.model
+        let controller = model.dropzones
+
+        var calls = 0
+        var secondResult: Bool?
+        var engineStartsDuringSecond: Int?
+        var dropzoneStartsDuringSecond: Int?
+
+        model.installAction = {
+            calls += 1
+            let startsBefore = stub.engineStarts
+            let dropzoneStartsBefore = controller._startCountForTesting
+            // Der zweite Anstoss fällt mitten in den laufenden Tausch.
+            secondResult = await model.installUpdate()
+            engineStartsDuringSecond = stub.engineStarts - startsBefore
+            dropzoneStartsDuringSecond = controller._startCountForTesting - dropzoneStartsBefore
+            return true
+        }
+
+        _ = await model.installUpdate()
+
+        #expect(calls == 1)
+        #expect(secondResult == false)
+        #expect(engineStartsDuringSecond == 0)
+        #expect(dropzoneStartsDuringSecond == 0)
+        #expect(model.isStoppedForUpdate)
     }
 
     @Test("Ohne Installation bleibt der Zustand unverändert angehalten")

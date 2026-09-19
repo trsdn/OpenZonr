@@ -42,6 +42,30 @@ struct UpdatePolicyTests {
         #expect(UpdatePolicy.wakeInterval < UpdatePolicy.checkInterval)
     }
 
+    /// Eine Uhr, die zurückspringt — Zeitzonenwechsel, NTP, von Hand gestellt —
+    /// darf das automatische Suchen nicht stilllegen. Ohne diese Regel bliebe
+    /// die Differenz für immer negativ und erreichte die Tagesfrist nie.
+    @Test("Ein Zeitpunkt in der Zukunft gilt als fällig")
+    func backwardsClockJumpIsDue() {
+        let tomorrow = now.addingTimeInterval(UpdatePolicy.checkInterval)
+        #expect(UpdatePolicy.isCheckDue(lastCheck: tomorrow, now: now))
+        #expect(UpdatePolicy.isCheckDue(lastCheck: now.addingTimeInterval(1), now: now))
+    }
+
+    // MARK: - Gesicherter Zeitpunkt
+
+    @Test("Ein gesichertes Datum wird gelesen")
+    func storedDateIsRead() {
+        #expect(UpdatePolicy.lastAutomaticCheck(stored: now) == now)
+    }
+
+    @Test("Ohne oder mit unbrauchbarem Eintrag gibt es keinen Zeitpunkt")
+    func missingOrUnusableStoredDate() {
+        #expect(UpdatePolicy.lastAutomaticCheck(stored: nil) == nil)
+        #expect(UpdatePolicy.lastAutomaticCheck(stored: "gestern") == nil)
+        #expect(UpdatePolicy.lastAutomaticCheck(stored: 42) == nil)
+    }
+
     // MARK: - Voreinstellung
 
     @Test("Ohne gespeicherten Wert ist das automatische Suchen an")

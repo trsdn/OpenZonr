@@ -127,12 +127,18 @@ final class AppModel {
         var isTrusted: @MainActor () -> Bool
         var probeWindowAccess: @MainActor () -> Accessibility.WindowAccess
         var startEngine: @MainActor (WatchEngine) -> Void
+        /// Das Gegenstück zu ``startEngine``. Eigene Naht, weil das Anhalten vor
+        /// einem Update-Tausch die Zusicherung trägt und ein Test es deshalb
+        /// beobachten können muss — ein echter ``WatchEngine`` läuft im Test
+        /// nicht und liesse sich an seinem Anhalten nicht erkennen.
+        var stopEngine: @MainActor (WatchEngine) -> Void = { $0.stop() }
 
         @MainActor static var live: Platform {
             Platform(
                 isTrusted: { Accessibility.isTrusted() },
                 probeWindowAccess: { Accessibility.probeWindowAccess() },
-                startEngine: { $0.start() }
+                startEngine: { $0.start() },
+                stopEngine: { $0.stop() }
             )
         }
     }
@@ -221,7 +227,7 @@ final class AppModel {
             // laufende Geste verwerfen noch das Overlay ausblenden (#44).
             startEngineIfPossible(restartDropzones: !wasUsable)
         } else {
-            engine?.stop()
+            stopEngine()
             // Ohne Berechtigung liefert der Tracker nichts Brauchbares mehr;
             // beim Verlust anhalten (nur beim Übergang, nicht bei jedem Tick).
             if wasUsable { dropzones.stop() }
@@ -268,7 +274,7 @@ final class AppModel {
     // MARK: - Configuration
 
     func reloadConfiguration() {
-        engine?.stop()
+        stopEngine()
         engine = nil
         dropzones.stop()
         profileState = nil
@@ -328,6 +334,13 @@ final class AppModel {
     }
 
     // MARK: - Engine
+
+    /// Hält den Engine an, wenn es einen gibt — über die Naht, damit ein Test
+    /// es sehen kann.
+    private func stopEngine() {
+        guard let engine else { return }
+        platform.stopEngine(engine)
+    }
 
     private func startEngineIfPossible(restartDropzones: Bool = false) {
         guard let configuration else { return }
@@ -494,7 +507,7 @@ final class AppModel {
     /// und muss deshalb ebenfalls weg.
     func stopForUpdate() {
         isStoppedForUpdate = true
-        engine?.stop()
+        stopEngine()
         dropzones.stop()
         Log.info("Fensterbeobachtung für den Update-Tausch angehalten.")
     }
@@ -511,8 +524,16 @@ final class AppModel {
     ///
     /// Die Reihenfolge ist der ganze Punkt: erst anhalten, dann installieren.
     /// Im Erfolgsfall kehrt das hier nie zurück, weil die App neu startet.
+    ///
+    /// Ein zweiter Anstoss während eines laufenden Tauschs prallt ab. Das ist
+    /// keine Feinheit: es gibt zwei Wege hierher (Menüknopf und Hinweisfenster),
+    /// und der zweite Aufruf fände in ``UpdateManager`` nichts Vorbereitetes
+    /// mehr vor, bekäme `false` zurück und würde Fensterbeobachtung und
+    /// Ziehen-Tracker mitten im Bundle-Tausch wieder anwerfen — also genau das
+    /// herbeiführen, wogegen ``stopForUpdate()`` schützt.
     @discardableResult
     func installUpdate() async -> Bool {
+        guard !isStoppedForUpdate else { return false }
         stopForUpdate()
         let install = installAction ?? { [updates] in await updates.installAndRelaunch() }
         if await install() { return true }

@@ -185,7 +185,7 @@ Unterschied ausmacht. Zwei Läufe derselben Binärdatei aus
   AXIsProcessTrusted():   false
   probeWindowAccess():    notTrusted — keine Freigabe für dieses Bundle
 
-# …/Contents/MacOS/OpenZonr selftest
+# …/Contents/MacOS/OpenZonrApp selftest
   Start:                  aus einer Shell — erbt fremdes Vertrauen
   AXIsProcessTrusted():   true
   probeWindowAccess():    degraded — Vertrauen gemeldet, aber nur Stellvertreter
@@ -441,7 +441,7 @@ Bedienungshilfen eintragen. Bei einem vorhandenen Eintrag aus einem unsignierten
 Lauf: entfernen und neu hinzufügen — den Haken nur neu zu setzen genügt nicht.
 
 ```bash
-APP=.build/OpenZonr.app/Contents/MacOS/OpenZonr
+APP=~/Applications/OpenZonr.app/Contents/MacOS/OpenZonrApp
 "$APP" windows --bundle com.apple.Safari       # muss AXStandardWindow ≠ 0x0 zeigen
 "$APP" displays --config-fragment              # Displays für die Konfiguration
 "$APP" watch --config <pfad>

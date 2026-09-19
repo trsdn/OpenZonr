@@ -9,7 +9,7 @@ import Testing
 struct AccessibilityGuidanceTests {
     @Test("Finds the bundle a binary lives in")
     func findsEnclosingBundle() {
-        let executable = URL(fileURLWithPath: "/Users/x/Applications/OpenZonr.app/Contents/MacOS/OpenZonr")
+        let executable = URL(fileURLWithPath: "/Users/x/Applications/OpenZonr.app/Contents/MacOS/OpenZonrApp")
         #expect(
             Accessibility.enclosingApplicationBundle(of: executable)?.path
                 == "/Users/x/Applications/OpenZonr.app"

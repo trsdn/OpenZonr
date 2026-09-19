@@ -40,7 +40,6 @@ final class UpdateManager {
     @ObservationIgnored private let updater = AppUpdater(owner: "trsdn", repo: "OpenZonr")
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var preparedUpdate: PreparedUpdate?
-    @ObservationIgnored private var lastAutomaticCheck: Date?
     @ObservationIgnored private var automaticCheckTask: Task<Void, Never>?
 
     init(defaults: UserDefaults = .standard) {
@@ -65,7 +64,11 @@ final class UpdateManager {
         }
         automaticCheckTask = Task { [weak self] in
             while !Task.isCancelled {
-                if let self, self.isAutomaticCheckDue {
+                // Ist das Modell weg, ist auch die Schleife fertig. Ein blosses
+                // `if let self` würde stattdessen bis in alle Ewigkeit stündlich
+                // schlafen und nichts tun.
+                guard let self else { return }
+                if self.isAutomaticCheckDue {
                     await self.check(userInitiated: false)
                 }
                 try? await Task.sleep(for: .seconds(UpdatePolicy.wakeInterval))
@@ -78,7 +81,18 @@ final class UpdateManager {
         automaticCheckTask = nil
     }
 
-    private var isAutomaticCheckDue: Bool {
+    /// Wann zuletzt automatisch gesucht wurde — gesichert in den
+    /// Voreinstellungen, siehe ``UpdatePolicy/lastAutomaticCheckKey``.
+    var lastAutomaticCheck: Date? {
+        get {
+            UpdatePolicy.lastAutomaticCheck(
+                stored: defaults.object(forKey: UpdatePolicy.lastAutomaticCheckKey)
+            )
+        }
+        set { defaults.set(newValue, forKey: UpdatePolicy.lastAutomaticCheckKey) }
+    }
+
+    var isAutomaticCheckDue: Bool {
         UpdatePolicy.isCheckDue(lastCheck: lastAutomaticCheck, now: Date())
     }
 
@@ -92,11 +106,12 @@ final class UpdateManager {
     /// antwortet immer.
     func check(userInitiated: Bool) async {
         guard !isBusy, preparedUpdate == nil else { return }
-        if userInitiated {
-            state = .checking
-        } else {
-            lastAutomaticCheck = Date()
-        }
+        // Auch die Hintergrundsuche macht sich als „beschäftigt“ kenntlich.
+        // Täte sie es nicht, liefe eine Suche des Nutzers daneben her, beide
+        // kämen bis zum Vorbereiten, und die zweite Zuweisung würde das schon
+        // geladene Update verlieren — samt seinem entpackten Verzeichnis.
+        state = .checking
+        if !userInitiated { lastAutomaticCheck = Date() }
 
         do {
             guard let update = try await updater.check() else {
@@ -105,7 +120,14 @@ final class UpdateManager {
             }
             Log.info("Update verfügbar: \(update.version)")
             state = .downloading(version: update.version)
-            preparedUpdate = try await update.prepareInstallation()
+            let prepared = try await update.prepareInstallation()
+            // Gürtel und Hosenträger: kommt hier trotz der Wache oben schon
+            // etwas Vorbereitetes an, wird es aufgeräumt statt vergessen.
+            if let stale = preparedUpdate {
+                preparedUpdate = nil
+                await stale.discard()
+            }
+            preparedUpdate = prepared
             state = .readyToInstall(version: update.version)
         } catch is CancellationError {
             state = .idle
@@ -136,6 +158,10 @@ final class UpdateManager {
             return true
         } catch {
             Log.warn("Update-Installation fehlgeschlagen: \(error.localizedDescription)")
+            // Der entpackte Download ist nach einem gescheiterten Tausch nichts
+            // mehr wert und läge sonst bis zum Neustart im Temporärverzeichnis.
+            // Die nächste Suche findet das Release ohnehin wieder.
+            await prepared.discard()
             state = .failed(error.localizedDescription)
             startAutomaticChecks()
             return false

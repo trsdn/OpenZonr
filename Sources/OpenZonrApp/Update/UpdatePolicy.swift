@@ -44,13 +44,35 @@ enum UpdatePolicy {
     /// Der Voreinstellungsschlüssel des automatischen Suchens.
     static let automaticChecksKey = "checkForUpdatesAutomatically"
 
+    /// Der Voreinstellungsschlüssel des letzten automatischen Suchlaufs.
+    ///
+    /// In den Voreinstellungen und nicht nur im Speicher: eine Menüleisten-App
+    /// wird selten beendet, aber ein Rechner wird neu gestartet. Mit einem rein
+    /// gemerkten Zeitpunkt begänne jeder Start mit einer fälligen Suche, und
+    /// „höchstens einmal am Tag“ wäre in Wahrheit „bei jedem Anmelden“.
+    static let lastAutomaticCheckKey = "lastAutomaticUpdateCheck"
+
+    /// Liest den gesicherten Zeitpunkt, oder `nil`, wenn dort nichts Brauchbares
+    /// steht.
+    static func lastAutomaticCheck(stored: Any?) -> Date? {
+        stored as? Date
+    }
+
     /// Ob eine automatische Suche fällig ist.
     ///
     /// Ohne vorherige Suche ist sie es sofort — sonst würde eine frisch
     /// gestartete App bis zum nächsten Tag nichts von einem Update erfahren.
+    ///
+    /// Ein gesicherter Zeitpunkt, der in der Zukunft liegt, gilt ebenfalls als
+    /// fällig. Sonst genügte eine Uhr, die einmal zurückspringt — durch
+    /// Zeitzonenwechsel, NTP oder von Hand gestellt —, um das automatische
+    /// Suchen dauerhaft stillzulegen: die Differenz bliebe für immer negativ
+    /// und erreichte die Tagesfrist nie.
     static func isCheckDue(lastCheck: Date?, now: Date) -> Bool {
         guard let lastCheck else { return true }
-        return now.timeIntervalSince(lastCheck) >= checkInterval
+        let elapsed = now.timeIntervalSince(lastCheck)
+        if elapsed < 0 { return true }
+        return elapsed >= checkInterval
     }
 
     /// Der Anfangswert des Schalters „Automatisch nach Updates suchen“.
