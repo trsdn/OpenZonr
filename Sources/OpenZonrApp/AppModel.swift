@@ -147,18 +147,20 @@ final class AppModel {
 
     init(
         configurationURL: URL = ConfigurationLocation.resolve(explicitPath: nil),
-        platform: Platform = .live
+        platform: Platform = .live,
+        updates: UpdateManager = UpdateManager()
     ) {
         self.configurationURL = configurationURL
         self.platform = platform
+        self.updates = updates
     }
 
     /// Called once the app has finished launching.
     func bootstrap() {
         signing = CodeSigningStatus.current()
 
-        logObservation = Log.addObserver { entry in
-            Task { @MainActor [weak self] in
+        logObservation = Log.addObserver { [weak self] entry in
+            Task { @MainActor in
                 self?.append(entry)
             }
         }
@@ -170,6 +172,9 @@ final class AppModel {
         reloadConfiguration()
         refreshPermission(probe: true)
         startPermissionPolling()
+        // Erst hier, nicht im Initialisierer: ein `AppModel` in einem Test soll
+        // nicht ins Netz greifen.
+        updates.startAutomaticChecks()
     }
 
     private func append(_ entry: Log.Entry) {
@@ -458,6 +463,62 @@ final class AppModel {
         updateStatus()
     }
     #endif
+
+    // MARK: - Updates
+
+    /// Die Update-Suche. Siehe ``UpdateManager``.
+    @ObservationIgnored let updates: UpdateManager
+
+    /// Wahr, solange die App für einen Bundle-Tausch angehalten ist.
+    ///
+    /// Sichtbarer Zustand und nicht nur eine lokale Variable, weil genau er die
+    /// Zusicherung trägt, um die es hier geht: beim Tausch darf kein Fenster
+    /// mehr unterwegs sein.
+    private(set) var isStoppedForUpdate = false
+
+    /// Die Naht, an der ein Test den echten Bundle-Tausch ersetzt.
+    ///
+    /// `nil` heisst: der echte Weg über ``UpdateManager``. Ein Test setzt hier
+    /// eine Attrappe ein und kann darin nachsehen, ob vorher wirklich angehalten
+    /// wurde — der echte Weg beendet den Prozess und kehrt nie zurück, ist also
+    /// nicht beobachtbar.
+    @ObservationIgnored var installAction: (@MainActor () async -> Bool)?
+
+    /// Hält alles an, was ein Fenster noch bewegen könnte.
+    ///
+    /// Zwei Dinge, und beide zählen. ``WatchEngine/stop()`` löst die
+    /// Fensterbeobachtung *und* leert den ``PlacementScheduler`` — ein Auftrag,
+    /// der auf sein Fenster wartet, würde sonst mitten im Bundle-Tausch
+    /// zuschlagen und die Fenster halb verschoben zurücklassen. Der
+    /// ``DropzoneController`` hängt am selben Zugriff und am selben Ereignis-Tap
+    /// und muss deshalb ebenfalls weg.
+    func stopForUpdate() {
+        isStoppedForUpdate = true
+        engine?.stop()
+        dropzones.stop()
+        Log.info("Fensterbeobachtung für den Update-Tausch angehalten.")
+    }
+
+    /// Nimmt die Arbeit wieder auf, wenn der Tausch nicht stattgefunden hat.
+    private func resumeAfterFailedInstall() {
+        isStoppedForUpdate = false
+        refreshPermission(probe: true)
+        if windowAccess.isUsable { dropzones.restart() }
+        Log.info("Update nicht installiert — Fensterbeobachtung läuft weiter.")
+    }
+
+    /// Hält die eigene Arbeit an und tauscht dann das Bundle.
+    ///
+    /// Die Reihenfolge ist der ganze Punkt: erst anhalten, dann installieren.
+    /// Im Erfolgsfall kehrt das hier nie zurück, weil die App neu startet.
+    @discardableResult
+    func installUpdate() async -> Bool {
+        stopForUpdate()
+        let install = installAction ?? { [updates] in await updates.installAndRelaunch() }
+        if await install() { return true }
+        resumeAfterFailedInstall()
+        return false
+    }
 
     // MARK: - Editor
 

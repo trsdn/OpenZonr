@@ -93,11 +93,12 @@ enum AppModelFixtures {
     @MainActor
     static func modelWithLoadedConfiguration(
         _ configuration: Configuration? = nil,
-        platform: AppModel.Platform = .live
+        platform: AppModel.Platform = .live,
+        updates: UpdateManager = UpdateManager()
     ) throws -> LoadedModel {
         let configuration = configuration ?? minimalConfiguration()
         let temp = try writeConfiguration(configuration)
-        let model = AppModel(configurationURL: temp.url, platform: platform)
+        let model = AppModel(configurationURL: temp.url, platform: platform, updates: updates)
         model.reloadConfiguration()
         // Ohne echten `WatchEngine` gibt es keinen Profilzustand — wir bauen ihn
         // von Hand. `apply(_:to:)` liest `activeProfile`, deshalb muss er stehen.

@@ -68,6 +68,10 @@ struct MenuContent: View {
 
         Divider()
 
+        updateEntries
+
+        Divider()
+
         Button("OpenZonr beenden") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
@@ -138,6 +142,85 @@ struct MenuContent: View {
         if let message = model.lastPinMessage {
             Text(message)
         }
+    }
+
+    // MARK: - Updates
+
+    /// Suchen, der Zustand und der Schalter — in dieser Reihenfolge.
+    ///
+    /// Die Zustandszeile steht oben und ist sichtbar, sobald es etwas zu sagen
+    /// gibt. Das ist der Unterschied zu einem Knopf, der nur nach dem Klick
+    /// antwortet: ein Update, das im Hintergrund gefunden und geladen wurde,
+    /// muss sich zeigen, ohne dass jemand danach sucht.
+    @ViewBuilder
+    private var updateEntries: some View {
+        let updates = model.updates
+
+        if let line = UpdatePolicy.statusLine(for: updates.state) {
+            Text(line)
+        }
+
+        if let title = UpdatePolicy.installTitle(for: updates.state) {
+            Button(title) { installUpdate() }
+            Button("Später") { Task { await updates.dismiss() } }
+        }
+
+        Button("Nach Updates suchen …") { checkForUpdates() }
+            .disabled(updates.isBusy || updates.hasPreparedUpdate)
+
+        Toggle("Automatisch nach Updates suchen", isOn: Binding(
+            get: { updates.automaticChecksEnabled },
+            set: { updates.automaticChecksEnabled = $0 }
+        ))
+    }
+
+    /// Das Menü schliesst sich beim Klick. Die Antwort auf eine Suche, die der
+    /// Nutzer angestossen hat, kommt deshalb als Hinweisfenster — eine Zeile in
+    /// einem Menü, das niemand wieder aufklappt, wäre keine Antwort.
+    private func checkForUpdates() {
+        Task {
+            let updates = model.updates
+            await updates.check(userInitiated: true)
+            switch updates.state {
+            case .upToDate:
+                present(title: "OpenZonr ist aktuell", message: "Es läuft die neueste Fassung.")
+            case let .failed(message):
+                present(title: "Update-Suche fehlgeschlagen", message: message)
+            case let .readyToInstall(version):
+                NSApp.activate(ignoringOtherApps: true)
+                let alert = NSAlert()
+                alert.messageText = "OpenZonr \(version) liegt bereit"
+                alert.informativeText = """
+                    OpenZonr hält die Fensterbeobachtung an, tauscht sich aus und startet neu. \
+                    Für ein paar Sekunden wird kein Fenster platziert.
+                    """
+                alert.addButton(withTitle: "Installieren und neu starten")
+                alert.addButton(withTitle: "Später")
+                if alert.runModal() == .alertFirstButtonReturn { installUpdate() }
+            case .idle, .checking, .downloading, .installing:
+                break
+            }
+        }
+    }
+
+    /// Anhalten und tauschen — die Reihenfolge steckt in
+    /// ``AppModel/installUpdate()``, damit sie prüfbar ist.
+    private func installUpdate() {
+        Task {
+            if await model.installUpdate() { return }
+            if case let .failed(message) = model.updates.state {
+                present(title: "Update konnte nicht installiert werden", message: message)
+            }
+        }
+    }
+
+    private func present(title: String, message: String) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     // MARK: - Recent placements
