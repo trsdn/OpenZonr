@@ -26,10 +26,10 @@ public struct DisplayAlias: StringIdentifier {
 /// The preferred source is the EDID data exposed by CoreGraphics
 /// (`CGDisplayVendorNumber`, `CGDisplayModelNumber`, `CGDisplaySerialNumber`).
 /// Some monitors report a serial number of `0`; for those a weaker fallback is
-/// used that additionally pins the native pixel size and the port index. The
+/// used that additionally pins the port index (the pixel size is informational only). The
 /// fallback is explicitly marked as such so the UI can warn that two identical
 /// monitors on swapped ports may be confused.
-public enum DisplayIdentity: Codable, Hashable, Sendable {
+public enum DisplayIdentity: Codable, Sendable {
 
     /// The built-in laptop display, detected via `CGDisplayIsBuiltin`.
     ///
@@ -43,10 +43,38 @@ public enum DisplayIdentity: Codable, Hashable, Sendable {
 
     /// Fallback for displays that report no usable serial number.
     ///
-    /// Vendor + model + native pixel size + port index is not globally unique,
-    /// but it is stable enough as long as the user does not swap two identical
-    /// monitors between ports.
+    /// Identity is vendor + model + port index. `pixelWidth`/`pixelHeight` are
+    /// carried for display and diagnostics only and are **excluded from
+    /// equality and hashing**: they used to record the *current* mode, so files
+    /// written by older versions hold arbitrary mode sizes, and a mode switch
+    /// must not turn the same monitor into a different one.
+    ///
+    /// Not globally unique: two identical monitors are told apart only by the
+    /// port index and are confused when swapped between ports.
     case fallback(vendorNumber: UInt32, modelNumber: UInt32, pixelWidth: Int, pixelHeight: Int, portIndex: Int)
+
+    // MARK: - Equatable / Hashable
+
+    /// Explicit rather than synthesized so that the pixel size of a
+    /// ``fallback(vendorNumber:modelNumber:pixelWidth:pixelHeight:portIndex:)``
+    /// never takes part in matching. `==` and `hash(into:)` both go through
+    /// this key, so they cannot drift apart.
+    fileprivate enum MatchKey: Hashable {
+        case builtin
+        case edid(UInt32, UInt32, UInt32)
+        case fallback(UInt32, UInt32, Int)
+    }
+
+    fileprivate var matchKey: MatchKey {
+        switch self {
+        case .builtin:
+            return .builtin
+        case let .edid(vendor, model, serial):
+            return .edid(vendor, model, serial)
+        case let .fallback(vendor, model, _, _, port):
+            return .fallback(vendor, model, port)
+        }
+    }
 
     // MARK: - Codable
 
@@ -98,6 +126,16 @@ public enum DisplayIdentity: Codable, Hashable, Sendable {
             try container.encode(pixelHeight, forKey: .pixelHeight)
             try container.encode(portIndex, forKey: .portIndex)
         }
+    }
+}
+
+extension DisplayIdentity: Hashable {
+    public static func == (lhs: DisplayIdentity, rhs: DisplayIdentity) -> Bool {
+        lhs.matchKey == rhs.matchKey
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(matchKey)
     }
 }
 
