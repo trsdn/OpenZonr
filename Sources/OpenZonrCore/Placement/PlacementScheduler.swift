@@ -32,6 +32,11 @@ public final class PlacementScheduler {
     /// Jobs that are still the current one for their window.
     public var pendingCount: Int { currentTicket.count }
 
+    /// Whether `window` has a job that is still the current one for it.
+    public func hasPendingJob(for window: WindowIdentifier) -> Bool {
+        currentTicket[window] != nil
+    }
+
     /// Starts `work` for `window`, cancelling any older job for the same window.
     public func submit(_ window: WindowIdentifier, work: @escaping Work) {
         cancel(window)

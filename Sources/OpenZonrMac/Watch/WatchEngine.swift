@@ -93,6 +93,11 @@ public final class WatchEngine {
     /// identifier token, from being reused. Pruned to `occupancy.trackedWindows`.
     private var windows: [WindowIdentifier: AccessibilityWindow] = [:]
 
+    /// For each incoming window with a running job, the occupants that job is
+    /// moving away. Their claim is provisional until the job ends, so they
+    /// count as present meanwhile. Entries only matter while the job is pending.
+    private var displacedByJob: [WindowIdentifier: [WindowIdentifier]] = [:]
+
     /// Deviation from its zone beyond which a placed window counts as moved away.
     private static let movedAwayThreshold: Double = 24
 
@@ -767,6 +772,14 @@ public final class WatchEngine {
     }
 
     private func status(of id: WindowIdentifier, holding placement: ResolvedPlacement) -> OccupantStatus {
+        // A claim whose write is still on its way has not reached the screen
+        // yet; its frame says nothing. That covers the incoming window and the
+        // occupants its job is moving.
+        if scheduler.hasPendingJob(for: id) { return .present }
+        for (incoming, occupants) in displacedByJob
+        where occupants.contains(id) && scheduler.hasPendingJob(for: incoming) {
+            return .present
+        }
         guard let window = windows[id], let frame = window.readFrame() else { return .gone }
         let expected = arrangement.flipVertically(placement.frame)
         return frame.maximumDeviation(from: expected) <= Self.movedAwayThreshold ? .present : .movedAway
@@ -871,6 +884,7 @@ public final class WatchEngine {
         let retry = configuration.defaults.retry
         let flipping = arrangement
 
+        displacedByJob[identifier] = displacing.map(\.window)
         scheduler.submit(identifier) { [weak self] isCurrent in
             var lastDeviation: Double?
 
@@ -910,6 +924,10 @@ public final class WatchEngine {
 
             guard let self else { return }
             self.occupancy.settle(result, claims: claims, window: identifier)
+            // A newer job for the same window keeps its own entry.
+            if !self.scheduler.hasPendingJob(for: identifier) {
+                self.displacedByJob[identifier] = nil
+            }
             self.windows = self.windows.filter { self.occupancy.trackedWindows.contains($0.key) }
             self.report(result.displaced, in: placement)
 

@@ -34,6 +34,35 @@ struct PlacementSchedulerTests {
         }
     }
 
+    @Test("hasPendingJob: wahr solange die Anfrage laeuft, sonst falsch")
+    func pendingJobQuery() async {
+        let scheduler = PlacementScheduler()
+        let a = TestConfigurations.identifier("a")
+        let b = TestConfigurations.identifier("b")
+        let window = FakeWindow(frame: start)
+        let outcomes = Outcomes()
+
+        submit(scheduler, a, window,
+               retry: RetryPolicy(attempts: 3, initialDelay: 0.5, interval: 0.2, tolerance: 2),
+               outcomes: outcomes,
+               wait: { _ in await Task.yield() })
+
+        #expect(scheduler.hasPendingJob(for: a))
+        #expect(!scheduler.hasPendingJob(for: b))
+
+        await scheduler.idle()
+        #expect(!scheduler.hasPendingJob(for: a))
+
+        submit(scheduler, a, window,
+               retry: RetryPolicy(attempts: 3, initialDelay: 0.5, interval: 0.2, tolerance: 2),
+               outcomes: outcomes,
+               wait: { _ in await Task.yield() })
+        #expect(scheduler.hasPendingJob(for: a))
+        scheduler.cancel(a)
+        #expect(!scheduler.hasPendingJob(for: a))
+        await scheduler.idle()
+    }
+
     @Test("Ein cancelAll waehrend der Anfangsverzoegerung verhindert jeden Schreibzugriff")
     func stopDuringInitialDelay() async {
         let scheduler = PlacementScheduler()
