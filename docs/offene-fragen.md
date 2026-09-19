@@ -170,7 +170,8 @@ designated => identifier "com.trsdn.openzonr" and anchor apple generic
   and certificate leaf[subject.OU] = <TEAM>
 ```
 
-Damit überlebt die Freigabe jeden Neubau. Ein Ad-hoc-Zertifikat genügt nicht, es
+Damit übersteht die Freigabe einen Neubau in der Regel; zugesichert ist das nicht
+(Issue #35, beobachtet am 30.08.2026). Ein Ad-hoc-Zertifikat genügt nicht, es
 hat keine solche Kette.
 
 **Der Pfad zählt trotzdem.** Ein frisch gebautes, identisch signiertes Bundle an
