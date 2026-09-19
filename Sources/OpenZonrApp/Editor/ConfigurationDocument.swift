@@ -50,6 +50,26 @@ final class ConfigurationDocument {
     private let url: URL
     private let store: ConfigurationStore
 
+    /// Die Dateibytes beim Laden bzw. nach dem letzten eigenen Schreiben. Ein
+    /// Unterschied zur Datei heisst „hier hat jemand anderes geschrieben“.
+    private var baseline: Data?
+
+    /// `true`, wenn die Datei außerhalb geändert wurde und die Arbeitskopie
+    /// davon abweicht: Sichern ist dann gesperrt, bis der Nutzer verwirft
+    /// (Dateistand übernehmen) oder ausdrücklich überschreibt.
+    private(set) var hasExternalChange = false
+
+    /// Wird nach einer bemerkten Fremdänderung gerufen, damit die App die
+    /// Laufzeit-Konfiguration nachzieht.
+    var onExternalChange: (() -> Void)?
+
+    static let externalChangeMessage =
+        "Die Konfigurationsdatei wurde außerhalb des Editors geändert. „Verwerfen“ übernimmt die Datei, „Trotzdem sichern“ überschreibt sie."
+
+    static func bytes(at url: URL) -> Data? { try? Data(contentsOf: url) }
+
+    var fileChangedOnDisk: Bool { Self.bytes(at: url) != baseline }
+
     /// Called after a successful write, so the app can reload the engine with
     /// the configuration that is now on disk.
     var onSave: ((Configuration) -> Void)?
@@ -58,8 +78,10 @@ final class ConfigurationDocument {
         configuration: Configuration,
         url: URL,
         displaySnapshots: [DisplaySnapshot] = [],
-        store: ConfigurationStore = ConfigurationStore()
+        store: ConfigurationStore = ConfigurationStore(),
+        baseline: Data? = nil
     ) {
+        self.baseline = baseline ?? Self.bytes(at: url)
         let report = store.validate(configuration)
         self.configuration = configuration
         self.original = configuration
@@ -126,6 +148,7 @@ final class ConfigurationDocument {
         configuration = original
         report = store.validate(configuration)
         findings = FindingIndex(report)
+        hasExternalChange = false
         saveState = .unchanged
     }
 
@@ -135,11 +158,24 @@ final class ConfigurationDocument {
     ///
     /// Errors are kept rather than thrown: the save button lives in a window
     /// whose only sensible reaction is to show what went wrong, right there.
+    /// Ist die Datei seit dem Laden außerhalb geändert worden, wird nicht
+    /// geschrieben (verlorenes Update), ausser der Nutzer verlangt es
+    /// ausdrücklich.
     @discardableResult
-    func save() -> Bool {
+    func save(overwritingExternalChanges: Bool = false) -> Bool {
+        if !overwritingExternalChanges {
+            if fileChangedOnDisk { refreshFromDisk() }
+            if hasExternalChange {
+                saveState = .failed(Self.externalChangeMessage)
+                onExternalChange?()
+                return false
+            }
+        }
         do {
             try store.save(configuration, to: url)
+            baseline = Self.bytes(at: url)
             original = configuration
+            hasExternalChange = false
             saveState = .saved(Date())
             onSave?(configuration)
             return true
@@ -149,6 +185,55 @@ final class ConfigurationDocument {
         } catch {
             saveState = .failed("Speichern fehlgeschlagen: \(error)")
             return false
+        }
+    }
+
+    // MARK: - Disk baseline
+
+    /// Gleicht die Sitzung mit einem frisch geladenen Dateistand ab.
+    ///
+    /// Sauber: der Dateistand wird übernommen. Schmutzig: die Arbeitskopie
+    /// bleibt, der Ausgangsstand (Ziel von „Verwerfen“) wird der Dateistand,
+    /// und weicht die Arbeitskopie davon ab, ist Sichern gesperrt.
+    func reconcile(with disk: Configuration, bytes: Data?) {
+        baseline = bytes
+        if !hasUnsavedChanges {
+            guard disk != configuration else { hasExternalChange = false; original = disk; return }
+            configuration = disk
+            original = disk
+            report = store.validate(disk)
+            findings = FindingIndex(report)
+            saveState = .unchanged
+            hasExternalChange = false
+            return
+        }
+        // Konflikt nur, wenn die Datei semantisch von dem abweicht, worauf die
+        // Sitzung aufsetzt (ein bloss anders formatierter Dateistand ist keiner).
+        let diskChanged = disk != original
+        original = disk
+        hasExternalChange = diskChanged && configuration != disk
+        if configuration == disk {
+            saveState = .unchanged
+        } else if case .failed = saveState {
+            // Die Meldung des gescheiterten Sicherns bleibt stehen.
+        } else {
+            saveState = .modified
+        }
+    }
+
+    /// Die Datei lässt sich nicht (mehr) laden. Sichern bleibt gesperrt, bis der
+    /// Nutzer ausdrücklich überschreibt; die Arbeitskopie bleibt erhalten.
+    func noteUnreadableDisk(bytes: Data?) {
+        baseline = bytes
+        hasExternalChange = true
+    }
+
+    private func refreshFromDisk() {
+        let bytes = Self.bytes(at: url)
+        if case let .loaded(disk, _, _) = store.load(at: url) {
+            reconcile(with: disk, bytes: bytes)
+        } else {
+            noteUnreadableDisk(bytes: bytes)
         }
     }
 
