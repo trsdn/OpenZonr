@@ -12,6 +12,47 @@ existiert; dessen Text wird zu den Release-Notes.
 
 ## [Unreleased]
 
+### Geändert
+
+- **Das Menü der Menüleisten-App ist neu sortiert und spricht Alltagssprache.**
+  Statt eines Zustandsnamens mit Zähler („Kein Profil passt — 2 Profile in der
+  Konfiguration") steht jetzt **eine** Zeile da, die sagt, woran man ist, und
+  höchstens ein Knopf, der sagt, was zu tun ist: „Zugriff fehlt — ohne ihn kann
+  OpenZonr keine Fenster bewegen" mit „Zugriff freigeben …", „Bereit — Setup
+  „Schreibtisch"", „Kein Setup passt zu den angeschlossenen Bildschirmen" mit
+  „Was ist zu tun? …", „Pausiert". Ganz oben steht in **jedem** Zustand „OpenZonr"
+  mit der Fassung aus dem Bundle ([#56](https://github.com/trsdn/OpenZonr/issues/56)).
+  Alles Technische und Seltene — Setup von Hand wählen, letzte Platzierungen,
+  Konfiguration neu laden, Status und Berechtigung, Autostart, die
+  Update-Einstellungen — liegt unter „Mehr". Nichts ist weggefallen; ein
+  bereitliegendes Update und die Warnung vor einem zweiten Fenstermanager
+  bleiben oben, weil beides eine Entscheidung verlangt.
+- **Aus zwei Schaltern fürs Ziehen ist eine Frage geworden: wann kommen die
+  Zonen?** „Fenster in Zonen ziehen" plus eine unsichtbare Aktivierungsregel in
+  der Datei sind ersetzt durch drei Zeilen unter „Zonen beim Ziehen": „Bei jedem
+  Ziehen", „Nur mit gehaltener ⌘-Taste", „Aus". Der Haken steht am **wirksamen**
+  Zustand aus der geladenen Konfiguration. Eine von Hand geschriebene Regel, die
+  keine der drei ist (etwa „nur mit ⌥"), bekommt eine eigene, angehakte Zeile
+  statt eines falschen Hakens. Geschrieben wird sofort und in die Datei, wie
+  bisher der Schalter ([#41](https://github.com/trsdn/OpenZonr/issues/41)).
+- Menüeinträge umbenannt: „Regeln bearbeiten …" heißt „Zonen und Regeln
+  bearbeiten …", „Aktuelles Fenster hier festhalten" heißt „Aktuelles Fenster
+  festhalten", „Platzierung pausieren" ist zu „Fenster automatisch platzieren"
+  umgedreht.
+
+### Hinzugefügt
+
+- **Eine Zeile „Letzter Zug" im Menü, die sagt, warum die Zonen ausblieben.**
+  „Letzter Zug: keine Zonen — ⌘ war nicht gedrückt.", „… kein Fenster unter dem
+  Zeiger erkannt.", „… Bewegung nicht als Fensterzug erkannt.", „… losgelassen,
+  bevor sich das Fenster bewegt hat." Vier Ursachen, die bisher alle gleich
+  aussahen: es passiert nichts. `EventTapDragTracker` hat dafür einen zweiten
+  Rückweg (`onOutcome`) für Drücke bekommen, die es nie bis zu einem Zug
+  schaffen — höchstens ein Satz je Druck, keiner für einen gewöhnlichen Klick,
+  und weiterhin kein AX-Aufruf im Tap-Rückruf
+  ([#26](https://github.com/trsdn/OpenZonr/issues/26),
+  [#37](https://github.com/trsdn/OpenZonr/issues/37)).
+
 ## [0.1.1] - 2026-09-20
 
 ### Behoben

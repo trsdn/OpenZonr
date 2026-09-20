@@ -12,15 +12,61 @@ getrennt davon — was von der App tatsächlich gemessen ist und was nicht.
 
 | | |
 |---|---|
-| **Zustand** | Das Symbol unterscheidet fünf Fälle: aktiv, pausiert, keine Berechtigung, keine Konfiguration, kein Profil passt. Jeder hat ein eigenes Symbol und eine Überschrift im Menü. |
-| **Profil** | Das erkannte Profil steht im Menü; jedes konfigurierte Profil lässt sich von Hand wählen. |
-| **Pause** | Platzierung anhalten und fortsetzen, ohne die App zu beenden. Der Watcher läuft weiter und protokolliert, bewegt aber nichts. |
-| **Autostart** | Über `SMAppService.mainApp`. |
+| **Kopfzeile** | „OpenZonr" plus die Fassung aus dem Bundle, in **jedem** Zustand der erste Eintrag ([#56](https://github.com/trsdn/OpenZonr/issues/56)). |
+| **Zustand** | Das Symbol unterscheidet fünf Fälle: aktiv, pausiert, keine Berechtigung, keine Konfiguration, kein Profil passt. Im Menü steht dazu **eine** Zeile in Alltagssprache und höchstens ein Knopf. |
+| **Setup** | Das erkannte Setup (in der Konfiguration: Profil) steht in der Zustandszeile; jedes konfigurierte lässt sich unter „Mehr → Setup" von Hand wählen. |
+| **Automatik** | „Fenster automatisch platzieren" hält die Platzierung an und setzt sie fort, ohne die App zu beenden. Der Watcher läuft weiter und protokolliert, bewegt aber nichts. |
+| **Zonen beim Ziehen** | Drei Zeilen, die aussprechen, **wann** die Zonen erscheinen: „Bei jedem Ziehen", „Nur mit gehaltener ⌘-Taste", „Aus". Der Haken steht am wirksamen Zustand aus der geladenen Konfiguration; eine von Hand geschriebene Regel, die keine der drei ist, bekommt eine eigene Zeile. |
+| **Letzter Zug** | Ein grauer Satz, warum der zuletzt beobachtete Zug ausging, wie er ausging („keine Zonen — ⌘ war nicht gedrückt", „kein Fenster unter dem Zeiger erkannt"). Diagnose, siehe unten. |
+| **Autostart** | Über `SMAppService.mainApp`. Unter „Mehr". |
 | **Berechtigung** | Ein eigenes Fenster, das den konkreten Zustand erklärt und die drei Wege dorthin anbietet. Siehe unten. |
-| **Letzte Platzierungen** | Die letzten Entscheidungen als Liste, dazu der vollständige Protokollstrom. |
-| **Festhalten** | „Aktuelles Fenster hier festhalten" schreibt Regel und Bindung für das vorderste Fenster. Siehe [docs/regel-editor.md](regel-editor.md). |
-| **Regeln bearbeiten** | Ein eigenes Fenster für Regeln, Rollen & Profile und Zonen. Siehe [docs/regel-editor.md](regel-editor.md). |
-| **Updates** | „Nach Updates suchen …" und „Automatisch nach Updates suchen" (voreingestellt an). Liegt etwas bereit, sagt es eine Zeile im Menü. Vor dem Bundle-Tausch hält die App Fensterbeobachtung, ausstehende Platzierungen und den Ziehen-Tracker an. Ablauf und Voraussetzungen stehen im [README](../README.md#updates-und-veröffentlichen); **ein echter Durchlauf ist nicht gemessen**, solange es kein Release gibt. |
+| **Letzte Platzierungen** | Die letzten Entscheidungen als Liste, dazu der vollständige Protokollstrom. Unter „Mehr". |
+| **Festhalten** | „Aktuelles Fenster festhalten" schreibt Regel und Bindung für das vorderste Fenster. Siehe [docs/regel-editor.md](regel-editor.md). |
+| **Zonen und Regeln bearbeiten** | Ein eigenes Fenster für Regeln, Rollen & Profile und Zonen. Siehe [docs/regel-editor.md](regel-editor.md). |
+| **Updates** | „Nach Updates suchen …" und „Automatisch nach Updates suchen" (voreingestellt an) liegen unter „Mehr". Liegt etwas bereit, steht die Zeile samt „Installieren"/„Später" **oben** — sie verlangt eine Entscheidung. Vor dem Bundle-Tausch hält die App Fensterbeobachtung, ausstehende Platzierungen und den Ziehen-Tracker an. Ablauf und Voraussetzungen stehen im [README](../README.md#updates-und-veröffentlichen); **ein echter Durchlauf ist nicht gemessen**, solange es kein Release gibt. |
+
+## Der Aufbau des Menüs
+
+Von oben nach unten, in jedem Zustand:
+
+1. **`OpenZonr <Fassung>`** — nicht anklickbar, immer zuerst.
+2. **Eine Zustandszeile** plus höchstens ein Knopf: „Zugriff fehlt — ohne ihn
+   kann OpenZonr keine Fenster bewegen" / „Zugriff freigeben …", „Kein Setup
+   passt zu den angeschlossenen Bildschirmen" / „Was ist zu tun? …", „Bereit —
+   Setup „Schreibtisch"", „Pausiert — es wird nichts automatisch platziert".
+3. **Was eine Entscheidung verlangt** — ein bereitliegendes Update, die Warnung
+   vor einem zweiten Fenstermanager.
+4. **Die zwei Schalter**: „Fenster automatisch platzieren" und „Zonen beim
+   Ziehen".
+5. **Der letzte Zug** als grauer Satz.
+6. **Zwei Handlungen**: „Aktuelles Fenster festhalten", „Zonen und Regeln
+   bearbeiten …".
+7. **„Mehr"** — Setup, Letzte Platzierungen, Konfiguration neu laden, Status und
+   Berechtigung, Bei Anmeldung starten, die Update-Einstellungen.
+8. **„OpenZonr beenden"**.
+
+Die Reihenfolge ist die Antwort auf „ich sehe da überhaupt nicht durch": vorher
+stand das Menü in der Reihenfolge des Programms und zeigte Zustandsnamen samt
+Zähler („Kein Profil passt — 2 Profile in der Konfiguration"), was beschreibt,
+aber nicht sagt, was los ist. Die Wortwahl liegt jetzt in `MenuPresentation.swift`
+als reine Funktionen — eine `MenuBarExtra` lässt sich nicht aufklappen und
+ablesen, eine Funktion schon.
+
+### Warum die Zeile „Letzter Zug"
+
+Sie ist Diagnose, und zwar für einen Fehler, dessen Ursache offen ist: auf der
+Maschine des Betreuers erscheinen die Zonen nicht, wenn ⌘ gedrückt wird. Kein
+möglicher Grund ist von aussen zu sehen — kein Fenster unter dem Druckpunkt,
+kein Bewegungsbeleg ([#37](https://github.com/trsdn/OpenZonr/issues/37)), die
+Taste nicht gesehen, gar kein Zug erkannt. Alle vier sehen gleich aus: es
+passiert nichts.
+
+`EventTapDragTracker` hat dafür einen zweiten Rückweg bekommen (`onOutcome`),
+der **genau die Drücke** meldet, die es nie bis zu einem `.began` schaffen —
+höchstens einen Satz je Druck, und keinen für einen gewöhnlichen Klick. Die
+Zusicherungen aus [#26](https://github.com/trsdn/OpenZonr/issues/26) bleiben
+unberührt: im Tap-Rückruf steht weiterhin kein AX-Aufruf, der Kanal reicht nur
+weiter, was die Zustandsmaschine ohnehin schon entschieden hat.
 
 ## Entscheidungen
 
