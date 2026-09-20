@@ -29,6 +29,15 @@ final class DropzoneController {
     /// instead of showing a feature that quietly does nothing.
     private(set) var problem: String?
 
+    /// Buchhaltung für das Ergebnis des laufenden Zugs (siehe ``DragOutcome``).
+    ///
+    /// Gesammelt wird über den ganzen Zug und erst beim Loslassen gemeldet: wer
+    /// ⌘ mitten im Zug wieder loslässt, hat die Zonen trotzdem gesehen, und ein
+    /// Satz, der nur den letzten Augenblick beschreibt, würde in die Irre führen.
+    private var dragSawZones = false
+    private var dragHiddenReason: DropzoneActivation?
+    private var dragLacksSetup = false
+
     #if DEBUG
     /// Nur für Tests: `true`, wenn `start()` einen laufenden Tracker
     /// installiert hat. Die App selbst braucht das nicht — der Tracker
@@ -66,8 +75,10 @@ final class DropzoneController {
         #endif
         stop()
         if let suspension = DropzoneActivator.suspension(settings: settings, isPaused: model.isPaused) {
-            // Only the pause gets a line in the menu. "Switched off" is what the
-            // toggle right above it already says; repeating it would be noise.
+            // Nur die Pause bekommt eine eigene Zeile. „Abgeschaltet" steht
+            // schon in der Aufschrift der Zeile darüber — sie lautet dann
+            // „Zonen beim Ziehen: aus" (siehe ``DropzoneTrigger/rowTitle(_:)``),
+            // und ein zweiter Satz daneben wäre Rauschen.
             problem = suspension == .paused ? suspension.explanation : nil
             return
         }
@@ -79,6 +90,10 @@ final class DropzoneController {
         let tap = EventTapDragTracker(primaryTopY: arrangement.primaryTopY)
         tap.minimumDragDistance = settings.minimumDragDistance
         tap.onEvent = { [weak self] event in self?.handle(event) }
+        // Drücke, die es nie bis zu einem `.began` schaffen, sind genau die,
+        // über die „die Zonen kommen nicht“ aufzuklären ist. Sie kommen durch
+        // einen eigenen Kanal und landen unverändert im Modell.
+        tap.onOutcome = { [weak self] outcome in self?.model.recordDragOutcome(outcome) }
         tap.onRightClick = { [weak self] appKitPoint, lookup in
             // Der Rechtsklick geht am Zug vorbei. Der Tracker hat die
             // AX-Abfrage schon im Hintergrund erledigt und liefert das
@@ -137,6 +152,9 @@ final class DropzoneController {
         case let .began(window, point):
             origin = point
             dragged = window
+            dragSawZones = false
+            dragHiddenReason = nil
+            dragLacksSetup = false
             // A new drag retires the previous offer: answering it now would
             // pin the app to the zone of a drop two gestures ago.
             dismissOffer()
@@ -146,12 +164,17 @@ final class DropzoneController {
 
         case let .ended(point, modifiers):
             update(pointer: point, modifiers: modifiers)
+            // Erst ablegen, dann den Satz festhalten. Ein Ablegen auf der
+            // Anheft-Marke schreibt eine Regel, das Sichern lädt neu, und ein
+            // Neuladen vergisst den letzten Zug — in der anderen Reihenfolge
+            // wäre der Satz weg, kaum dass er dastand.
             drop(at: point)
-            overlay.hide()
+            model.recordDragOutcome(finishedDragOutcome())
             origin = nil
             dragged = nil
 
         case let .cancelled(reason):
+            model.recordDragOutcome(.cancelled(reason: reason))
             // Ein Abbruch trifft den Nutzer mitten in einer sichtbaren Geste:
             // das Overlay verschwindet, und ohne Hinweis bleibt unklar warum.
             // Deshalb geht die Meldung durch denselben Kanal wie andere
@@ -165,8 +188,27 @@ final class DropzoneController {
         }
     }
 
+    /// Das Urteil über den gerade beendeten Zug.
+    ///
+    /// „Zonen gesehen" schlägt alles andere: es ist das, was der Nutzer erlebt
+    /// hat. Erst danach zählt der Grund, aus dem sie zuletzt ausblieben.
+    ///
+    /// Ohne aufgezeichneten Grund wird keiner behauptet. Ein Rückfall auf
+    /// ``DropzoneActivation/disabled`` wäre bequem und falsch: er nennte eine
+    /// Ursache, die niemand gemessen hat — in einer Zeile, deren ganzer Zweck
+    /// die Ursachensuche ist.
+    private func finishedDragOutcome() -> DragOutcome {
+        if dragSawZones { return .zonesShown }
+        if dragLacksSetup { return .noSetupActive }
+        guard let reason = dragHiddenReason else { return .zonesHiddenWithoutReason }
+        return .zonesHidden(reason)
+    }
+
     private func update(pointer: ScreenPoint, modifiers: ModifierState) {
         guard let origin, let configuration = model.configuration, let profile = model.activeProfile else {
+            // Ohne Setup gibt es keine Zonen — ein eigener Grund, der sonst als
+            // „abgeschaltet" gemeldet würde und niemanden weiterbrächte.
+            if model.activeProfile == nil { dragLacksSetup = true }
             overlay.hide()
             return
         }
@@ -186,6 +228,11 @@ final class DropzoneController {
             modifiers: modifiers
         )
         lastPlan = plan
+        if case let .hidden(activation) = plan {
+            dragHiddenReason = activation
+        } else {
+            dragSawZones = true
+        }
         overlay.show(plan)
     }
 

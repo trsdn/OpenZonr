@@ -3,9 +3,10 @@ import Testing
 @testable import OpenZonrApp
 @testable import OpenZonrCore
 
-/// Der Menü-Schalter „Fenster in Zonen ziehen“ muss unabhängig davon wirken,
-/// ob der Editor je geöffnet wurde (Issue #41).
-@Suite("AppModel — Ziehen-Schalter im Menü")
+/// Das Ausschalten der Zonen („Zonen beim Ziehen → Aus“, früher der Schalter
+/// „Fenster in Zonen ziehen“) muss unabhängig davon wirken, ob der Editor je
+/// geöffnet wurde (Issue #41).
+@Suite("AppModel — Zonen beim Ziehen ausschalten")
 @MainActor
 struct AppModelDropzoneToggleTests {
 
@@ -27,9 +28,9 @@ struct AppModelDropzoneToggleTests {
         let loaded = try enabledModel()
         #expect(loaded.model.document == nil)
 
-        loaded.model.dropzonesEnabled = false
+        loaded.model.setDropzoneTrigger(.off)
 
-        #expect(loaded.model.dropzonesEnabled == false)
+        #expect(loaded.model.configuration?.defaults.dropzones.enabled == false)
         #expect(try onDisk(loaded).defaults.dropzones.enabled == false)
         #expect(loaded.model.document == nil)
     }
@@ -39,9 +40,9 @@ struct AppModelDropzoneToggleTests {
         let loaded = try enabledModel()
         let document = try #require(loaded.model.editorDocument())
 
-        loaded.model.dropzonesEnabled = false
+        loaded.model.setDropzoneTrigger(.off)
 
-        #expect(loaded.model.dropzonesEnabled == false)
+        #expect(loaded.model.configuration?.defaults.dropzones.enabled == false)
         #expect(try onDisk(loaded).defaults.dropzones.enabled == false)
         #expect(document.configuration.defaults.dropzones.enabled == false)
         #expect(document.hasUnsavedChanges == false)
@@ -54,9 +55,9 @@ struct AppModelDropzoneToggleTests {
         document.apply { var c = $0; c.roles.append(ZoneRole(id: "extra", name: "Extra")); return c }
         #expect(document.hasUnsavedChanges)
 
-        loaded.model.dropzonesEnabled = false
+        loaded.model.setDropzoneTrigger(.off)
 
-        #expect(loaded.model.dropzonesEnabled == false)
+        #expect(loaded.model.configuration?.defaults.dropzones.enabled == false)
         let saved = try onDisk(loaded)
         #expect(saved.defaults.dropzones.enabled == false)
         // Die ungesicherte Rolle steht weder in der Datei noch ist sie verloren.
@@ -71,10 +72,10 @@ struct AppModelDropzoneToggleTests {
         let loaded = try enabledModel()
         _ = loaded.model.editorDocument()  // „Fenster zu“ ändert am Modell nichts
 
-        loaded.model.dropzonesEnabled = false
-        loaded.model.dropzonesEnabled = true
+        loaded.model.setDropzoneTrigger(.off)
+        loaded.model.setDropzoneTrigger(.everyDrag)
 
-        #expect(loaded.model.dropzonesEnabled == true)
+        #expect(loaded.model.configuration?.defaults.dropzones.enabled == true)
         #expect(try onDisk(loaded).defaults.dropzones.enabled == true)
         #expect(loaded.model.document?.configuration.defaults.dropzones.enabled == true)
         #expect(loaded.model.document?.hasUnsavedChanges == false)
@@ -88,9 +89,9 @@ struct AppModelDropzoneToggleTests {
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: loaded.temp.directory.path)
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: loaded.temp.directory.path) }
 
-        loaded.model.dropzonesEnabled = false
+        loaded.model.setDropzoneTrigger(.off)
 
-        #expect(loaded.model.dropzonesEnabled == true)
+        #expect(loaded.model.configuration?.defaults.dropzones.enabled == true)
         #expect(loaded.model.lastPinFailed == true)
         #expect(loaded.model.lastPinMessage?.isEmpty == false)
         #expect(document.configuration.defaults.dropzones.enabled == true)

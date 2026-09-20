@@ -5,70 +5,86 @@ import SwiftUI
 
 /// What drops out of the menu bar icon.
 ///
-/// Deliberately a plain `.menu`-style menu rather than a custom panel: the four
-/// things this app has to offer — see the state, switch the profile, pause,
-/// start at login — are exactly what a menu is for, and a menu is keyboard
-/// navigable and legible at every text size without any work.
+/// Deliberately a plain `.menu`-style menu rather than a custom panel: a menu is
+/// keyboard navigable and legible at every text size without any work.
+///
+/// ## Der Umbau
+///
+/// Die erste Fassung war nach dem Programm sortiert, nicht nach dem Nutzer: sie
+/// zeigte Zustandsnamen („Kein Profil passt — 2 Profile in der Konfiguration“),
+/// stellte den Ein/Aus-Schalter fürs Ziehen neben eine Aktivierungsregel, die
+/// nirgends sichtbar war, und mischte Seltenes (Konfiguration neu laden,
+/// Update-Schalter) unter Alltägliches. Jetzt gilt eine Reihenfolge:
+///
+/// 1. **Kopfzeile** — Name und Fassung, in jedem Zustand als Erstes (Issue #56).
+/// 2. **Eine Zustandszeile** in Alltagssprache, mit höchstens einem Knopf.
+/// 3. **Was Aufmerksamkeit verlangt** — ein bereitliegendes Update, ein zweiter
+///    Fenstermanager. Beides bleibt oben, weil beides eine Entscheidung will.
+/// 4. **Die zwei Schalter**, die man wirklich umlegt.
+/// 5. **Der letzte Zug** als grauer Satz: Diagnose für einen offenen Fehler.
+/// 6. **Zwei Handlungen**: festhalten, bearbeiten.
+/// 7. **„Mehr“** für alles Technische und Seltene.
+/// 8. **Beenden**.
+///
+/// Nichts ist weggefallen; alles Seltene ist einen Schritt tiefer gerutscht.
 struct MenuContent: View {
 
     @Bindable var model: AppModel
 
+    private var statusLine: MenuStatus.Line {
+        MenuStatus.line(
+            status: model.status,
+            profileName: model.activeProfile?.name,
+            isPaused: model.isPaused,
+            hasProblem: model.configurationProblem != nil
+        )
+    }
+
+    /// Ohne Zugriff oder ohne Einstellungen ist jeder Schalter eine Lüge.
+    private var isBlocked: Bool {
+        model.status == .needsPermission || model.configuration == nil
+    }
+
     var body: some View {
         Section {
-            Text("\(model.status.headline) — \(model.statusDetail)")
+            Text(MenuStatus.header(version: model.appVersion))
         }
 
-        if model.status == .needsPermission {
-            Button("Berechtigung einrichten …") { showStatusWindow() }
+        Text(statusLine.title)
+        if let action = statusLine.action {
+            Button(action.title) { perform(action) }
         }
 
-        if model.status == .needsConfiguration {
-            Button("Was fehlt? …") { showStatusWindow() }
-        }
+        updateBanner
+        competingManagers
 
         Divider()
 
-        profileMenu
-
-        Toggle("Platzierung pausieren", isOn: $model.isPaused)
-            .disabled(model.status == .needsPermission || model.status == .needsConfiguration)
-
-        Toggle("Fenster in Zonen ziehen", isOn: Binding(
-            get: { model.dropzonesEnabled },
-            set: { model.dropzonesEnabled = $0 }
+        Toggle("Fenster automatisch platzieren", isOn: Binding(
+            get: { !model.isPaused },
+            set: { model.isPaused = !$0 }
         ))
-        .disabled(model.status == .needsPermission || model.configuration == nil)
+        .disabled(model.status == .needsPermission || model.status == .needsConfiguration)
 
+        dropzoneTriggerMenu
+
+        if let sentence = DragOutcomeWording.sentence(for: model.lastDragOutcome) {
+            Text(sentence)
+        }
         if let problem = model.dropzones.problem {
             Text("Ziehen ist nicht aktiv: \(problem)")
         }
-
-        competingManagers
 
         Divider()
 
         pinEntry
 
-        Button("Regeln bearbeiten …") { showEditorWindow() }
+        Button("Zonen und Regeln bearbeiten …") { showEditorWindow() }
             .disabled(model.configuration == nil)
 
         Divider()
 
-        recentPlacements
-
-        Divider()
-
-        Toggle("Bei Anmeldung starten", isOn: Binding(
-            get: { model.launchesAtLogin },
-            set: { model.launchesAtLogin = $0 }
-        ))
-
-        Button("Status und Berechtigung …") { showStatusWindow() }
-        Button("Konfiguration neu laden") { model.reloadConfiguration() }
-
-        Divider()
-
-        updateEntries
+        moreMenu
 
         Divider()
 
@@ -76,14 +92,70 @@ struct MenuContent: View {
             .keyboardShortcut("q")
     }
 
-    // MARK: - Profile
+    private func perform(_ action: MenuStatus.Action) {
+        switch action {
+        case .grantAccess, .explain:
+            // Beide Wege enden im selben Fenster — es ist das einzige, das den
+            // konkreten Zustand erklärt und die Wege dorthin anbietet. Die
+            // Titel versprechen trotzdem Verschiedenes, weil die Lagen
+            // verschieden sind.
+            showStatusWindow()
+        }
+    }
+
+    // MARK: - Ziehen
+
+    /// Die eine Frage, die ein Nutzer zum Ziehen hat: **wann** kommen die Zonen?
+    ///
+    /// Drei Zeilen, die die Antwort jeweils aussprechen, statt eines Schalters
+    /// plus einer unsichtbaren Regel in der Datei. Der Haken steht am wirksamen
+    /// Zustand, gelesen aus der geladenen Konfiguration — nicht an dem, was
+    /// zuletzt angeklickt wurde.
+    @ViewBuilder
+    private var dropzoneTriggerMenu: some View {
+        let settings = model.configuration?.defaults.dropzones
+        let current = model.dropzoneTrigger
+        // Der Zustand steht in der Aufschrift der Elternzeile („Zonen beim
+        // Ziehen: nur mit ⌘"). Beim alten Schalter war er auf der obersten
+        // Ebene zu sehen; eine Ebene tiefer wäre ein Rückschritt.
+        Menu(DropzoneTrigger.rowTitle(settings)) {
+            ForEach(DropzoneTrigger.allCases) { trigger in
+                Button {
+                    model.setDropzoneTrigger(trigger)
+                } label: {
+                    Text(marker(active: current == trigger) + trigger.label)
+                }
+            }
+            // Eine Regel aus der Datei, die keine der drei Zeilen ausdrückt —
+            // auch dann, wenn gerade „Aus" gilt. Sonst verschwände sie beim
+            // Ausschalten aus dem Menü und käme nie wieder zum Vorschein: der
+            // Editor zeigt `activation` nicht, und jede der drei Wahlen
+            // überschreibt sie.
+            if let row = model.dropzoneCustomRow {
+                Divider()
+                if row.isActive {
+                    Text(marker(active: true) + row.label)
+                } else {
+                    // Der Weg zurück: einschalten, ohne die Regel anzutasten.
+                    Button {
+                        model.enableDropzonesKeepingRule()
+                    } label: {
+                        Text(marker(active: false) + row.label)
+                    }
+                }
+            }
+        }
+        .disabled(isBlocked)
+    }
+
+    // MARK: - Setup
 
     @ViewBuilder
-    private var profileMenu: some View {
+    private var setupMenu: some View {
         if model.availableProfiles.isEmpty {
-            Text("Keine Profile in der Konfiguration")
+            Text("Keine Setups eingerichtet")
         } else {
-            Menu("Profil") {
+            Menu("Setup") {
                 Button {
                     model.selectProfile(nil)
                 } label: {
@@ -111,21 +183,30 @@ struct MenuContent: View {
 
     // MARK: - Quick pin
 
-    /// The 90 % case: „diese App immer hier öffnen“.
+    /// Der 90-%-Fall: „diese App immer hier öffnen“.
     ///
     /// Seit Issue #27 gibt es zwei Wege: der Menüleisten-Eintrag hier und ein
     /// Rechtsklick auf den grünen Fensterknopf (siehe ``ZoomButtonMenu``).
     /// Beide gehen durch denselben ``QuickPin``, keine zweite Buchhaltung.
     /// Der Menüleisten-Weg bleibt, weil er tastaturbedienbar ist und ohne
-    /// Zeiger auskommt — bei einem Fenster, das gerade wo anders hin will,
-    /// aber die App-Zuordnung schon steht, ist er kürzer als „raus zum
-    /// grünen Knopf".
+    /// Zeiger auskommt.
+    @ViewBuilder
+    private var pinEntry: some View {
+        Button("Aktuelles Fenster festhalten") { model.pinFrontmostWindow() }
+            .disabled(isBlocked)
+
+        if let message = model.lastPinMessage {
+            Text(message)
+        }
+    }
+
     /// Says out loud that another window manager is running.
     ///
     /// OpenZonr does not try to win against it. Two tools that both show an
     /// overlay while dragging produce a result the user cannot predict, and the
     /// honest move is to say so once rather than to fight silently — see
-    /// docs/dropzones.md.
+    /// docs/dropzones.md. Bleibt auf der obersten Ebene: es erklärt genau das,
+    /// was sonst als „OpenZonr tut nichts“ ankommt.
     @ViewBuilder
     private var competingManagers: some View {
         let running = model.competingWindowManagers
@@ -134,44 +215,72 @@ struct MenuContent: View {
         }
     }
 
-    @ViewBuilder
-    private var pinEntry: some View {
-        Button("Aktuelles Fenster hier festhalten") { model.pinFrontmostWindow() }
-            .disabled(model.status == .needsPermission || model.configuration == nil)
+    // MARK: - Mehr
 
-        if let message = model.lastPinMessage {
-            Text(message)
+    /// Alles, was selten gebraucht wird oder technisch ist.
+    ///
+    /// Es ist nichts gestrichen — es ist einen Schritt tiefer. Die Trennlinie
+    /// verläuft entlang „brauche ich das im Alltag?“: das Setup von Hand
+    /// wählen, neu laden, den Zugriff nachsehen, Autostart und die
+    /// Update-Einstellungen sind Dinge, die man einmal tut und dann nie wieder.
+    @ViewBuilder
+    private var moreMenu: some View {
+        Menu("Mehr") {
+            setupMenu
+
+            Divider()
+
+            recentPlacements
+
+            Divider()
+
+            Button("Konfiguration neu laden") { model.reloadConfiguration() }
+            Button("Status und Berechtigung …") { showStatusWindow() }
+
+            Divider()
+
+            Toggle("Bei Anmeldung starten", isOn: Binding(
+                get: { model.launchesAtLogin },
+                set: { model.launchesAtLogin = $0 }
+            ))
+
+            Divider()
+
+            Button("Nach Updates suchen …") { checkForUpdates() }
+                .disabled(model.updates.isBusy || model.updates.hasPreparedUpdate)
+
+            Toggle("Automatisch nach Updates suchen", isOn: Binding(
+                get: { model.updates.automaticChecksEnabled },
+                set: { model.updates.automaticChecksEnabled = $0 }
+            ))
         }
     }
 
     // MARK: - Updates
 
-    /// Suchen, der Zustand und der Schalter — in dieser Reihenfolge.
+    /// Das Einzige am Update, das oben bleibt: ein Stand, der eine Entscheidung
+    /// verlangt.
     ///
-    /// Die Zustandszeile steht oben und ist sichtbar, sobald es etwas zu sagen
+    /// Die Zustandszeile steht dabei und ist sichtbar, sobald es etwas zu sagen
     /// gibt. Das ist der Unterschied zu einem Knopf, der nur nach dem Klick
     /// antwortet: ein Update, das im Hintergrund gefunden und geladen wurde,
-    /// muss sich zeigen, ohne dass jemand danach sucht.
+    /// muss sich zeigen, ohne dass jemand danach sucht. Suchen und der
+    /// Automatik-Schalter sind dagegen Einstellungen und liegen unter „Mehr“.
     @ViewBuilder
-    private var updateEntries: some View {
+    private var updateBanner: some View {
         let updates = model.updates
-
-        if let line = UpdatePolicy.statusLine(for: updates.state) {
+        let banner = MenuStatus.updateBanner(for: updates.state)
+        // Die **Zeile** ist die äussere Bedingung, nicht der Knopf. Andersherum
+        // hätten „wird geladen", „wird installiert" und ein im Hintergrund
+        // gescheiterter Versuch überhaupt keine Oberfläche.
+        if let line = banner.line {
+            Divider()
             Text(line)
+            if let title = banner.installTitle {
+                Button(title) { installUpdate() }
+                Button("Später") { Task { await updates.dismiss() } }
+            }
         }
-
-        if let title = UpdatePolicy.installTitle(for: updates.state) {
-            Button(title) { installUpdate() }
-            Button("Später") { Task { await updates.dismiss() } }
-        }
-
-        Button("Nach Updates suchen …") { checkForUpdates() }
-            .disabled(updates.isBusy || updates.hasPreparedUpdate)
-
-        Toggle("Automatisch nach Updates suchen", isOn: Binding(
-            get: { updates.automaticChecksEnabled },
-            set: { updates.automaticChecksEnabled = $0 }
-        ))
     }
 
     /// Das Menü schliesst sich beim Klick. Die Antwort auf eine Suche, die der
@@ -230,7 +339,7 @@ struct MenuContent: View {
         if model.records.isEmpty {
             Text("Noch keine Platzierung")
         } else {
-            Menu("Letzte Platzierungen") {
+            Menu("Zuletzt platziert") {
                 ForEach(model.records.prefix(8)) { record in
                     Text("\(record.applicationName) → \(record.target ?? "—") · \(record.summary)")
                 }
@@ -268,7 +377,7 @@ struct MenuContent: View {
         guard let document = model.editorDocument() else { return }
         PanelPresenter.shared.show(
             id: "editor",
-            title: "OpenZonr — Regeln bearbeiten",
+            title: "OpenZonr — Zonen und Regeln",
             size: NSSize(width: 900, height: 620)
         ) {
             EditorWindow(document: document)

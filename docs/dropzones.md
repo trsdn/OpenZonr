@@ -284,6 +284,9 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | Marken-Pfad umgeht den `offerRule`-Schalter | **Bewiesen**, headless | `DropRuleOfferPinTests`; sonst würde bei ausgeschaltetem Panel jede Marke stumm nichts tun |
 | Mindeststrecke vor dem Einblenden | **Bewiesen**, headless | verhindert Flackern beim bloßen Anklicken |
 | Fensterzug vs. Inhaltszug (#37): Klassifikator und Zustandsmaschine | **Bewiesen**, headless | `WindowMoveEvidenceTests` (Größe unverändert und Rahmen folgt dem Zeiger → `moved`; Inhaltszug, Zittern, Gegenrichtung, Quer-Verschiebung → `notMoved`; Kantenzug → `resized`; Grenzwerte von `minimumTravel` und Größentoleranz) und `EventTapDragTrackerTests` (`contentDragNeverBegins`, `evidenceArrivingLaterStillBegins`, `resizeAndUnreadableFrameDoNotBegin`, `stallWithinBudgetStillBegins`, `samplingStopsAfterBudget`, `budgetRestartsWithEachPress`, `samplerRunsOffMainThread`); geprüft wird mit eingespielten Rahmen, nicht mit echten Apps |
+| Drücke, die nie ein `.began` werden, melden ihren Grund | **Bewiesen**, headless | `EventTapDragOutcomeTests`; `onOutcome` liefert `noWindowFound`, `noMovementEvidence(.budgetExhausted/.resizedInstead)`, `releasedBeforeEvidence` — höchstens einmal je Druck, nie für einen gewöhnlichen Klick, und ohne AX-Aufruf im Tap-Rückruf (#26) |
+| Satz im Menü für das Ergebnis eines Zugs | **Bewiesen**, headless | `DragOutcomeWordingTests`; jede Formulierung steht einzeln, weil ein falscher Satz die Fehlersuche in die falsche Richtung schickt |
+| **Ob die Zonen auf der Maschine des Betreuers mit ⌘ erscheinen** | **Nicht gemessen** | Der offene Fehler. Die Zeile „Letzter Zug" im Menü ist der Apparat, der die Antwort einsammeln soll — sie sagt, an welcher der vier Stellen es hängt. Bis jemand mit der Hand an der Maus einen Zug macht und den Satz abliest, ist nichts gemessen. |
 | Ableitung Ablegen → Regel | **Bewiesen**, headless | `DropRuleOfferTests`; zweimal Ablegen verdoppelt die Regel nicht |
 | Alte Konfiguration ohne `dropzones` lädt | **Bewiesen**, headless | sonst wäre nicht der Schlüssel kaputt, sondern die ganze Datei |
 | Pause schaltet auch das Ziehen ab | **Bewiesen**, headless | `DropzoneActivator.suspension`; die Entscheidung liegt an einer Stelle, nicht in Controller und Menütext getrennt |
@@ -455,8 +458,9 @@ steht nichts, was ein Ereignis braucht, und deshalb ist dort alles prüfbar.
 
 ## Entscheidungen, die nicht offensichtlich sind
 
-**Die Pause hält auch das Ziehen an.** Der Menüpunkt heißt „Platzierung
-pausieren", das Protokoll sagt „es wird nichts mehr platziert" — ein Ablegen,
+**Die Pause hält auch das Ziehen an.** Der Menüpunkt heißt „Fenster automatisch
+platzieren" (bis zum Menü-Umbau: „Platzierung pausieren"), das Protokoll sagt
+im ausgeschalteten Zustand „es wird nichts mehr platziert" — ein Ablegen,
 das trotzdem platziert, macht beides zur Lüge. Dass eine ausdrückliche
 Mausgeste weiterläuft, während die Automatik ruht, wäre für sich genommen
 vertretbar; beides gleichzeitig zu behaupten nicht. Für die strengere Variante
@@ -570,14 +574,21 @@ ein Timeout einen laufenden Zug **nicht** beendet, steht in
 
 ## Bedienung
 
-Menüleiste → „Fenster in Zonen ziehen". Der Schalter schreibt
-`defaults.dropzones.enabled` über dasselbe `ConfigurationDocument` wie jede
+Menüleiste → „Zonen beim Ziehen", drei Zeilen: „Bei jedem Ziehen", „Nur mit
+gehaltener ⌘-Taste", „Aus". Die Wahl schreibt `defaults.dropzones.enabled` und
+`defaults.dropzones.activation` über dasselbe `ConfigurationDocument` wie jede
 andere Änderung, überlebt also den Neustart und steht in der Datei, die der
-Nutzer bearbeitet.
+Nutzer bearbeitet. Der Haken steht am **wirksamen** Zustand aus der geladenen
+Konfiguration; eine von Hand eingetragene Regel, die keine der drei ist, bekommt
+eine eigene, angehakte Zeile.
 
-„Platzierung pausieren" schaltet das Ziehen mit ab — unter dem Schalter steht
-dann „Ziehen ist nicht aktiv: Die Platzierung ist pausiert", damit niemand
-gegen ein Overlay drückt, das nicht kommt.
+„Fenster automatisch platzieren" ausschalten schaltet das Ziehen mit ab — unter
+den Zeilen steht dann „Ziehen ist nicht aktiv: Die Platzierung ist pausiert",
+damit niemand gegen ein Overlay drückt, das nicht kommt.
+
+Darunter steht ein grauer Satz zum zuletzt beobachteten Zug („Letzter Zug: keine
+Zonen — ⌘ war nicht gedrückt."). Er ist Diagnose für den Fall, dass die Zonen
+nicht kommen, und nennt die Stelle, an der es hakt.
 
 Konfiguration siehe [`konfiguration.md`](konfiguration.md), Abschnitt
 `defaults.dropzones`.

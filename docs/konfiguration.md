@@ -629,15 +629,22 @@ Felder in der Datei, gewinnt das neue.
 öffnen?" erscheint. **Seit Issue #23 ist die Vorgabe `false`.** Statt der
 Rückfrage danach trägt jede sichtbare Zone eine kleine Anheft-Marke: loslassen
 auf der Marke schreibt die Regel in derselben Bewegung, loslassen daneben ist
-eine einmalige Platzierung. Der Menü­eintrag „Aktuelles Fenster hier festhalten"
+eine einmalige Platzierung. Der Menü­eintrag „Aktuelles Fenster festhalten"
 schreibt die gleiche Regel über denselben `QuickPin` — der Weg bleibt für den
 Fall, dass die Marke nicht getroffen war.
 
 `minimumDragDistance` verhindert, dass ein bloßer Klick auf eine Titelleiste das
 Overlay aufblitzen lässt.
 
-„Platzierung pausieren" im Menü hält auch das Ziehen an — die Pause meint alles,
-nicht nur die Automatik.
+`enabled` und `activation` zusammen sind das, was im Menü unter „Zonen beim
+Ziehen" zur Wahl steht: „Aus" ist `enabled: false`, „Nur mit gehaltener
+⌘-Taste" ist `{"showsWhile": "command"}`, „Bei jedem Ziehen" ist
+`{"showsUnless": "none"}`. Eine andere Taste lässt sich weiterhin von Hand
+eintragen; das Menü zeigt sie dann als eigene, angehakte Zeile an, statt einen
+falschen Haken zu setzen.
+
+„Fenster automatisch platzieren" im Menü hält auch das Ziehen an — die Pause
+meint alles, nicht nur die Automatik.
 
 Alles Weitere — die Wahl `CGEventTap` statt `kAXMovedNotification` mit Zahlen,
 das Verhalten neben Magnet, der Tausch bei ⌘ und was daran ungemessen ist —

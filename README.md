@@ -311,19 +311,32 @@ Scripts/bundle.sh
 open -n ~/Applications/OpenZonr.app
 ```
 
-Im Menü:
+Im Menü, von oben nach unten:
 
-- **Zustand** — aktiv, pausiert, keine Berechtigung, keine Konfiguration oder
-  kein passendes Profil. Das Symbol unterscheidet die Fälle.
-- **Profil** — das erkannte Profil, und jedes konfigurierte zur Handauswahl. Die
-  Auswahl gilt für die Sitzung und wird bewusst nicht gespeichert.
-- **Pause** — hält die Platzierung an, ohne die App zu beenden.
-- **Letzte Platzierungen** — was zuletzt wohin ging, samt vollständigem
-  Protokollstrom in einem eigenen Fenster.
-- **Beim Anmelden starten** — über `SMAppService`.
-- **Nach Updates suchen …** und **Automatisch nach Updates suchen** — siehe
-  [Updates und Veröffentlichen](#updates-und-veröffentlichen). Liegt ein Update
-  bereit, sagt das eine Zeile im Menü, auch ohne dass jemand gesucht hat.
+- **`OpenZonr <Fassung>`** — Name und Version, in jedem Zustand als Erstes
+  ([#56](https://github.com/trsdn/OpenZonr/issues/56)), nicht anklickbar.
+- **Eine Zustandszeile** in Alltagssprache und höchstens ein Knopf: „Bereit —
+  Setup „Schreibtisch"", „Zugriff fehlt — ohne ihn kann OpenZonr keine Fenster
+  bewegen" mit „Zugriff freigeben …", „Kein Setup passt zu den angeschlossenen
+  Bildschirmen" mit „Was ist zu tun? …", „Pausiert".
+- **Fenster automatisch platzieren** — hält die Platzierung an, ohne die App zu
+  beenden.
+- **Zonen beim Ziehen** — „Bei jedem Ziehen", „Nur mit gehaltener ⌘-Taste",
+  „Aus". Der Haken steht am wirksamen Zustand aus der Konfiguration.
+- **Letzter Zug** — ein grauer Satz, wie der zuletzt beobachtete Zug ausging
+  („keine Zonen — ⌘ war nicht gedrückt", „kein Fenster unter dem Zeiger
+  erkannt"). Diagnose für den Fall, dass die Zonen nicht kommen.
+- **Aktuelles Fenster festhalten** und **Zonen und Regeln bearbeiten …**
+- **Mehr** — Setup von Hand wählen (gilt für die Sitzung und wird bewusst nicht
+  gespeichert), Letzte Platzierungen samt vollständigem Protokollstrom,
+  Konfiguration neu laden, Status und Berechtigung, Bei Anmeldung starten (über
+  `SMAppService`), **Nach Updates suchen …** und **Automatisch nach Updates
+  suchen** (siehe [Updates und
+  Veröffentlichen](#updates-und-veröffentlichen)).
+- **OpenZonr beenden**.
+
+Liegt ein Update bereit, steht das samt „Installieren" und „Später" **oben** im
+Menü, auch ohne dass jemand gesucht hat — es verlangt eine Entscheidung.
 
 Fehlt die Berechtigung, öffnet sich beim Start einmal ein Fenster, das den
 konkreten Zustand erklärt und den Weg dorthin anbietet. Das ist die häufigste
@@ -425,7 +438,7 @@ Scripts/bundle.sh "$(mktemp -d)/OpenZonr.app"
 | Signierung, damit der Grant Neubauten in der Regel übersteht | fertig, `Scripts/bundle.sh`; nicht zugesichert (Issue #35) |
 | Platzierung mit Retry-Schleife | **fertig und am echten Fenster gemessen**: TextEdit 1 Versuch; Outlook 2 Versuche, sobald das Fenster wirklich zu ziehen ist — die Schleife wird in Anspruch genommen |
 | Menüleisten-App mit Autostart | gebaut, [#8](https://github.com/trsdn/OpenZonr/issues/8) — Zustand, Profilwahl, Pause, Autostart, letzte Platzierungen; Platzierung mit laufender App **nachgemessen** (29.08.2026), siehe [docs/menueleisten-app.md](docs/menueleisten-app.md) |
-| Regeln bearbeiten ohne JSON | gebaut, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster hier festhalten" plus Editor für Regeln, Rollen und Zonen; Kern headless gemessen, die Oberfläche nicht nachgemessen — sie braucht eine Hand an der Maus, nicht mehr die Freigabe, siehe [docs/regel-editor.md](docs/regel-editor.md) |
+| Regeln bearbeiten ohne JSON | gebaut, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster festhalten" plus Editor für Regeln, Rollen und Zonen; Kern headless gemessen, die Oberfläche nicht nachgemessen — sie braucht eine Hand an der Maus, nicht mehr die Freigabe, siehe [docs/regel-editor.md](docs/regel-editor.md) |
 | In-App-Updates aus GitHub Releases | gebaut, [#47](https://github.com/trsdn/OpenZonr/issues/47) — AppUpdater 4.1.2, Menüeinträge, Anhalten vor dem Bundle-Tausch; Fälligkeit, Voreinstellung, Menütext und die Reihenfolge „erst anhalten, dann installieren" sind getestet. Ein **echter Durchlauf ist nicht gemessen**: dafür fehlen Broker-Profil und ein erstes Release |
 | Dropzones zum Hineinziehen | gebaut, [#10](https://github.com/trsdn/OpenZonr/issues/10) — Overlay beim Ziehen, Ablegen über dieselbe Platzierung wie die Automatik, danach „immer hier öffnen?"; `CGEventTap` gegen `kAXMovedNotification` gemessen (der Tap meldet das Loslassen, Accessibility nicht), ein echter Zug nicht nachgemessen — er braucht eine Hand an der Maus, nicht mehr die Freigabe, siehe [docs/dropzones.md](docs/dropzones.md) |
 

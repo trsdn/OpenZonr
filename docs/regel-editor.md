@@ -10,7 +10,7 @@ was nicht.
 Der Ausgangsschmerz ist ein Satz: „Outlook soll immer in Zone 2 aufgehen." Für
 diesen Satz braucht niemand einen Editor, und deshalb gibt es zwei Ebenen.
 
-**Der 90-Prozent-Fall** ist ein Menüeintrag: **„Aktuelles Fenster hier
+**Der 90-Prozent-Fall** ist ein Menüeintrag: **„Aktuelles Fenster
 festhalten"**. Der Nutzer schiebt das Fenster dorthin, wo es hingehört, und
 klickt den Eintrag. Im Hintergrund entstehen eine Regel, gegebenenfalls eine
 Rolle und eine Bindung im aktiven Profil. Keiner dieser drei Begriffe kommt
@@ -197,7 +197,7 @@ mehr, als sie belegt.
 | Rundlauf gegen die **echte** Konfiguration des Nutzers | **gemessen** — auf einer Kopie, Original unverändert; Zahlen unten |
 | Befunde landen am richtigen Feld | **gemessen** — `FindingIndex` gegen echte Validator-Ausgaben, inklusive des Falls „Befund, den kein Feld beansprucht" |
 | **Ob der Editor auf dem Bildschirm bedienbar ist** | **nicht gemessen** — Begründung unten |
-| **Ob „Aktuelles Fenster hier festhalten" am echten Fenster funktioniert** | **nicht gemessen** — Begründung unten |
+| **Ob „Aktuelles Fenster festhalten" am echten Fenster funktioniert** | **nicht gemessen** — Begründung unten |
 | **Ob eine gezogene Zone am echten Bildschirm richtig sitzt** | **nicht gemessen** — dieselbe Begründung |
 
 ### Der reproduzierte Fehlerfall
@@ -263,7 +263,7 @@ liefert weder einen Accessibility-Baum noch ein Bildschirmfoto — beides bleibt
 schwarz. Das ist geprüft und nicht umgehbar.
 
 Ohne diese Freigabe liest die App kein einziges Fenster. Damit lässt sich
-„Aktuelles Fenster hier festhalten" nicht auslösen und die Wirkung einer
+„Aktuelles Fenster festhalten" nicht auslösen und die Wirkung einer
 gezogenen Zone nicht am echten Bildschirm prüfen. Der Editor selbst ließe sich
 zwar öffnen, aber ohne geladene Fenster ist das eine halbe Messung, die mehr
 suggeriert als sie zeigt.
@@ -276,7 +276,7 @@ ist dort am echten Fenster gemessen.
 
 Was nach der Freigabe zuerst zu prüfen wäre:
 
-1. Menü öffnen, ein Safari-Fenster nach vorne, „Aktuelles Fenster hier
+1. Menü öffnen, ein Safari-Fenster nach vorne, „Aktuelles Fenster
    festhalten" — kommt die erwartete Meldung, steht die Regel in der Datei?
 2. Safari beenden und neu starten — landet das Fenster in der Zone?
 3. Eine Zone im Editor ziehen, sichern, App neu starten — sitzt das Fenster an
@@ -302,7 +302,7 @@ An #10 wurde nichts vorweggenommen.
 **Nachtrag:** #10 ist inzwischen gebaut — [dropzones.md](dropzones.md). Es
 benutzt `QuickPin` aus diesem Issue unverändert weiter: Das Angebot „Diese App
 immer hier öffnen?" nach einem Ablegen leitet seine Regel über dieselbe
-`QuickPin.Request`, die auch der Menüpunkt „Aktuelles Fenster hier festhalten"
+`QuickPin.Request`, die auch der Menüpunkt „Aktuelles Fenster festhalten"
 erzeugt. Damit gibt es weiterhin genau einen Weg, aus einem Fenster eine Regel
 zu machen.
 

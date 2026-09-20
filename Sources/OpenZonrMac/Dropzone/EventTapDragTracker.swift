@@ -82,6 +82,21 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// überladener.
     public var onRightClick: ((_ appKitPoint: ScreenPoint, _ lookup: ZoomButtonLookup.Result) -> Void)?
 
+    /// Rückruf für einen Druck, der **nie** zu einem `.began` geführt hat.
+    ///
+    /// ``onEvent`` erzählt nur von Zügen, die es bis zum Bewegungsbeleg
+    /// geschafft haben (#37). Genau die Drücke, die vorher stecken bleiben,
+    /// sind aber die, über die der offene Fehler „die Zonen kommen nicht" zu
+    /// klären ist — und die sind bisher komplett stumm. Ein eigener Kanal,
+    /// damit die Zug-Zustandsmaschine unverändert bleibt.
+    ///
+    /// Höchstens **ein** Ergebnis je Druck, und nur, wenn die Mindeststrecke
+    /// überhaupt erreicht wurde: sonst bekäme jeder gewöhnliche Klick einen
+    /// Satz ins Menü. Gemeldet werden ausschliesslich die Fälle aus
+    /// ``DragOutcome``, die der Tracker selbst entscheiden kann — kein
+    /// AX-Aufruf im Tap-Rückruf, der Kanal reicht nur schon Gewusstes weiter.
+    public var onOutcome: ((DragOutcome) -> Void)?
+
     /// Set from the outside to record raw event arrivals for the probe.
     ///
     /// The probe needs every event with its latency, the feature needs only the
@@ -145,6 +160,12 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// Wahr, wenn für diesen Druck nichts mehr abzufragen ist: Budget
     /// aufgebraucht oder das Urteil steht schon fest (Kantenzug).
     private var samplingClosed = false
+
+    /// Wahr, sobald dieser Druck sein Ergebnis gemeldet hat (oder zu einem
+    /// echten Zug geworden ist, über den ``onEvent`` erzählt). Verhindert, dass
+    /// ein Druck zwei Sätze produziert — etwa „Bewegung nicht erkannt" beim
+    /// Budgetende und gleich danach „losgelassen" beim Loslassen.
+    private var outcomeReported = false
 
     /// Zeitspanne ab dem **ersten** Rahmenabruf eines Drucks, in der der
     /// Tracker Belege sammelt.
@@ -256,7 +277,15 @@ public final class EventTapDragTracker: WindowDragTracker {
         lastDragModifiers = []
         lookupToken &+= 1
         resetMovementEvidence()
+        outcomeReported = true
         dragging = false
+    }
+
+    /// Meldet das Ergebnis dieses Drucks — höchstens einmal.
+    private func report(_ outcome: DragOutcome) {
+        guard !outcomeReported else { return }
+        outcomeReported = true
+        onOutcome?(outcome)
     }
 
     /// Reine Zustandslogik des Trackers. Testbar ohne echten `CGEvent`, weil
@@ -354,6 +383,7 @@ public final class EventTapDragTracker: WindowDragTracker {
             lastDragPoint = nil
             lastDragModifiers = []
             dragging = false
+            outcomeReported = false
             resetMovementEvidence()
             scheduleWindowLookup(at: accessibilityPoint)
 
@@ -382,6 +412,12 @@ public final class EventTapDragTracker: WindowDragTracker {
 
         case let .mouseUp(point, modifiers):
             let wasDragging = dragging
+            // Nur wenn überhaupt gezogen wurde: ein gewöhnlicher Klick hat kein
+            // Ergebnis zu melden. `readyToBegin` heisst genau „die
+            // Mindeststrecke war da, es hat aber nicht gereicht".
+            if !wasDragging, readyToBegin {
+                report(.releasedBeforeEvidence)
+            }
             pressLocation = nil
             pressAccessibilityPoint = nil
             pendingWindow = nil
@@ -400,13 +436,18 @@ public final class EventTapDragTracker: WindowDragTracker {
     private func begin(with window: DraggedWindow?, at press: ScreenPoint) {
         guard let window else {
             // Kein Fenster unter dem Druckpunkt — ein Zug auf dem Schreibtisch,
-            // in einer Textansicht, egal wo. Bis zum nächsten Druck nichts tun.
+            // in einer Textansicht, egal wo. Bis zum nächsten Druck nichts tun,
+            // ausser es zu sagen: genau dieser Fall sieht von aussen aus wie
+            // „die Zonen kommen nicht".
+            report(.noWindowFound)
             pressLocation = nil
             pressAccessibilityPoint = nil
             readyToBegin = false
             return
         }
         dragging = true
+        // Ab hier erzählt `onEvent`; der Druck hat kein eigenes Ergebnis mehr.
+        outcomeReported = true
         onEvent?(.began(window, at: press))
     }
 
@@ -437,8 +478,10 @@ public final class EventTapDragTracker: WindowDragTracker {
         if let start = sampleWindowStart {
             guard instant - start < frameSampleBudget else {
                 // Aufgebraucht. Fail closed: lieber keine Geste als eine, die
-                // wir nicht belegen konnten.
+                // wir nicht belegen konnten — aber nicht stumm, sonst bleibt
+                // „es passiert nichts" unerklärt.
                 samplingClosed = true
+                report(.noMovementEvidence(.budgetExhausted))
                 return
             }
         } else {
@@ -471,7 +514,10 @@ public final class EventTapDragTracker: WindowDragTracker {
         // Ein Kantenzug bleibt einer, bis die Taste losgelassen wird: die
         // Größe ändert sich, der Ursprung ist nicht der Beleg. Weiter zu
         // fragen kostet AX-Abfragen ohne mögliche Antwort.
-        if verdict == .resized { samplingClosed = true }
+        if verdict == .resized {
+            samplingClosed = true
+            report(.noMovementEvidence(.resizedInstead))
+        }
         guard verdict == .moved else { return }
         candidate = nil
         begin(with: window, at: press)
