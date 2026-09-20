@@ -93,6 +93,31 @@ enum MenuStatus {
             return Line(title: "Bereit — Setup „\(profileName)“", action: nil)
         }
     }
+
+    /// Was der Update-Block ganz oben im Menü zeigt.
+    ///
+    /// Eigener Wert und keine `if`-Verschachtelung in der Ansicht, weil die
+    /// Verschachtelung genau hier schon einmal falsch war: die Zustandszeile
+    /// stand innerhalb der Bedingung „es gibt einen Installieren-Knopf“, und
+    /// damit hatten „wird geladen“, „wird installiert“ und ein im Hintergrund
+    /// gescheiterter Versuch **gar keine** Oberfläche mehr. Die Zeile ist die
+    /// äussere Bedingung, die Knöpfe sind die innere.
+    struct UpdateBanner: Equatable {
+        /// Die Zustandszeile, oder `nil`, wenn es nichts zu sagen gibt.
+        var line: String?
+        /// Die Aufschrift des Installieren-Knopfs, oder `nil`.
+        var installTitle: String?
+
+        /// Ob überhaupt etwas erscheint.
+        var isVisible: Bool { line != nil }
+    }
+
+    static func updateBanner(for state: UpdateState) -> UpdateBanner {
+        UpdateBanner(
+            line: UpdatePolicy.statusLine(for: state),
+            installTitle: UpdatePolicy.installTitle(for: state)
+        )
+    }
 }
 
 /// Wann die Zonen beim Ziehen erscheinen — als das, was im Menü zur Wahl steht.
@@ -117,15 +142,25 @@ enum DropzoneTrigger: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Der **wirksame** Zustand der geladenen Einstellungen.
+    /// Dieselbe Aussage für die Elternzeile, wo sie hinter einem Doppelpunkt
+    /// steht: „Zonen beim Ziehen: nur mit ⌘“.
+    var shortLabel: String {
+        switch self {
+        case .everyDrag: return "bei jedem Ziehen"
+        case .commandHeld: return "nur mit ⌘"
+        case .off: return "aus"
+        }
+    }
+
+    /// Welche der drei Zeilen diese Aktivierungsregel ausdrückt — **ohne**
+    /// Rücksicht darauf, ob die Zonen gerade eingeschaltet sind.
     ///
-    /// `nil`, wenn in der Datei eine Regel steht, die keine der drei
-    /// Möglichkeiten ausdrückt — etwa „nur mit ⌥“ aus einer alten Fassung oder
-    /// von Hand geschrieben. Dann gehört ein eigener, angehakter Eintrag ins
-    /// Menü; ein Haken an der nächstähnlichen Zeile wäre schlicht falsch.
-    static func current(_ settings: DropzoneSettings) -> DropzoneTrigger? {
-        guard settings.enabled else { return .off }
-        switch settings.activation {
+    /// Die Trennung ist der Punkt: `enabled` und `activation` sind zwei Felder,
+    /// und „Aus“ löscht die Regel nicht. Wer das zusammenwirft, verliert eine
+    /// von Hand eingetragene Regel aus den Augen, sobald jemand ausschaltet —
+    /// und der Editor zeigt `activation` nicht, es gäbe also keinen Weg zurück.
+    static func expressing(_ activation: DropzoneActivationRule) -> DropzoneTrigger? {
+        switch activation {
         case .showsWhile(.command):
             return .commandHeld
         case .showsUnless(.none), .showsWhile(.none):
@@ -134,6 +169,79 @@ enum DropzoneTrigger: String, CaseIterable, Identifiable, Sendable {
             return .everyDrag
         default:
             return nil
+        }
+    }
+
+    /// Der **wirksame** Zustand der geladenen Einstellungen.
+    ///
+    /// `nil`, wenn in der Datei eine Regel steht, die keine der drei
+    /// Möglichkeiten ausdrückt — etwa „nur mit ⌥“ aus einer alten Fassung oder
+    /// von Hand geschrieben. Dann gehört ein eigener, angehakter Eintrag ins
+    /// Menü; ein Haken an der nächstähnlichen Zeile wäre schlicht falsch.
+    static func current(_ settings: DropzoneSettings) -> DropzoneTrigger? {
+        guard settings.enabled else { return .off }
+        return expressing(settings.activation)
+    }
+
+    /// Die Aufschrift der Elternzeile, damit der Zustand sichtbar ist, ohne das
+    /// Untermenü zu öffnen.
+    ///
+    /// Beim alten Schalter stand der Zustand auf der obersten Ebene; mit dem
+    /// Untermenü läge er eine Ebene tiefer, und das wäre ein Rückschritt genau
+    /// in der Frage, um die es hier geht.
+    static func rowTitle(_ settings: DropzoneSettings?) -> String {
+        let base = "Zonen beim Ziehen"
+        guard let settings else { return base }
+        if let current = current(settings) { return "\(base): \(current.shortLabel)" }
+        return "\(base): \(customShortLabel(settings.activation))"
+    }
+
+    /// Die Zeile für eine Regel aus der Datei, die keine der drei Wahlen ist —
+    /// oder `nil`, wenn es keine solche gibt.
+    ///
+    /// Sie erscheint **auch**, während die Zonen aus sind. Sonst verschwände
+    /// eine von Hand eingetragene Regel aus dem Menü, sobald jemand „Aus“
+    /// wählt, und käme nie wieder zum Vorschein: der Editor zeigt `activation`
+    /// nicht, und jede der drei Wahlen überschreibt sie.
+    static func customRow(_ settings: DropzoneSettings) -> CustomRow? {
+        guard expressing(settings.activation) == nil else { return nil }
+        if settings.enabled {
+            return CustomRow(label: "\(customLabel(settings)) (aus der Datei)", isActive: true)
+        }
+        // Beide Tatsachen in einem Satz: es ist aus, und die Regel steht noch da.
+        return CustomRow(
+            label: "In der Datei steht „\(customLabel(settings))“ — zurzeit aus, hier wieder einschalten",
+            isActive: false
+        )
+    }
+
+    /// Eine Zeile für eine Regel, die keine der drei Wahlen ist.
+    struct CustomRow: Equatable {
+        var label: String
+        /// Ob die Regel gerade wirkt (und deshalb einen Haken trägt). Trägt sie
+        /// keinen, ist die Zeile der Weg zurück: anklicken schaltet ein, ohne
+        /// die Regel anzutasten.
+        var isActive: Bool
+    }
+
+    /// Schaltet die Zonen ein und lässt die Aktivierungsregel unberührt.
+    ///
+    /// Das ist der Weg zurück, den ``applied(to:)`` verspricht: „Aus“ lässt die
+    /// Regel stehen, und ohne diesen Weg wäre das Versprechen unerfüllbar.
+    static func enablingKeepingRule(_ settings: DropzoneSettings) -> DropzoneSettings {
+        var settings = settings
+        settings.enabled = true
+        return settings
+    }
+
+    private static func customShortLabel(_ activation: DropzoneActivationRule) -> String {
+        switch activation {
+        case let .showsWhile(modifier):
+            guard let symbol = modifier.symbol else { return "bei jedem Ziehen" }
+            return "nur mit \(symbol)"
+        case let .showsUnless(modifier):
+            guard let symbol = modifier.symbol else { return "bei jedem Ziehen" }
+            return "bei jedem Ziehen ausser mit \(symbol)"
         }
     }
 

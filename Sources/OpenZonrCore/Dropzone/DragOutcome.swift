@@ -25,6 +25,17 @@ public enum DragOutcome: Hashable, Sendable {
     /// Setup aktiv — dann gibt es keine Zonen, die man anzeigen könnte.
     case noSetupActive
 
+    /// Ein Fensterzug lief, die Zonen blieben aus, und es wurde **kein** Grund
+    /// aufgezeichnet — etwa weil zwischen Anfang und Ende kein einziges
+    /// `.moved` ankam.
+    ///
+    /// Ein eigener Fall und kein Rückfall auf ``zonesHidden(_:)`` mit
+    /// ``DropzoneActivation/disabled``: der würde eine Ursache behaupten, die
+    /// niemand gemessen hat. „Ich weiss es nicht" ist hier die einzige
+    /// ehrliche Auskunft — und bei einem Fehler, dessen Ursache offen ist,
+    /// auch die einzige nützliche.
+    case zonesHiddenWithoutReason
+
     /// Unter dem Druckpunkt lag kein Fenster. Ein Zug auf dem Schreibtisch, in
     /// einer Textansicht, an einem Scrollbalken.
     case noWindowFound
@@ -71,6 +82,8 @@ public enum DragOutcomeWording {
             return hidden(activation)
         case .noSetupActive:
             return "keine Zonen — für die angeschlossenen Bildschirme ist kein Setup aktiv."
+        case .zonesHiddenWithoutReason:
+            return "keine Zonen — der Grund wurde nicht aufgezeichnet."
         case .noWindowFound:
             return "kein Fenster unter dem Zeiger erkannt."
         case .noMovementEvidence(.budgetExhausted):

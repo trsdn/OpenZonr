@@ -47,10 +47,71 @@ struct DropzoneTriggerTests {
         let settings = DropzoneSettings(activation: .showsWhile(.option))
         #expect(DropzoneTrigger.current(settings) == nil)
         #expect(DropzoneTrigger.customLabel(settings) == "Nur mit gehaltener ⌥-Taste")
+        #expect(DropzoneTrigger.customRow(settings)?.isActive == true)
+        #expect(DropzoneTrigger.customRow(settings)?.label == "Nur mit gehaltener ⌥-Taste (aus der Datei)")
 
         let inverse = DropzoneSettings(activation: .showsUnless(.shift))
         #expect(DropzoneTrigger.current(inverse) == nil)
         #expect(DropzoneTrigger.customLabel(inverse) == "Bei jedem Ziehen ausser mit ⇧")
+    }
+
+    @Test("Ausgeschaltet verschwindet eine Regel aus der Datei nicht aus dem Menü")
+    func customRuleStaysVisibleWhileOff() {
+        // Der Fehler, den das verhindert: `current` meldet für `enabled: false`
+        // schlicht „Aus", und eine an `current == nil` gehängte Zeile wäre dann
+        // unsichtbar. Der Editor zeigt `activation` nicht — die Regel wäre weg,
+        // ohne dass sie jemand gelöscht hätte.
+        let settings = DropzoneSettings(enabled: false, activation: .showsWhile(.option))
+        #expect(DropzoneTrigger.current(settings) == .off)
+        let row = DropzoneTrigger.customRow(settings)
+        #expect(row?.isActive == false)
+        // Beide Tatsachen in einem Satz: es ist aus, und die Regel steht noch da.
+        #expect(row?.label.contains("Nur mit gehaltener ⌥-Taste") == true)
+        #expect(row?.label.contains("zurzeit aus") == true)
+    }
+
+    @Test("Eine ausdrückbare Regel bekommt keine eigene Zeile — auch nicht ausgeschaltet")
+    func expressibleRuleHasNoCustomRow() {
+        #expect(DropzoneTrigger.customRow(DropzoneSettings()) == nil)
+        #expect(DropzoneTrigger.customRow(DropzoneSettings(enabled: false)) == nil)
+        #expect(DropzoneTrigger.customRow(DropzoneSettings(activation: .showsUnless(.none))) == nil)
+    }
+
+    @Test("Die Ausdrückbarkeit hängt nicht am Ein/Aus-Schalter")
+    func expressibilityIsIndependentOfEnabled() {
+        #expect(DropzoneTrigger.expressing(.showsWhile(.command)) == .commandHeld)
+        #expect(DropzoneTrigger.expressing(.showsUnless(.none)) == .everyDrag)
+        #expect(DropzoneTrigger.expressing(.showsWhile(.none)) == .everyDrag)
+        #expect(DropzoneTrigger.expressing(.showsWhile(.option)) == nil)
+        #expect(DropzoneTrigger.expressing(.showsUnless(.shift)) == nil)
+    }
+
+    @Test("Der Weg zurück schaltet ein und lässt die Regel unberührt")
+    func enablingKeepsTheRule() {
+        let off = DropzoneSettings(enabled: false, activation: .showsWhile(.option))
+        let back = DropzoneTrigger.enablingKeepingRule(off)
+        #expect(back.enabled)
+        #expect(back.activation == .showsWhile(.option))
+        #expect(DropzoneTrigger.customRow(back)?.isActive == true)
+    }
+
+    @Test("Die Elternzeile zeigt den Zustand, ohne dass man sie aufklappt")
+    func rowTitleShowsState() {
+        #expect(DropzoneTrigger.rowTitle(nil) == "Zonen beim Ziehen")
+        #expect(DropzoneTrigger.rowTitle(DropzoneSettings()) == "Zonen beim Ziehen: nur mit ⌘")
+        #expect(
+            DropzoneTrigger.rowTitle(DropzoneSettings(activation: .showsUnless(.none)))
+                == "Zonen beim Ziehen: bei jedem Ziehen"
+        )
+        #expect(DropzoneTrigger.rowTitle(DropzoneSettings(enabled: false)) == "Zonen beim Ziehen: aus")
+        #expect(
+            DropzoneTrigger.rowTitle(DropzoneSettings(activation: .showsWhile(.option)))
+                == "Zonen beim Ziehen: nur mit ⌥"
+        )
+        #expect(
+            DropzoneTrigger.rowTitle(DropzoneSettings(activation: .showsUnless(.shift)))
+                == "Zonen beim Ziehen: bei jedem Ziehen ausser mit ⇧"
+        )
     }
 
     @Test("Die Wahl verändert nur, was sie verspricht")
@@ -74,11 +135,16 @@ struct DropzoneTriggerTests {
         #expect(every.enabled)
         #expect(every.activation == .showsUnless(.none))
 
-        // „Aus“ lässt die Regel stehen: wer wieder einschaltet, bekommt zurück,
-        // was er hatte — solange er nicht eine der anderen Zeilen wählt.
+        // „Aus“ lässt die Regel stehen. Sichtbar bleibt sie über
+        // ``DropzoneTrigger/customRow(_:)``, und der Weg zurück ist genau diese
+        // Zeile (``enablingKeepingRule(_:)``) — ohne sie wäre das Versprechen
+        // „die Regel bleibt" unerfüllbar, weil der Editor `activation` nicht
+        // zeigt und jede der drei Wahlen sie überschreibt.
         let off = DropzoneTrigger.off.applied(to: settings)
         #expect(off.enabled == false)
         #expect(off.activation == .showsUnless(.option))
+        #expect(DropzoneTrigger.customRow(off)?.isActive == false)
+        #expect(DropzoneTrigger.enablingKeepingRule(off).activation == .showsUnless(.option))
     }
 
     @Test("Jede Wahl ist ihr eigener Fixpunkt")

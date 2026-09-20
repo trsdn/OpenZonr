@@ -83,4 +83,38 @@ struct MenuStatusLineTests {
         let line = MenuStatus.line(status: .active, profileName: "Schreibtisch", isPaused: true, hasProblem: false)
         #expect(line.title == "Pausiert — es wird nichts automatisch platziert")
     }
+
+    // MARK: - Update-Block
+
+    @Test("Laufende und gescheiterte Updates haben eine Oberfläche, auch ohne Knopf")
+    func bannerShowsLineWithoutButton() {
+        // Der Fehler, den das verhindert: die Zustandszeile stand innerhalb der
+        // Bedingung „es gibt einen Installieren-Knopf". Ein im Hintergrund
+        // gescheiterter Versuch hatte danach gar keine Oberfläche mehr — er
+        // meldet sich nirgends sonst.
+        for state: UpdateState in [
+            .checking, .downloading(version: "0.2.0"), .installing, .failed("Netz weg")
+        ] {
+            let banner = MenuStatus.updateBanner(for: state)
+            #expect(banner.isVisible, "\(state) braucht eine Zeile")
+            #expect(banner.line == UpdatePolicy.statusLine(for: state))
+            #expect(banner.installTitle == nil)
+        }
+    }
+
+    @Test("Ein bereitliegendes Update bringt Zeile und Knöpfe")
+    func bannerShowsLineAndButtons() {
+        let banner = MenuStatus.updateBanner(for: .readyToInstall(version: "0.2.0"))
+        #expect(banner.line == "Update 0.2.0 liegt bereit")
+        #expect(banner.installTitle == "Installieren und neu starten (0.2.0)")
+    }
+
+    @Test("Nichts los heisst nichts im Menü; „aktuell“ bleibt sichtbar wie bisher")
+    func bannerIdleAndUpToDate() {
+        #expect(MenuStatus.updateBanner(for: .idle).isVisible == false)
+        // Unverändertes Verhalten aus der alten Fassung: nach einer Suche ohne
+        // Fund steht die Zeile da.
+        #expect(MenuStatus.updateBanner(for: .upToDate).line == "OpenZonr ist aktuell")
+        #expect(MenuStatus.updateBanner(for: .upToDate).installTitle == nil)
+    }
 }

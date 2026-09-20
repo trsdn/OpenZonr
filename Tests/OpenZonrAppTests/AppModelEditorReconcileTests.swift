@@ -100,7 +100,7 @@ struct AppModelEditorReconcileTests {
         let loaded = try AppModelFixtures.modelWithLoadedConfiguration(configuration)
         _ = try externalEdit(loaded)
 
-        loaded.model.dropzonesEnabled = false
+        loaded.model.setDropzoneTrigger(.off)
 
         #expect(loaded.model.lastPinFailed == true)
         #expect(loaded.model.lastPinMessage?.contains("außerhalb") == true)
@@ -115,7 +115,7 @@ struct AppModelEditorReconcileTests {
         let document = try #require(loaded.model.editorDocument())
         document.apply { var c = $0; c.roles.append(ZoneRole(id: "mine", name: "Mine")); return c }
 
-        loaded.model.dropzonesEnabled = false
+        loaded.model.setDropzoneTrigger(.off)
 
         #expect(document.hasExternalChange == false)
         #expect(document.hasUnsavedChanges)
@@ -134,7 +134,7 @@ struct AppModelEditorReconcileTests {
         external.roles.append(ZoneRole(id: "extra", name: "Extra"))
         try ConfigurationStore().save(external, to: loaded.temp.url)
 
-        loaded.model.dropzonesEnabled = false
+        loaded.model.setDropzoneTrigger(.off)
 
         #expect(loaded.model.lastPinFailed == true)
         #expect(document.configuration.defaults.dropzones.enabled == false)

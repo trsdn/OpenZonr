@@ -33,8 +33,12 @@ existiert; dessen Text wird zu den Release-Notes.
   Ziehen", „Nur mit gehaltener ⌘-Taste", „Aus". Der Haken steht am **wirksamen**
   Zustand aus der geladenen Konfiguration. Eine von Hand geschriebene Regel, die
   keine der drei ist (etwa „nur mit ⌥"), bekommt eine eigene, angehakte Zeile
-  statt eines falschen Hakens. Geschrieben wird sofort und in die Datei, wie
-  bisher der Schalter ([#41](https://github.com/trsdn/OpenZonr/issues/41)).
+  statt eines falschen Hakens — auch während „Aus" gilt, und dann ist die Zeile
+  der Weg zurück: anklicken schaltet ein, ohne die Regel anzutasten. Der
+  gewählte Zustand steht in der Aufschrift der Elternzeile („Zonen beim Ziehen:
+  nur mit ⌘"), damit er ohne Aufklappen zu sehen ist. Geschrieben wird sofort
+  und in die Datei, wie bisher der Schalter
+  ([#41](https://github.com/trsdn/OpenZonr/issues/41)).
 - Menüeinträge umbenannt: „Regeln bearbeiten …" heißt „Zonen und Regeln
   bearbeiten …", „Aktuelles Fenster hier festhalten" heißt „Aktuelles Fenster
   festhalten", „Platzierung pausieren" ist zu „Fenster automatisch platzieren"

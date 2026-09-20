@@ -137,4 +137,56 @@ struct AppModelDropzoneTriggerTests {
                 == "Letzter Zug: keine Zonen — ⌘ war nicht gedrückt."
         )
     }
+
+    @Test("Eine andere Wahl bei „Zonen beim Ziehen“ vergisst den letzten Zug")
+    func changingTheTriggerForgetsTheLastDrag() throws {
+        let loaded = try everyDragModel()
+        loaded.model.recordDragOutcome(.zonesHidden(.awaitingModifier(.command)))
+
+        loaded.model.setDropzoneTrigger(.commandHeld)
+
+        // Der Satz erklärte die alte Einstellung; stehengeblieben läse er sich
+        // wie eine Aussage über die neue.
+        #expect(loaded.model.lastDragOutcome == nil)
+    }
+
+    @Test("Die Pause vergisst den letzten Zug")
+    func pausingForgetsTheLastDrag() throws {
+        let loaded = try everyDragModel()
+        loaded.model.recordDragOutcome(.zonesShown)
+
+        loaded.model.isPaused = true
+
+        #expect(loaded.model.lastDragOutcome == nil)
+    }
+
+    @Test("Ein Neuladen vergisst den letzten Zug")
+    func reloadForgetsTheLastDrag() throws {
+        let loaded = try everyDragModel()
+        loaded.model.recordDragOutcome(.zonesShown)
+
+        loaded.model.reloadConfiguration()
+
+        #expect(loaded.model.lastDragOutcome == nil)
+    }
+
+    @Test("Der Weg zurück schaltet ein, ohne die Regel aus der Datei anzutasten")
+    func enablingKeepsTheHandWrittenRule() throws {
+        var configuration = AppModelFixtures.minimalConfiguration()
+        configuration.defaults.dropzones.enabled = false
+        configuration.defaults.dropzones.activation = .showsWhile(.option)
+        let loaded = try AppModelFixtures.modelWithLoadedConfiguration(configuration)
+
+        // Ausgeschaltet bleibt die Regel sichtbar — und anklickbar.
+        #expect(loaded.model.dropzoneTrigger == .off)
+        #expect(loaded.model.dropzoneCustomRow?.isActive == false)
+
+        loaded.model.enableDropzonesKeepingRule()
+
+        let saved = try onDisk(loaded)
+        #expect(saved.defaults.dropzones.enabled)
+        #expect(saved.defaults.dropzones.activation == .showsWhile(.option))
+        #expect(loaded.model.dropzoneTrigger == nil)
+        #expect(loaded.model.dropzoneCustomRow?.isActive == true)
+    }
 }

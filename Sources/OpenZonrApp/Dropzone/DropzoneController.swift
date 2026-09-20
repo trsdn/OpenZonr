@@ -75,8 +75,10 @@ final class DropzoneController {
         #endif
         stop()
         if let suspension = DropzoneActivator.suspension(settings: settings, isPaused: model.isPaused) {
-            // Only the pause gets a line in the menu. "Switched off" is what the
-            // toggle right above it already says; repeating it would be noise.
+            // Nur die Pause bekommt eine eigene Zeile. „Abgeschaltet" steht
+            // schon in der Aufschrift der Zeile darüber — sie lautet dann
+            // „Zonen beim Ziehen: aus" (siehe ``DropzoneTrigger/rowTitle(_:)``),
+            // und ein zweiter Satz daneben wäre Rauschen.
             problem = suspension == .paused ? suspension.explanation : nil
             return
         }
@@ -162,9 +164,12 @@ final class DropzoneController {
 
         case let .ended(point, modifiers):
             update(pointer: point, modifiers: modifiers)
-            model.recordDragOutcome(finishedDragOutcome())
+            // Erst ablegen, dann den Satz festhalten. Ein Ablegen auf der
+            // Anheft-Marke schreibt eine Regel, das Sichern lädt neu, und ein
+            // Neuladen vergisst den letzten Zug — in der anderen Reihenfolge
+            // wäre der Satz weg, kaum dass er dastand.
             drop(at: point)
-            overlay.hide()
+            model.recordDragOutcome(finishedDragOutcome())
             origin = nil
             dragged = nil
 
@@ -187,10 +192,16 @@ final class DropzoneController {
     ///
     /// „Zonen gesehen" schlägt alles andere: es ist das, was der Nutzer erlebt
     /// hat. Erst danach zählt der Grund, aus dem sie zuletzt ausblieben.
+    ///
+    /// Ohne aufgezeichneten Grund wird keiner behauptet. Ein Rückfall auf
+    /// ``DropzoneActivation/disabled`` wäre bequem und falsch: er nennte eine
+    /// Ursache, die niemand gemessen hat — in einer Zeile, deren ganzer Zweck
+    /// die Ursachensuche ist.
     private func finishedDragOutcome() -> DragOutcome {
         if dragSawZones { return .zonesShown }
         if dragLacksSetup { return .noSetupActive }
-        return .zonesHidden(dragHiddenReason ?? .disabled)
+        guard let reason = dragHiddenReason else { return .zonesHiddenWithoutReason }
+        return .zonesHidden(reason)
     }
 
     private func update(pointer: ScreenPoint, modifiers: ModifierState) {

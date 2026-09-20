@@ -90,15 +90,22 @@ public enum Log {
         _ = lock.withLock { observers.removeValue(forKey: token) }
     }
 
-    public static func info(_ message: String) { emit(.info, message) }
-    public static func detail(_ message: String) { emit(.detail, message) }
-    public static func event(_ message: String) { emit(.event, message) }
-    public static func success(_ message: String) { emit(.success, message) }
-    public static func warn(_ message: String) { emit(.warn, message) }
+    // `@autoclosure`: die Zeichenkette wird erst gebaut, wenn sie auch jemand
+    // bekommt. Ohne Echo und ohne Beobachter — in Tests der Normalfall, und auf
+    // heissen Wegen wie dem Zug-Ergebnis je Geste — kostet ein Aufruf dann
+    // nichts ausser dem Aufruf selbst.
+    public static func info(_ message: @autoclosure () -> String) { emit(.info, message) }
+    public static func detail(_ message: @autoclosure () -> String) { emit(.detail, message) }
+    public static func event(_ message: @autoclosure () -> String) { emit(.event, message) }
+    public static func success(_ message: @autoclosure () -> String) { emit(.success, message) }
+    public static func warn(_ message: @autoclosure () -> String) { emit(.warn, message) }
 
-    private static func emit(_ level: Level, _ message: String) {
-        let entry = Entry(level: level, message: message)
+    private static func emit(_ level: Level, _ build: () -> String) {
         let (shouldEcho, sinks) = lock.withLock { (echoes, Array(observers.values)) }
+        guard shouldEcho || !sinks.isEmpty else { return }
+
+        let message = build()
+        let entry = Entry(level: level, message: message)
 
         if shouldEcho {
             let stamp = formatter.string(from: entry.date)

@@ -94,6 +94,9 @@ final class AppModel {
         didSet {
             guard isPaused != oldValue else { return }
             engine?.isPaused = isPaused
+            // Der Satz über den letzten Zug stammt von vor der Pause und läse
+            // sich jetzt wie eine Aussage über danach.
+            clearDragOutcome()
             // The pause covers the drag half too, and the controller only learns
             // that by being restarted. Leaving this out was a real bug: the
             // overlay kept appearing and drops kept placing while the menu said
@@ -230,7 +233,10 @@ final class AppModel {
             stopEngine()
             // Ohne Berechtigung liefert der Tracker nichts Brauchbares mehr;
             // beim Verlust anhalten (nur beim Übergang, nicht bei jedem Tick).
-            if wasUsable { dropzones.stop() }
+            if wasUsable {
+                dropzones.stop()
+                clearDragOutcome()
+            }
         }
         updateStatus()
     }
@@ -277,6 +283,7 @@ final class AppModel {
         stopEngine()
         engine = nil
         dropzones.stop()
+        clearDragOutcome()
         profileState = nil
         let bytes = ConfigurationDocument.bytes(at: configurationURL)
         loadedFileBytes = bytes
@@ -378,31 +385,17 @@ final class AppModel {
 
     @ObservationIgnored private var dropzoneController: DropzoneController?
 
-    /// Whether dragging a window onto a zone is switched on.
-    ///
-    /// The write goes through ``ConfigurationDocument`` like every other write
-    /// in this app, so the setting survives a restart and is visible in the file
-    /// the user edits — a toggle that only lived in memory would be forgotten on
-    /// the next launch and blamed on the feature.
-    var dropzonesEnabled: Bool {
-        get { configuration?.defaults.dropzones.enabled ?? false }
-        set { setDropzonesEnabled(newValue) }
-    }
-
-    private func setDropzonesEnabled(_ enabled: Bool) {
-        updateDropzoneSettings { settings in
-            var settings = settings
-            settings.enabled = enabled
-            return settings
-        }
-    }
-
     /// Wann die Zonen beim Ziehen erscheinen — die drei Wahlmöglichkeiten des
     /// Menüs, aus der **geladenen** Konfiguration gelesen.
     ///
     /// `nil` heisst: in der Datei steht eine Regel, die keine der drei
     /// Möglichkeiten ausdrückt (etwa „nur mit ⌥"). Das Menü zeigt sie dann als
     /// eigene Zeile an, statt einen falschen Haken zu setzen.
+    ///
+    /// Der Schreibweg ist ``ConfigurationDocument`` wie bei jeder anderen
+    /// Änderung, damit die Einstellung einen Neustart übersteht und in der
+    /// Datei steht, die der Nutzer bearbeitet — eine Wahl, die nur im Speicher
+    /// lebte, wäre beim nächsten Start vergessen und dem Feature angelastet.
     var dropzoneTrigger: DropzoneTrigger? {
         guard let settings = configuration?.defaults.dropzones else { return nil }
         return DropzoneTrigger.current(settings)
@@ -410,6 +403,18 @@ final class AppModel {
 
     func setDropzoneTrigger(_ trigger: DropzoneTrigger) {
         updateDropzoneSettings(trigger.applied(to:))
+    }
+
+    /// Die Zeile für eine Regel aus der Datei, die keine der drei Wahlen ist.
+    var dropzoneCustomRow: DropzoneTrigger.CustomRow? {
+        guard let settings = configuration?.defaults.dropzones else { return nil }
+        return DropzoneTrigger.customRow(settings)
+    }
+
+    /// Schaltet die Zonen ein, ohne die Regel aus der Datei anzutasten — der
+    /// Weg zurück zu einer von Hand eingetragenen Aktivierung.
+    func enableDropzonesKeepingRule() {
+        updateDropzoneSettings(DropzoneTrigger.enablingKeepingRule(_:))
     }
 
     /// Betriebliche Einstellung: wirkt sofort und wird sofort gesichert — mit
@@ -430,6 +435,10 @@ final class AppModel {
         guard next != previous else { return }
         var base = current
         base.defaults.dropzones = next
+        // Ab hier gilt eine andere Einstellung; der Satz über den letzten Zug
+        // beschreibt die alte. Auch im Fehlerfall bleibt er weg — er hat dann
+        // eine Einstellung erklärt, an der der Nutzer gerade gedreht hat.
+        clearDragOutcome()
 
         // Zuerst die Sitzung anpassen: das anschliessende Neuladen (onSave)
         // sieht dann Datei == Ausgangsstand und nimmt keine Fremdänderung an.
@@ -474,7 +483,21 @@ final class AppModel {
 
     func recordDragOutcome(_ outcome: DragOutcome) {
         lastDragOutcome = outcome
+        // Der Satz wird nur gebaut, wenn ihn jemand liest: `Log` nimmt den
+        // Ausdruck als `@autoclosure` entgegen und wertet ihn nur aus, wenn es
+        // einen Empfänger gibt. Das hier läuft je Geste, also auf einem Weg,
+        // der nichts umsonst tun soll.
         Log.detail("Zug-Ergebnis: \(DragOutcomeWording.sentence(for: outcome) ?? "—")")
+    }
+
+    /// Vergisst den letzten Zug.
+    ///
+    /// Gerufen, wenn sich etwas geändert hat, das den Satz zur Falschaussage
+    /// machen würde: Pause, eine andere Wahl bei „Zonen beim Ziehen", ein
+    /// Neuladen, ein verlorener Zugriff. Ein Satz, der von vor der Änderung
+    /// stammt, läse sich wie eine Aussage über danach.
+    func clearDragOutcome() {
+        lastDragOutcome = nil
     }
 
     /// Die Fassung aus dem Bundle, für die Kopfzeile des Menüs.

@@ -115,7 +115,10 @@ struct MenuContent: View {
     private var dropzoneTriggerMenu: some View {
         let settings = model.configuration?.defaults.dropzones
         let current = model.dropzoneTrigger
-        Menu("Zonen beim Ziehen") {
+        // Der Zustand steht in der Aufschrift der Elternzeile („Zonen beim
+        // Ziehen: nur mit ⌘"). Beim alten Schalter war er auf der obersten
+        // Ebene zu sehen; eine Ebene tiefer wäre ein Rückschritt.
+        Menu(DropzoneTrigger.rowTitle(settings)) {
             ForEach(DropzoneTrigger.allCases) { trigger in
                 Button {
                     model.setDropzoneTrigger(trigger)
@@ -123,13 +126,23 @@ struct MenuContent: View {
                     Text(marker(active: current == trigger) + trigger.label)
                 }
             }
-            if current == nil, let settings {
+            // Eine Regel aus der Datei, die keine der drei Zeilen ausdrückt —
+            // auch dann, wenn gerade „Aus" gilt. Sonst verschwände sie beim
+            // Ausschalten aus dem Menü und käme nie wieder zum Vorschein: der
+            // Editor zeigt `activation` nicht, und jede der drei Wahlen
+            // überschreibt sie.
+            if let row = model.dropzoneCustomRow {
                 Divider()
-                // Eine Regel aus der Datei, die keine der drei Zeilen ausdrückt.
-                // Sie bekommt eine eigene, angehakte Zeile: ein Haken an der
-                // nächstähnlichen wäre falsch, und gar kein Haken liesse offen,
-                // was gerade gilt.
-                Text(marker(active: true) + DropzoneTrigger.customLabel(settings) + " (aus der Datei)")
+                if row.isActive {
+                    Text(marker(active: true) + row.label)
+                } else {
+                    // Der Weg zurück: einschalten, ohne die Regel anzutasten.
+                    Button {
+                        model.enableDropzonesKeepingRule()
+                    } label: {
+                        Text(marker(active: false) + row.label)
+                    }
+                }
             }
         }
         .disabled(isBlocked)
@@ -256,13 +269,17 @@ struct MenuContent: View {
     @ViewBuilder
     private var updateBanner: some View {
         let updates = model.updates
-        if let title = UpdatePolicy.installTitle(for: updates.state) {
+        let banner = MenuStatus.updateBanner(for: updates.state)
+        // Die **Zeile** ist die äussere Bedingung, nicht der Knopf. Andersherum
+        // hätten „wird geladen", „wird installiert" und ein im Hintergrund
+        // gescheiterter Versuch überhaupt keine Oberfläche.
+        if let line = banner.line {
             Divider()
-            if let line = UpdatePolicy.statusLine(for: updates.state) {
-                Text(line)
+            Text(line)
+            if let title = banner.installTitle {
+                Button(title) { installUpdate() }
+                Button("Später") { Task { await updates.dismiss() } }
             }
-            Button(title) { installUpdate() }
-            Button("Später") { Task { await updates.dismiss() } }
         }
     }
 
