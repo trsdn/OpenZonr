@@ -12,6 +12,24 @@ existiert; dessen Text wird zu den Release-Notes.
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Die App hat ein Icon.** Bisher zeigte `OpenZonr.app` überall das generische
+  Platzhalter-Symbol — im Finder, in der Liste unter Systemeinstellungen →
+  Datenschutz & Sicherheit → Bedienungshilfen, im Update-Dialog, im
+  DMG-Fenster. Das neue Icon zeigt ein Fenster, das in drei Zonen im Verhältnis
+  25/50/25 geteilt ist — dieselbe Aufteilung wie die Vorlage „wide" —, die
+  mittlere Zone in Akzentblau hervorgehoben wie das Ziel unter dem Zeiger beim
+  Ziehen. Es entsteht aus Code (`swift Scripts/make-icon.swift`), liegt als
+  `Resources/AppIcon.icns` im Repo und wird von `Scripts/bundle.sh` vor dem
+  Signieren nach `Contents/Resources` kopiert; `Info.plist` verweist mit
+  `CFBundleIconFile` darauf
+  ([#55](https://github.com/trsdn/OpenZonr/issues/55)).
+  **Noch nicht im Release:** der Broker-Adapter `assemble_menu_bar_swiftpm`
+  kopiert keine Icon-Datei aus dem Quell-Repo, deshalb bleibt ein
+  veröffentlichtes Bundle vorerst ohne Icon, bis der Broker nachzieht. Lokal
+  gebaute Bundles haben es ab sofort.
+
 ### Geändert
 
 - **Das Menü der Menüleisten-App ist neu sortiert und spricht Alltagssprache.**

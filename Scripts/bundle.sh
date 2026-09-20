@@ -51,6 +51,12 @@
 #     bringt es als SwiftPM-Ressourcenbündel mit; ohne die Kopie fehlt es einem
 #     lokal gebauten Bundle, und der Unterschied fiele erst beim Update auf.
 #
+# Eine Stelle läuft seit Issue #55 bewusst auseinander: das App-Icon. Hier wird
+# Resources/AppIcon.icns nach Contents/Resources kopiert, `assemble_menu_bar_swiftpm`
+# tut das nicht — der Adapter kopiert nur die Binärdatei, die im Profil genannten
+# Ressourcenbündel und die Info.plist. Ein veröffentlichtes Bundle hat deshalb
+# CFBundleIconFile, aber keine Icon-Datei, bis der Broker das nachzieht.
+#
 # Ein anderer Zielort als ~/Applications lässt sich als erstes Argument
 # übergeben — für einen Probelauf, der die freigegebene Installation nicht
 # anfasst:
@@ -85,11 +91,20 @@ BINARY="$BIN_DIR/$PRODUCT"
 RESOURCE_BUNDLE="$BIN_DIR/AppUpdater_AppUpdater.bundle"
 [ -d "$RESOURCE_BUNDLE" ] || { echo "Ressourcenbündel fehlt: $RESOURCE_BUNDLE" >&2; exit 1; }
 
+# Das App-Icon liegt als erzeugte Datei im Repo (Scripts/make-icon.swift).
+# Info.plist verweist mit CFBundleIconFile darauf; fehlt die Datei, zeigt macOS
+# stumm das Platzhalter-Icon — also lieber hier abbrechen.
+ICON="$ROOT/Resources/AppIcon.icns"
+[ -f "$ICON" ] || { echo "App-Icon fehlt: $ICON (swift Scripts/make-icon.swift)" >&2; exit 1; }
+
 echo "==> Packe $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/$PRODUCT"
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
+# Vor dem Signieren, sonst siegelt die Signatur ein Bundle ohne Icon und
+# `codesign --verify --deep --strict` schlägt hinterher fehl.
+cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
 
 sed "s/__VERSION__/$VERSION/g" "$INFO_PLIST_SOURCE" > "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"

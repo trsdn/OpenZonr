@@ -106,6 +106,9 @@ Sources/OpenZonrApp/          Menüleisten-App (MenuBarExtra, LSUIElement)
 Sources/openzonr/             `swift run openzonr` für die Entwicklung
 Tests/OpenZonrCoreTests/      Unit-Tests; Support/ enthält Fixtures
 Tests/OpenZonrMacTests/       Die rein rechnenden Teile der macOS-Schicht
+Resources/AppIcon.icns        Das App-Icon, erzeugt aus Scripts/make-icon.swift
+Scripts/bundle.sh             Baut und signiert das Bundle
+Scripts/make-icon.swift       Zeichnet das App-Icon (siehe „Bauen")
 Examples/                     Beispielkonfiguration (Büro / Home / Unterwegs)
 docs/                         Konzept, Konfiguration, Durchstich, offene Fragen
 ```
@@ -138,6 +141,29 @@ swift test
 Mindestanforderung: macOS 14, Swift 6. Die verwendeten APIs (Accessibility,
 `CGDisplay*`, `NSWorkspace`) sind deutlich älter; macOS 14 ist für die spätere
 UI-Schicht (Observation, `MenuBarExtra`) gesetzt.
+
+### Das App-Icon neu erzeugen
+
+`Resources/AppIcon.icns` liegt fertig im Repo, entsteht aber aus Code und nicht
+aus einer Grafikdatei, die niemand mehr aufbekommt:
+
+```bash
+swift Scripts/make-icon.swift
+```
+
+Das Skript zeichnet mit CoreGraphics, schreibt alle Größen von 16 bis 1024 px
+(jeweils auch @2x) in ein `.iconset` und lässt `iconutil` daraus die `.icns`
+bauen. Es braucht nichts, was nicht bei macOS dabei ist. Wer das Motiv ändern
+will, ändert `drawArtwork` und lässt das Skript neu laufen; die erzeugte
+`.icns` gehört mit in den Commit, weil `Scripts/bundle.sh` sie liest.
+
+**macOS merkt sich Icons.** Ein Bundle, das schon einmal mit dem
+Platzhalter-Icon im Finder war, kann es weiter zeigen, obwohl die `.icns` im
+Bundle liegt — LaunchServices und der Icon-Cache ziehen nicht sofort nach.
+`killall Finder` hilft meist, sonst hilft ein Abmelden. Gemessen ist hier nur,
+dass `NSWorkspace.icon(forFile:)` für ein frisch an einen neuen Pfad gebautes
+Bundle sofort das richtige Icon liefert; wie hartnäckig der Cache an einem alten
+Pfad ist, wurde nicht geprüft.
 
 ## Das Kommandozeilenwerkzeug `openzonr`
 
@@ -425,6 +451,18 @@ nicht anfasst:
 ```bash
 Scripts/bundle.sh "$(mktemp -d)/OpenZonr.app"
 ```
+
+**Eine Stelle läuft auseinander, seit es ein App-Icon gibt** (Issue
+[#55](https://github.com/trsdn/OpenZonr/issues/55)): `Scripts/bundle.sh` kopiert
+`Resources/AppIcon.icns` nach `Contents/Resources`, der Broker-Adapter
+`assemble_menu_bar_swiftpm` tut das nicht — er kopiert nur die Binärdatei, die
+im Profil genannten Ressourcenbündel (`nested_resource_bundles`) und die
+`Info.plist`. Ein lokal gebautes Bundle hat das Icon also, ein veröffentlichtes
+vorerst nicht: es trägt `CFBundleIconFile`, aber die Datei fehlt, und macOS
+fällt auf den Platzhalter zurück. Das ist kein Fehler, den dieses Repo beheben
+kann — dafür muss der Adapter in `trsdn/macos-notarization-broker` das Icon aus
+dem Quell-Repo mitnehmen, so wie `assemble_openswitchr` und `assemble_openwritr`
+es bereits tun.
 
 ## Fahrplan
 

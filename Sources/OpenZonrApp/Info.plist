@@ -22,6 +22,12 @@
 	<string>OpenZonrApp</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.trsdn.openzonr</string>
+	<!-- Zeigt auf Contents/Resources/AppIcon.icns. Die Datei liegt im Repo
+	     unter Resources/AppIcon.icns und wird aus Scripts/make-icon.swift
+	     erzeugt; Scripts/bundle.sh kopiert sie vor dem Signieren ins Bundle.
+	     Ohne Endung, so erwartet es LaunchServices. -->
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
