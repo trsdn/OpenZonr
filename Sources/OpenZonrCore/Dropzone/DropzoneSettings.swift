@@ -22,6 +22,19 @@ public enum DropzoneModifier: String, Codable, Hashable, Sendable, CaseIterable 
         case .command: return "Befehl (⌘)"
         }
     }
+
+    /// Nur das Tastensymbol — für Sätze im Menü, die ohne Klammerzusatz
+    /// auskommen sollen („⌘ war nicht gedrückt“). `nil` für ``none``, weil ein
+    /// leeres Symbol einen Satz mit einer Lücke ergäbe statt einer Aussage.
+    public var symbol: String? {
+        switch self {
+        case .none: return nil
+        case .shift: return "⇧"
+        case .control: return "⌃"
+        case .option: return "⌥"
+        case .command: return "⌘"
+        }
+    }
 }
 
 /// Which modifier keys are held right now.
