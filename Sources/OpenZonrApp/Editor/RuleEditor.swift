@@ -146,7 +146,7 @@ struct RuleEditor: View {
                     .font(.headline)
                 Text("""
                 Eine Regel beschreibt, welche Fenster wohin gehören. Für den \
-                Normalfall genügt „Aktuelles Fenster hier festhalten“ im Menü — \
+                Normalfall genügt „Aktuelles Fenster festhalten“ im Menü — \
                 hier stehen die Fälle, für die das nicht reicht.
                 """)
                 .multilineTextAlignment(.center)

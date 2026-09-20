@@ -574,14 +574,21 @@ ein Timeout einen laufenden Zug **nicht** beendet, steht in
 
 ## Bedienung
 
-Menüleiste → „Fenster in Zonen ziehen". Der Schalter schreibt
-`defaults.dropzones.enabled` über dasselbe `ConfigurationDocument` wie jede
+Menüleiste → „Zonen beim Ziehen", drei Zeilen: „Bei jedem Ziehen", „Nur mit
+gehaltener ⌘-Taste", „Aus". Die Wahl schreibt `defaults.dropzones.enabled` und
+`defaults.dropzones.activation` über dasselbe `ConfigurationDocument` wie jede
 andere Änderung, überlebt also den Neustart und steht in der Datei, die der
-Nutzer bearbeitet.
+Nutzer bearbeitet. Der Haken steht am **wirksamen** Zustand aus der geladenen
+Konfiguration; eine von Hand eingetragene Regel, die keine der drei ist, bekommt
+eine eigene, angehakte Zeile.
 
-„Platzierung pausieren" schaltet das Ziehen mit ab — unter dem Schalter steht
-dann „Ziehen ist nicht aktiv: Die Platzierung ist pausiert", damit niemand
-gegen ein Overlay drückt, das nicht kommt.
+„Fenster automatisch platzieren" ausschalten schaltet das Ziehen mit ab — unter
+den Zeilen steht dann „Ziehen ist nicht aktiv: Die Platzierung ist pausiert",
+damit niemand gegen ein Overlay drückt, das nicht kommt.
+
+Darunter steht ein grauer Satz zum zuletzt beobachteten Zug („Letzter Zug: keine
+Zonen — ⌘ war nicht gedrückt."). Er ist Diagnose für den Fall, dass die Zonen
+nicht kommen, und nennt die Stelle, an der es hakt.
 
 Konfiguration siehe [`konfiguration.md`](konfiguration.md), Abschnitt
 `defaults.dropzones`.

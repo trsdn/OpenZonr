@@ -667,7 +667,7 @@ final class AppModel {
         return document
     }
 
-    /// „Aktuelles Fenster hier festhalten“ — the 90 % case.
+    /// „Aktuelles Fenster festhalten“ — the 90 % case.
     ///
     /// Reads the frontmost window, works out which zone it is sitting in, and
     /// lets ``QuickPin`` derive rule, role and binding. The write goes through

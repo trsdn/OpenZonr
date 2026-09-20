@@ -9,7 +9,7 @@ import OpenZonrMac
 /// unter dem Fenster, beim Namen. Ein Klick auf einen Eintrag verschiebt das
 /// Fenster einmalig in die Zone. Wird die Option-Taste (⌥) gedrückt gehalten,
 /// wird zusätzlich eine Regel geschrieben — über denselben ``QuickPin``, den
-/// auch der Menüleisten-Eintrag „Aktuelles Fenster hier festhalten“ und die
+/// auch der Menüleisten-Eintrag „Aktuelles Fenster festhalten“ und die
 /// Anheft-Marke beim Ziehen benutzen. Kein zweiter Pfad.
 ///
 /// Zwei Zusicherungen, die auch beim Anhören von Änderungen halten müssen:
