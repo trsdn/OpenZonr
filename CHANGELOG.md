@@ -12,6 +12,27 @@ existiert; dessen Text wird zu den Release-Notes.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-20
+
+### Behoben
+
+- **Monitore ohne Seriennummer werden trotz wandernder Port-Nummer erkannt.** Die
+  Nummer (`CGDisplayUnitNumber`) verschiebt sich, wenn Software-Displays kommen
+  und gehen (gemessen: derselbe Monitor, dasselbe Kabel, 0 am 29.08. und 1 am
+  19.09.). Danach passte kein Profil mehr, und die gesamte Dropzone-Funktion
+  (Overlay beim Ziehen und Zonenmenü am grünen Knopf) war ohne Meldung weg. Ein
+  Monitor ohne Seriennummer wird jetzt unabhängig vom `portIndex` erkannt, wenn
+  Hersteller und Modell in der Konfiguration und unter den angeschlossenen
+  Bildschirmen genau einmal vorkommen; ein exakter Treffer gewinnt zuerst.
+  Baugleiche Monitore ohne Seriennummer hängen weiter am `portIndex`, unbekannte
+  Displays führen weiter zu „kein Profil“ (es wird nicht geraten).
+
+### Geändert
+
+- `openzonr displays` nimmt `--config <pfad>` und meldet einen so erkannten Fall
+  als eine Zeile („konfiguriert als port=0, aktuell port=1: erkannt, weil
+  eindeutig“); dieselbe Zeile steht in der Watch-Diagnose.
+
 ## [0.1.0] - 2026-09-19
 
 Erster Release. Bestehende Installationen ohne Updater müssen einmal von Hand
