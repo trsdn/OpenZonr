@@ -1,0 +1,86 @@
+import Testing
+@testable import OpenZonrApp
+@testable import OpenZonrCore
+
+/// Die Kopfzeile und die eine Zustandszeile des Menüs.
+///
+/// Sie sind der Grund für den ganzen Umbau: bisher stand dort ein Zustandsname
+/// aus dem Programm plus ein Detail („Kein Profil passt — 2 Profile in der
+/// Konfiguration“), was beschreibt, aber nicht sagt, was los ist. Die Sätze
+/// hier stehen einzeln, weil eine `MenuBarExtra` sich nicht aufklappen und
+/// ablesen lässt — geprüft wird die Entscheidung, nicht ihre Anzeige.
+@Suite("Menü — Kopfzeile und Zustandszeile")
+struct MenuStatusLineTests {
+
+    @Test("Die Kopfzeile trägt die Fassung")
+    func headerWithVersion() {
+        #expect(MenuStatus.header(version: "0.1.1") == "OpenZonr 0.1.1")
+    }
+
+    @Test("Ohne Bundle steht nur der Name — keine erfundene Nummer")
+    func headerWithoutVersion() {
+        #expect(MenuStatus.header(version: nil) == "OpenZonr")
+        #expect(MenuStatus.header(version: "") == "OpenZonr")
+    }
+
+    @Test("Der unersetzte Platzhalter aus der Info.plist zählt nicht als Fassung")
+    func headerWithPlaceholder() {
+        #expect(MenuStatus.header(version: "__VERSION__") == "OpenZonr")
+    }
+
+    @Test("Fehlender Zugriff sagt, was ohne ihn nicht geht, und bietet genau einen Knopf")
+    func needsPermission() {
+        let line = MenuStatus.line(status: .needsPermission, profileName: nil, isPaused: false, hasProblem: false)
+        #expect(line.title == "Zugriff fehlt — ohne ihn kann OpenZonr keine Fenster bewegen")
+        #expect(line.action == .grantAccess)
+        #expect(line.action?.title == "Zugriff freigeben …")
+    }
+
+    @Test("Noch nichts eingerichtet und „nicht lesbar“ sind zwei verschiedene Lagen")
+    func needsConfiguration() {
+        let fresh = MenuStatus.line(status: .needsConfiguration, profileName: nil, isPaused: false, hasProblem: false)
+        #expect(fresh.title == "Noch nichts eingerichtet")
+        #expect(fresh.action == .explain)
+
+        let broken = MenuStatus.line(status: .needsConfiguration, profileName: nil, isPaused: false, hasProblem: true)
+        #expect(broken.title == "Die Einstellungen lassen sich nicht lesen")
+        #expect(broken.action == .explain)
+    }
+
+    @Test("Kein passendes Setup bietet einen Weg an, statt nur zu melden")
+    func noProfile() {
+        let line = MenuStatus.line(status: .noProfile, profileName: nil, isPaused: false, hasProblem: false)
+        #expect(line.title == "Kein Setup passt zu den angeschlossenen Bildschirmen")
+        #expect(line.action?.title == "Was ist zu tun? …")
+    }
+
+    @Test("Pausiert sagt, was das heisst, und braucht keinen Knopf")
+    func paused() {
+        let line = MenuStatus.line(status: .paused, profileName: "Schreibtisch", isPaused: true, hasProblem: false)
+        #expect(line.title == "Pausiert — es wird nichts automatisch platziert")
+        #expect(line.action == nil)
+    }
+
+    @Test("Bereit nennt das Setup beim Namen")
+    func active() {
+        let line = MenuStatus.line(status: .active, profileName: "Schreibtisch", isPaused: false, hasProblem: false)
+        #expect(line.title == "Bereit — Setup „Schreibtisch“")
+        #expect(line.action == nil)
+    }
+
+    @Test("Bereit ohne Namen bleibt ein ganzer Satz")
+    func activeWithoutName() {
+        #expect(
+            MenuStatus.line(status: .active, profileName: nil, isPaused: false, hasProblem: false).title == "Bereit"
+        )
+        #expect(
+            MenuStatus.line(status: .active, profileName: "", isPaused: false, hasProblem: false).title == "Bereit"
+        )
+    }
+
+    @Test("Die Pause schlägt durch, auch wenn der Zustand sie noch nicht kennt")
+    func pausedWinsOverActive() {
+        let line = MenuStatus.line(status: .active, profileName: "Schreibtisch", isPaused: true, hasProblem: false)
+        #expect(line.title == "Pausiert — es wird nichts automatisch platziert")
+    }
+}

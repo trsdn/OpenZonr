@@ -389,23 +389,53 @@ final class AppModel {
         set { setDropzonesEnabled(newValue) }
     }
 
+    private func setDropzonesEnabled(_ enabled: Bool) {
+        updateDropzoneSettings { settings in
+            var settings = settings
+            settings.enabled = enabled
+            return settings
+        }
+    }
+
+    /// Wann die Zonen beim Ziehen erscheinen — die drei Wahlmöglichkeiten des
+    /// Menüs, aus der **geladenen** Konfiguration gelesen.
+    ///
+    /// `nil` heisst: in der Datei steht eine Regel, die keine der drei
+    /// Möglichkeiten ausdrückt (etwa „nur mit ⌥"). Das Menü zeigt sie dann als
+    /// eigene Zeile an, statt einen falschen Haken zu setzen.
+    var dropzoneTrigger: DropzoneTrigger? {
+        guard let settings = configuration?.defaults.dropzones else { return nil }
+        return DropzoneTrigger.current(settings)
+    }
+
+    func setDropzoneTrigger(_ trigger: DropzoneTrigger) {
+        updateDropzoneSettings(trigger.applied(to:))
+    }
+
     /// Betriebliche Einstellung: wirkt sofort und wird sofort gesichert — mit
     /// oder ohne Editor-Sitzung. Geschrieben wird immer „geladene
-    /// Konfiguration plus dieser Schalter“, nie der ungesicherte Editorstand.
-    /// Eine vorhandene Sitzung bekommt denselben Schalter in Arbeitskopie und
+    /// Konfiguration plus diese Einstellung“, nie der ungesicherte Editorstand.
+    /// Eine vorhandene Sitzung bekommt dieselbe Einstellung in Arbeitskopie und
     /// Ausgangsstand, damit ihre eigenen ungesicherten Änderungen bleiben.
-    private func setDropzonesEnabled(_ enabled: Bool) {
-        guard var base = configuration else { return }
-        let current = base
-        let previous = base.defaults.dropzones.enabled
-        guard previous != enabled else { return }
-        base.defaults.dropzones.enabled = enabled
+    ///
+    /// Seit dem Menü-Umbau geht **jede** Ziehen-Einstellung hier durch — der
+    /// Ein/Aus-Schalter wie die Frage, wann die Zonen kommen. Zwei Wege mit
+    /// derselben Sorgfalt nebeneinander wären zwei Wege, die auseinanderlaufen
+    /// können; der Schreibweg ist deshalb einer, und nur die Umformung
+    /// unterscheidet sich.
+    private func updateDropzoneSettings(_ transform: (DropzoneSettings) -> DropzoneSettings) {
+        guard let current = configuration else { return }
+        let previous = current.defaults.dropzones
+        let next = transform(previous)
+        guard next != previous else { return }
+        var base = current
+        base.defaults.dropzones = next
 
         // Zuerst die Sitzung anpassen: das anschliessende Neuladen (onSave)
         // sieht dann Datei == Ausgangsstand und nimmt keine Fremdänderung an.
         document?.applyOperational { c in
             var c = c
-            c.defaults.dropzones.enabled = enabled
+            c.defaults.dropzones = next
             return c
         }
 
@@ -421,7 +451,7 @@ final class AppModel {
             if !writer.hasExternalChange {
                 document?.applyOperational { c in
                     var c = c
-                    c.defaults.dropzones.enabled = previous
+                    c.defaults.dropzones = previous
                     return c
                 }
             }
@@ -430,6 +460,29 @@ final class AppModel {
             return
         }
         // `onSave` hat neu geladen und dabei den Tracker neu aufgesetzt.
+    }
+
+    // MARK: - Letzter Zug
+
+    /// Was beim zuletzt beobachteten Zug herauskam.
+    ///
+    /// Diagnose, und zwar sichtbare: „die Zonen kommen nicht, wenn ich ⌘
+    /// drücke" ist ein offener Fehler, dessen Ursache unbekannt ist, und keine
+    /// der möglichen Ursachen ist von aussen zu sehen. Eine graue Zeile im
+    /// Menü macht aus „es passiert nichts" eine Aussage, mit der man weiterkommt.
+    private(set) var lastDragOutcome: DragOutcome?
+
+    func recordDragOutcome(_ outcome: DragOutcome) {
+        lastDragOutcome = outcome
+        Log.detail("Zug-Ergebnis: \(DragOutcomeWording.sentence(for: outcome) ?? "—")")
+    }
+
+    /// Die Fassung aus dem Bundle, für die Kopfzeile des Menüs.
+    ///
+    /// `nil` ausserhalb eines Bundles (Test, `swift run`) — dann steht dort nur
+    /// der Name. Eine erfundene Nummer wäre schlimmer als keine.
+    var appVersion: String? {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
     }
 
     /// Other window managers that are running right now.
