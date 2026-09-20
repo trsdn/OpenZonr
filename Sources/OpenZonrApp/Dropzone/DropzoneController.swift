@@ -15,7 +15,7 @@ import OpenZonrMac
 final class DropzoneController {
 
     private let model: AppModel
-    private let overlay = DropzoneOverlay()
+    private let overlay: any DropzoneOverlaying
     private let offerPanel = DropOfferPanel()
     private lazy var zoomMenu = ZoomButtonMenu(model: model)
     private var tracker: (any WindowDragTracker)?
@@ -46,6 +46,10 @@ final class DropzoneController {
     /// aber genau die, an der der Fund aus PR #15 hing.
     var _hasActiveTrackerForTesting: Bool { tracker != nil }
 
+    /// Nur für Tests: speist ein Zugereignis ein, als käme es vom Tracker. Ein
+    /// Event-Tap lässt sich in der Testumgebung nicht installieren.
+    func _handleForTesting(_ event: WindowDragEvent) { handle(event) }
+
     /// Nur für Tests: wie oft `start()` / `stop()` gelaufen sind. Ein
     /// Event-Tap lässt sich in der Testumgebung nicht installieren; die Zähler
     /// zeigen stattdessen, ob der Tracker angefasst wurde.
@@ -63,8 +67,9 @@ final class DropzoneController {
         let request: QuickPin.Request
     }
 
-    init(model: AppModel) {
+    init(model: AppModel, overlay: any DropzoneOverlaying = DropzoneOverlay()) {
         self.model = model
+        self.overlay = overlay
     }
 
     // MARK: - Lifecycle
@@ -163,13 +168,19 @@ final class DropzoneController {
             update(pointer: point, modifiers: modifiers)
 
         case let .ended(point, modifiers):
-            update(pointer: point, modifiers: modifiers)
+            // Der letzte Plan wird nur noch *errechnet* (das Ablegen braucht die
+            // hervorgehobene Zone), nicht mehr gezeichnet. Ein Neuzeichnen
+            // beim Loslassen ließ die blaue Zone stehen, sobald ⌘ noch gehalten
+            // war — der Normalfall bei `showsWhile(.command)`.
+            update(pointer: point, modifiers: modifiers, render: false)
             // Erst ablegen, dann den Satz festhalten. Ein Ablegen auf der
             // Anheft-Marke schreibt eine Regel, das Sichern lädt neu, und ein
             // Neuladen vergisst den letzten Zug — in der anderen Reihenfolge
             // wäre der Satz weg, kaum dass er dastand.
             drop(at: point)
             model.recordDragOutcome(finishedDragOutcome())
+            // Nach dem Loslassen steht kein Overlay mehr, egal was der Plan war.
+            overlay.hide()
             origin = nil
             dragged = nil
 
@@ -204,12 +215,14 @@ final class DropzoneController {
         return .zonesHidden(reason)
     }
 
-    private func update(pointer: ScreenPoint, modifiers: ModifierState) {
+    /// - Parameter render: `false` beim Loslassen — dann wird nur der Plan
+    ///   nachgeführt, das Overlay aber weder gezeigt noch angefasst.
+    private func update(pointer: ScreenPoint, modifiers: ModifierState, render: Bool = true) {
         guard let origin, let configuration = model.configuration, let profile = model.activeProfile else {
             // Ohne Setup gibt es keine Zonen — ein eigener Grund, der sonst als
             // „abgeschaltet" gemeldet würde und niemanden weiterbrächte.
             if model.activeProfile == nil { dragLacksSetup = true }
-            overlay.hide()
+            if render { overlay.hide() }
             return
         }
         let snapshots = SystemDisplays.snapshots()
@@ -233,7 +246,7 @@ final class DropzoneController {
         } else {
             dragSawZones = true
         }
-        overlay.show(plan)
+        if render { overlay.show(plan) }
     }
 
     /// Puts the window in the zone under the pointer.
