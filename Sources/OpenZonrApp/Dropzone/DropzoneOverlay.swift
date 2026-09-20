@@ -10,8 +10,17 @@ import OpenZonrCore
 /// The window is click-through (`ignoresMouseEvents`). That is not cosmetic —
 /// the drag belongs to the application whose window is being moved, and an
 /// overlay that swallowed the mouse would end the drag the moment it appeared.
+/// Was der Controller vom Overlay braucht. Ein Protokoll, damit ein Test prüfen
+/// kann, *dass* das Overlay beim Loslassen versteckt wird, ohne ein echtes
+/// Fenster auf den Bildschirm zu setzen.
 @MainActor
-final class DropzoneOverlay {
+protocol DropzoneOverlaying: AnyObject {
+    func show(_ plan: DropzoneOverlayPlan.Plan)
+    func hide()
+}
+
+@MainActor
+final class DropzoneOverlay: DropzoneOverlaying {
 
     private var windows: [DisplayAlias: NSWindow] = [:]
 
