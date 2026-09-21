@@ -308,7 +308,7 @@ abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
 | **Erscheinen und Bedienbarkeit des Menüs am Bildschirm** | **Nicht gemessen** | Ob das `NSMenu` an der berechneten Position aufgeht, ob es die richtigen Zonen zeigt und ob der ⌥-Zusatz beim *Klick* korrekt gelesen wird, braucht eine Hand an der Maus — headless nicht prüfbar. Zonenermittlung und Trefferprüfung sind headless getestet, die AppKit-Anzeige nicht. |
 | **Verhalten auf Fenstern ohne `kAXZoomButton`** | **Gemessen für ein Finder-Fenster** | Ein Finder-Fenster lieferte kein `AXZoomButton`. Der Code trennt den Fall (`ZoomButtonLookup.Result.zoomButtonUnavailable`) und behandelt ihn **still**: das Attribut fehlt für das ganze Fenster, jeder beiläufige Rechtsklick würde sonst eine Meldung erzeugen. Ob **jedes** Finder-Fenster (und andere AXScrollArea-artige Fenster) es genauso hält, ist nicht gemessen. |
 | **Systemmenü beim Schweben mit eingeschalteter macOS-Fensteranordnung** | **Nicht gemessen** | Auf dieser Maschine ist `EnableTilingByEdgeDrag = 0`. Ob das Schweben-Menü der macOS-Fensteranordnung mit dem Rechtsklick-Menü kollidiert (verschiedene Gesten, aber am selben Pixel), braucht eine Maschine mit eingeschalteter Fensteranordnung und eine Positivkontrolle für das Schweben-Menü — beides fehlt. |
-| **Fensterzug vs. Inhaltszug (#37) in echten Apps** | **Gemessen für TextEdit (synthetische Ereignisse), sonst Nicht gemessen** | In TextEdit lösen Titelleistenzüge `began` nach 143 bis 175 ms aus, Textzüge, Zug am Fensterrand und Größenänderung an Kante oder Ecke lösen nichts aus (Tabelle unter „Manuelle Prüfung #37“). Nicht gemessen: alle anderen Apps (Finder, Safari, Chrome, Terminal, Xcode, VS Code), Datei-Züge, Hilfstasten, Bildschirmrand und zwei Displays, das Overlay selbst und jede Bedienung mit der Hand. Apps, die nicht probiert wurden, werden nie als bewiesen geführt. |
+| **Fensterzug vs. Inhaltszug (#37) in echten Apps** | **Gemessen für TextEdit, Finder, Chrome, VS Code, Safari (synthetische Ereignisse), sonst Nicht gemessen** | In TextEdit lösen Titelleistenzüge `began` nach 143 bis 175 ms aus, Textzüge, Zug am Fensterrand und Größenänderung an Kante oder Ecke lösen nichts aus (Tabelle unter „Manuelle Prüfung #37“). Titelleistenzüge mit und ohne ⌘ lösen in allen fünf `began` nach 123 bis 175 ms aus, Inhaltszüge (auch ein Datei-Zug im Finder) lösen nichts aus. Nicht gemessen: Terminal (nur der Titelleistenzug vom 19.09.), Xcode, Textmarkierung in echtem Text, Ctrl+Cmd-Zug im Fensterinhalt, Bildschirmrand und zwei Displays, das Overlay selbst und jede Bedienung mit der Hand. Apps, die nicht probiert wurden, werden nie als bewiesen geführt. |
 
 Kurz: Alles, was ohne einen echten Zug beweisbar ist, ist bewiesen. Alles, was
 einen braucht, ist als ungemessen ausgewiesen. Der Schnitt zwischen beidem war
@@ -382,15 +382,36 @@ beim Ablegen, Anheften beim Ablegen auf der Marke.
    Zeile „Ereignis-Tap wegen Timeout kurz abgeschaltet; Zug wird fortgesetzt.“
    nicht häufiger erscheinen als vorher.
 
-**Ergebnisse.** Nur TextEdit ist gemessen, alle anderen Apps und Fälle sind
-offen. Die Messung vom 19.09.2026 lief mit dem echten `EventTapDragTracker`
-gegen ein echtes TextEdit-Fenster, aber mit **synthetischen** Mausereignissen
+**Ergebnisse.** Gemessen sind TextEdit (19.09.2026) sowie Finder, Chrome, VS Code
+und Safari (22.09.2026); alle anderen Apps und Fälle sind offen. Die Messungen
+liefen mit dem echten `EventTapDragTracker` gegen echte Fenster, aber mit
+**synthetischen** Mausereignissen
 (`CGEvent`, kein Mensch an der Maus), ohne die App und ohne Overlay. Gemessen
 sind also die Tracker-Ereignisse (`began`/`moved`/`ended`) und der AX-Rahmen
 des Fensters vor und nach dem Zug, nicht das Zeichnen des Overlays. Die
 „Verzögerung“ ist die Zeit von der ersten Mausbewegung bis `began`.
 
 Rechner: macOS 26.6.2, Bildschirm C49RG9x (5120×1440).
+
+Messung vom 22.09.2026 (jeweils ein neues, leeres Fenster; Zug 300 pt nach rechts
+und 60 pt nach unten, 40 Schritte; je ohne und mit ⌘ in den Ereignissen; die
+ziehbare Stelle der Titelleiste wurde pro App zuerst ohne ⌘ gesucht):
+
+| Fall | App | Version | Ergebnis | Verzögerung bis `began` |
+|---|---|---|---|---|
+| Titelleiste ohne / mit ⌘ | Finder | 26.4 | bestanden, beide Male `began`, `moved`, `ended`, Fenster bewegt | 128 / 128 ms |
+| Datei „Testdatei.txt“ im Symbolfenster ziehen, ohne / mit ⌘ | Finder | 26.4 | bestanden, keine Ereignisse, Fenster unverändert | – |
+| Titelleiste ohne / mit ⌘ | Chrome | 153.0.8010.53 | bestanden | 125 / 135 ms |
+| Fenstermitte ziehen (leere Seite), ohne / mit ⌘ | Chrome | 153.0.8010.53 | bestanden, keine Ereignisse | – |
+| Titelleiste ohne / mit ⌘ (eigene Titelleiste, Electron) | VS Code | 1.138.0 | bestanden | 136 / 139 ms |
+| Fenstermitte ziehen (Willkommensseite), ohne / mit ⌘ | VS Code | 1.138.0 | bestanden, keine Ereignisse | – |
+| Titelleiste ohne / mit ⌘ (ziehbare Stelle bei 15 % der Breite) | Safari | 26.6.2 | bestanden | 129 / 123 ms |
+| Fenstermitte ziehen (Startseite), ohne / mit ⌘ | Safari | 26.6.2 | bestanden, keine Ereignisse | – |
+
+Das Ziehen von Inhalt in Chrome, VS Code und Safari geschah auf leeren Seiten, nicht
+auf markierbarem Text; belegt ist damit, dass ein Zug im Inhalt, bei dem sich das
+Fenster nicht bewegt, nie `began` auslöst, nicht die Textmarkierung selbst. Der
+Terminal-Zug (19.09.) wurde nicht wiederholt.
 
 | Fall (Nr.) | App | Version | Bestanden / nicht bestanden | Gemessene Verzögerung bis `began` |
 |---|---|---|---|---|
