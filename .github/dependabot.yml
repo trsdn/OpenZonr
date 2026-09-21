@@ -1,0 +1,16 @@
+# Keeps the GitHub Actions in .github/workflows and the Swift package
+# dependency in Package.swift current. Each update arrives as a pull request.
+# Package.resolved is also held by the release broker; see AGENTS.md before
+# merging a Swift update.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: swift
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
