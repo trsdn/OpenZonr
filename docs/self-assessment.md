@@ -98,7 +98,7 @@ are decided from source and the app was not operated.
 | `R02` | pass | `CHANGELOG.md` names Semantic Versioning. |
 | `R03` | pass | Tag `v0.1.2` names commit `a9607d7`, the same commit as `source.commit_sha` in the release's `provenance.json`. The README documents the broker command that builds from a tag and publishes to the release. |
 | `R04` | pass | Tag `v0.1.2`, `CFBundleShortVersionString` 0.1.2 read from the downloaded ZIP, release title `v0.1.2`. |
-| `R05` | partial | A kit exists (`smoke-test.yml`, `docs/release-smoke-tests.md`) but no recorded run of it is complete yet: the run for `v0.1.2` (Actions run 35648787565) was still queued for a hosted macOS runner when this was written. Becomes `pass` when that run succeeds and its job summary is recorded below. The assessor did check the same properties by hand on the downloaded ZIP (see `R08`) without launching the app, which is not a kit run. |
+| `R05` | pass | `smoke-test.yml` ran for `v0.1.2` on 2026-09-21 (Actions run 35648787565, job "Install and check", conclusion success): it downloaded the arm64 DMG, verified its checksum, installed it to a temporary directory and ran `codesign --verify`, `spctl --assess` and `stapler validate`. The app was not started, which the kit documents. Run by the assessing agent, not the maintainer. |
 | `R06` | pass | The release notes name specific user-visible changes (the app icon, the "Letzter Zug" menu line); nothing breaking to warn about. |
 | `R07` | pass | The release body is the `0.1.2` changelog entry, which exists and is not empty; the README and `CHANGELOG.md` document that the broker refuses to publish without it. |
 | `R08` | partial | The artifact is Developer ID signed and notarized (verified on the download: `codesign` valid, `spctl` "accepted, source=Notarized Developer ID", `stapler validate` worked) and the release carries the broker's `provenance.json`. The README says a GitHub attestation is deliberately not used but does not tell a consumer how to verify a download. Fix: one paragraph naming `codesign`, `spctl` and `provenance.json`. |
@@ -158,5 +158,4 @@ are decided from source and the app was not operated.
 
 Kit: `.github/workflows/smoke-test.yml`, documented in
 [`release-smoke-tests.md`](release-smoke-tests.md). Run for `v0.1.2`: workflow run
-35648787565, dispatched 2026-09-21 by the assessing agent, queued when this record
-was written; the result is not recorded here and is not assumed.
+35648787565, dispatched 2026-09-21 by the assessing agent, conclusion success (it waited about 55 minutes for a hosted macOS runner).
