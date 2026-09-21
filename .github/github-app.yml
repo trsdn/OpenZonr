@@ -1,0 +1,22 @@
+# Repository configuration for the GitHub Copilot app.
+#
+# The authoritative instructions for this repository are in AGENTS.md. This file
+# points at them rather than restating them, so the two cannot drift apart.
+
+instructions: |
+  Read AGENTS.md in the repository root and follow it. It is the authoritative
+  guidance for this repository.
+
+  The rules that are most often broken:
+
+  1. Never publish a release, create or move tags, or change repository settings.
+  2. Never run Scripts/bundle.sh without a target argument: it replaces the
+     installed app that holds the Accessibility grant.
+  3. Never change Package.resolved, Info.plist identity keys or the update code
+     without a pull request the maintainer approves.
+
+  Validate with `swift build -c release -Xswiftc -warnings-as-errors`, `swiftlint lint --strict`, and `swift test` before proposing any change.
+
+scripts:
+  - name: Validate
+    command: swift build -c release -Xswiftc -warnings-as-errors && swiftlint lint --strict && swift test
