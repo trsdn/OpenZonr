@@ -1,0 +1,25 @@
+# A ratchet: every rule here passes on the whole codebase today, so a violation
+# is a regression rather than a backlog. CI runs `swiftlint lint --strict`.
+# Add a rule only in the change that fixes its last violation. Rules left out
+# because the code still violates them: force_cast, empty_count.
+only_rules:
+  - force_try
+  - unused_optional_binding
+  - unused_closure_parameter
+  - empty_string
+  - implicit_optional_initialization
+  - redundant_string_enum_value
+  - duplicate_imports
+  - trailing_whitespace
+  - legacy_constructor
+  - discarded_notification_center_observer
+  - weak_delegate
+  - unused_enumerated
+  - overridden_super_call
+  - unneeded_break_in_switch
+  - redundant_discardable_let
+  - unowned_variable_capture
+
+included:
+  - Sources
+  - Tests
