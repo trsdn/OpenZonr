@@ -124,8 +124,9 @@ flow by hand, and say in the pull request what you tried.
 - Do not add or upgrade dependencies without a pull request the maintainer
   approves. Dependabot proposes routine updates weekly. The core and mac targets
   are dependency-free on purpose.
-- Do not log user content: window titles, application names and file paths are
-  handled locally and are never sent anywhere.
+- Do not send user content off the machine: window titles, application names and
+  file paths stay local. The only network contact is the update check against
+  GitHub Releases.
 
 ## Credentials and revocation
 
