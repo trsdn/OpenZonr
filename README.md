@@ -1,5 +1,11 @@
 # OpenZonr
 
+[![Lizenz](https://img.shields.io/github/license/trsdn/OpenZonr)](LICENSE)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)](Package.swift)
+[![CI](https://github.com/trsdn/OpenZonr/actions/workflows/ci.yml/badge.svg)](https://github.com/trsdn/OpenZonr/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/trsdn/OpenZonr)](https://github.com/trsdn/OpenZonr/releases/latest)
+[![Conformance](.github/badges/conformance.svg)](docs/self-assessment.md)
+
 **Status: lauffähiges Kommandozeilenwerkzeug und eine Menüleisten-App.**
 Datenmodell, Konfigurationsspeicher, Regel-Engine und die Anbindung an
 Accessibility und CoreGraphics sind gebaut und getestet.
@@ -501,6 +507,24 @@ Sie sind in [docs/tracer-bullet.md](docs/tracer-bullet.md) beschrieben.
 - [docs/tracer-bullet.md](docs/tracer-bullet.md) — was der Durchstich abdeckt,
   was fehlt, und der Stand der Messung
 - [docs/offene-fragen.md](docs/offene-fragen.md) — was noch nicht entschieden ist
+
+## Sprache und Datenschutz
+
+Primäre Sprache: Deutsch. Oberfläche und Dokumentation sind ausschließlich
+deutsch, es gibt keine weitere Lokalisierung.
+
+OpenZonr erhebt keine Nutzerdaten und sendet keine: keine Telemetrie, keine
+Analyse, keine Absturzberichte. Fenstertitel, Bundle-IDs und Anzeigen bleiben auf
+dem Rechner. Die Konfiguration liegt in
+`~/Library/Application Support/OpenZonr/config.json` (überschreibbar mit
+`--config` oder `OPENZONR_CONFIG`), die Voreinstellungen der App in der
+UserDefaults-Domain `com.trsdn.openzonr`. Löschen: den Ordner
+`~/Library/Application Support/OpenZonr` entfernen und
+`defaults delete com.trsdn.openzonr` ausführen. Die einzige Netzverbindung ist die
+Update-Suche gegen die GitHub Releases dieses Repositories
+([Updates und Veröffentlichen](#updates-und-veröffentlichen)); sie lässt sich im
+Menü mit „Automatisch nach Updates suchen“ abschalten. Es gibt keinen Drittanbieter,
+der Nutzerinhalte erhält.
 
 ## Lizenz
 
