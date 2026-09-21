@@ -12,6 +12,8 @@ existiert; dessen Text wird zu den Release-Notes.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-21
+
 ### Hinzugefügt
 
 - **Die App hat ein Icon.** Bisher zeigte `OpenZonr.app` überall das generische
@@ -25,10 +27,21 @@ existiert; dessen Text wird zu den Release-Notes.
   Signieren nach `Contents/Resources` kopiert; `Info.plist` verweist mit
   `CFBundleIconFile` darauf
   ([#55](https://github.com/trsdn/OpenZonr/issues/55)).
-  **Noch nicht im Release:** der Broker-Adapter `assemble_menu_bar_swiftpm`
-  kopiert keine Icon-Datei aus dem Quell-Repo, deshalb bleibt ein
-  veröffentlichtes Bundle vorerst ohne Icon, bis der Broker nachzieht. Lokal
-  gebaute Bundles haben es ab sofort.
+  Auch im veröffentlichten Bundle: der Broker kopiert die Datei über das
+  Profilfeld `app_icon` (trsdn/macos-notarization-broker#66) vor dem
+  Signieren in `Contents/Resources`. Bis das Icon im Finder erscheint, kann
+  macOS noch das alte Platzhalter-Symbol aus seinem Cache zeigen
+  (`killall Finder`).
+- **Eine Zeile „Letzter Zug" im Menü, die sagt, warum die Zonen ausblieben.**
+  „Letzter Zug: keine Zonen — ⌘ war nicht gedrückt.", „… kein Fenster unter dem
+  Zeiger erkannt.", „… Bewegung nicht als Fensterzug erkannt.", „… losgelassen,
+  bevor sich das Fenster bewegt hat." Vier Ursachen, die bisher alle gleich
+  aussahen: es passiert nichts. `EventTapDragTracker` hat dafür einen zweiten
+  Rückweg (`onOutcome`) für Drücke bekommen, die es nie bis zu einem Zug
+  schaffen — höchstens ein Satz je Druck, keiner für einen gewöhnlichen Klick,
+  und weiterhin kein AX-Aufruf im Tap-Rückruf
+  ([#26](https://github.com/trsdn/OpenZonr/issues/26),
+  [#37](https://github.com/trsdn/OpenZonr/issues/37)).
 
 ### Geändert
 
@@ -61,19 +74,6 @@ existiert; dessen Text wird zu den Release-Notes.
   bearbeiten …", „Aktuelles Fenster hier festhalten" heißt „Aktuelles Fenster
   festhalten", „Platzierung pausieren" ist zu „Fenster automatisch platzieren"
   umgedreht.
-
-### Hinzugefügt
-
-- **Eine Zeile „Letzter Zug" im Menü, die sagt, warum die Zonen ausblieben.**
-  „Letzter Zug: keine Zonen — ⌘ war nicht gedrückt.", „… kein Fenster unter dem
-  Zeiger erkannt.", „… Bewegung nicht als Fensterzug erkannt.", „… losgelassen,
-  bevor sich das Fenster bewegt hat." Vier Ursachen, die bisher alle gleich
-  aussahen: es passiert nichts. `EventTapDragTracker` hat dafür einen zweiten
-  Rückweg (`onOutcome`) für Drücke bekommen, die es nie bis zu einem Zug
-  schaffen — höchstens ein Satz je Druck, keiner für einen gewöhnlichen Klick,
-  und weiterhin kein AX-Aufruf im Tap-Rückruf
-  ([#26](https://github.com/trsdn/OpenZonr/issues/26),
-  [#37](https://github.com/trsdn/OpenZonr/issues/37)).
 
 ## [0.1.1] - 2026-09-20
 
