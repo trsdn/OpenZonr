@@ -44,8 +44,18 @@ struct OpenZonrMenuBarApp: App {
         MenuBarExtra {
             MenuContent(model: model)
         } label: {
+            // `accessibilityLabel` bewusst statisch, nicht mehr mit dem sich
+            // laufend ändernden Status verwoben (Issue #69). Verdacht, nicht
+            // Beweis: AppKits eigener Bedienungshilfen-Code für Statuselemente
+            // (`NSAccessibilityMockStatusBarItem`) stürzte zweimal ab, genau
+            // beim Klick auf dieses Symbol — beide Male beim Aufbau seiner
+            // Attribut-Liste. Eine Beschriftung, die bei jeder Statusänderung
+            // neu berechnet wird, gibt AppKit dafür mehr Gelegenheiten als eine
+            // feste; das Symbol selbst bleibt dynamisch, weil ein wechselndes
+            // Icon der gewöhnliche, an anderer Stelle folgenlose Fall ist. Der
+            // Status steht ohnehin als erste Zeile im aufgeklappten Menü.
             Image(systemName: model.status.symbolName)
-                .accessibilityLabel("OpenZonr — \(model.status.headline)")
+                .accessibilityLabel("OpenZonr")
         }
         .menuBarExtraStyle(.menu)
     }
