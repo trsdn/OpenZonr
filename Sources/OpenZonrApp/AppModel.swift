@@ -522,11 +522,48 @@ final class AppModel {
 
     private func syncFromEngine() {
         guard let engine else { return }
-        profileState = engine.profileState
-        records = engine.records
-        observedApplications = engine.observedApplicationCount
+        applyEngineSync(
+            profileState: engine.profileState,
+            records: engine.records,
+            observedApplications: engine.observedApplicationCount
+        )
+    }
+
+    /// Writes the engine mirror, but only the fields that actually changed.
+    ///
+    /// `@Observable`'s generated setters notify on every assignment, even one
+    /// that writes back the same value — there is no built-in equality check.
+    /// The permission-poll timer calls this every two seconds through
+    /// ``syncFromEngine()`` (see #44), so an unconditional write here forces
+    /// every SwiftUI view reading these properties — the whole menu body,
+    /// `MenuContent` included — to recompute on the same cadence. While the
+    /// menu bar's `NSMenu` is open, that periodic rebuild is what closed a
+    /// visible submenu out from under the user (#66): not the nesting depth
+    /// alone, but this ticking invalidation hitting it. Guarding each write
+    /// behind `!=` is the same pattern ``updateStatus()`` already uses.
+    private func applyEngineSync(
+        profileState: WatchEngine.ProfileState?,
+        records: [PlacementRecord],
+        observedApplications: Int
+    ) {
+        if self.profileState != profileState { self.profileState = profileState }
+        if self.records != records { self.records = records }
+        if self.observedApplications != observedApplications { self.observedApplications = observedApplications }
         updateStatus()
     }
+
+    #if DEBUG
+    /// Nur für Tests: derselbe Codepfad wie `syncFromEngine()`, aber mit
+    /// Werten von aussen statt von einem echten `WatchEngine`, der in der
+    /// Testumgebung nicht baubar ist (Bedienungshilfen).
+    func _applyEngineSyncForTesting(
+        profileState: WatchEngine.ProfileState?,
+        records: [PlacementRecord],
+        observedApplications: Int
+    ) {
+        applyEngineSync(profileState: profileState, records: records, observedApplications: observedApplications)
+    }
+    #endif
 
     /// Pins a profile by hand, or returns to the automatic match with `nil`.
     func selectProfile(_ id: ProfileID?) {

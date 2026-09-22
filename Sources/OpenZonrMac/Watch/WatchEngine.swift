@@ -20,7 +20,7 @@ import OpenZonrCore
 public final class WatchEngine {
 
     /// Which profile the engine is placing against, and how it got there.
-    public enum ProfileState: Sendable {
+    public enum ProfileState: Sendable, Equatable {
         /// The attached displays match this profile exactly.
         case matched(Profile)
         /// The user pinned this profile by hand. `automatic` is what the
