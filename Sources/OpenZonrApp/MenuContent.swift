@@ -150,12 +150,20 @@ struct MenuContent: View {
 
     // MARK: - Setup
 
+    /// `Section`, nicht `Menu`: ein zweites `Menu` hier wäre die zweite Ebene
+    /// verschachtelter Untermenüs innerhalb von „Mehr" — und genau das lässt das
+    /// native `NSMenu`, das `MenuBarExtra` im `.menu`-Stil daraus baut, beim
+    /// Übergang zwischen den Ebenen verlässlich den Hover-Zustand verlieren und
+    /// sich schließen, bevor sich etwas auswählen lässt (Issue #66, vom Nutzer
+    /// als reproduzierbar bestätigt). Eine `Section` gruppiert mit Titel und
+    /// Trennlinie auf **derselben** Ebene, ohne ein weiteres hover-gesteuertes
+    /// Menü zu öffnen — das behebt die Ursache, statt sie zu umgehen.
     @ViewBuilder
     private var setupMenu: some View {
         if model.availableProfiles.isEmpty {
             Text("Keine Setups eingerichtet")
         } else {
-            Menu("Setup") {
+            Section("Setup") {
                 Button {
                     model.selectProfile(nil)
                 } label: {
@@ -334,12 +342,15 @@ struct MenuContent: View {
 
     // MARK: - Recent placements
 
+    /// `Section`, nicht `Menu` — aus demselben Grund wie bei ``setupMenu``:
+    /// ein zweites verschachteltes Menü innerhalb von „Mehr" ist die Ursache
+    /// von Issue #66, nicht nur eine seiner Erscheinungen.
     @ViewBuilder
     private var recentPlacements: some View {
         if model.records.isEmpty {
             Text("Noch keine Platzierung")
         } else {
-            Menu("Zuletzt platziert") {
+            Section("Zuletzt platziert") {
                 ForEach(model.records.prefix(8)) { record in
                     Text("\(record.applicationName) → \(record.target ?? "—") · \(record.summary)")
                 }
