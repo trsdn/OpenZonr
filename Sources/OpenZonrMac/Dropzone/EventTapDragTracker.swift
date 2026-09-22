@@ -202,26 +202,44 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// AX-Abfrage getestet werden kann.
     private let windowLookup: @Sendable (ScreenPoint, Double) -> DraggedWindow?
 
+    /// Dicke der Menüleiste, in **CG**-Koordinaten (Ursprung oben links, wie
+    /// `accessibilityPoint`) — also einfach die Anzahl Punkte von oben. Real
+    /// `NSStatusBar.system.thickness`; injizierbar, damit ein Test den Schutz
+    /// gezielt an- und ausschalten kann, ohne AppKit zu brauchen.
+    private let menuBarThickness: @MainActor () -> Double
+
     public convenience init(primaryTopY: Double) {
         self.init(
             primaryTopY: primaryTopY,
             windowLookup: Self.window(atAccessibilityPoint:primaryTopY:),
-            frameSampler: Self.currentFrame(of:primaryTopY:)
+            frameSampler: Self.currentFrame(of:primaryTopY:),
+            menuBarThickness: { NSStatusBar.system.thickness }
         )
     }
 
     /// Testsaat: Fenster-Lookup und Rahmenabruf durch Attrappen ersetzen und
-    /// die Zustandsmaschine kopfweise durchspielen.
+    /// die Zustandsmaschine kopfweise durchspielen. `menuBarThickness` steht
+    /// hier auf `0` — der Schutz aus #69 bleibt in bestehenden Tests aus, die
+    /// wie üblich mit `y: 0` drücken; ein eigener Test schaltet ihn gezielt an.
     init(
         primaryTopY: Double,
         windowLookup: @escaping @Sendable (ScreenPoint, Double) -> DraggedWindow?,
         frameSampler: @escaping @Sendable (DraggedWindow, Double) -> WindowFrame? = { _, _ in nil },
-        now: @escaping @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now }
+        now: @escaping @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now },
+        menuBarThickness: @escaping @MainActor () -> Double = { 0 }
     ) {
         self.primaryTopY = primaryTopY
         self.windowLookup = windowLookup
         self.frameSampler = frameSampler
         self.now = now
+        self.menuBarThickness = menuBarThickness
+    }
+
+    /// Reiner Geometrie-Check, ohne AppKit: liegt `y` im obersten Streifen, der
+    /// der Menüleiste vorbehalten ist? `accessibilityPoint` hat denselben
+    /// Ursprung (oben links) wie `CGEvent.location`, aus dem er stammt.
+    static func isWithinMenuBarStrip(y: Double, menuBarThickness: Double) -> Bool {
+        y >= 0 && y < menuBarThickness
     }
 
     /// Re-reads the pivot for the coordinate flip.
@@ -385,7 +403,20 @@ public final class EventTapDragTracker: WindowDragTracker {
             dragging = false
             outcomeReported = false
             resetMovementEvidence()
-            scheduleWindowLookup(at: accessibilityPoint)
+            if Self.isWithinMenuBarStrip(y: accessibilityPoint.y, menuBarThickness: menuBarThickness()) {
+                // Kein App-Fenster beginnt unter der Menüleiste, und die
+                // Positionsabfrage genau dort ist eine gemessene Absturzquelle
+                // (Issue #69): `AXUIElementCopyElementAtPosition` über einem
+                // Statuselement lässt AppKits eigenen Bedienungshilfen-Code
+                // (`NSAccessibilityMockStatusBarItem`) intern abstürzen. Der
+                // Aufruf bleibt deshalb ganz aus; derselbe Tokenwechsel wie in
+                // `scheduleWindowLookup` verwirft trotzdem jeden noch
+                // ausstehenden Lookup aus einem vorigen Druck.
+                lookupToken &+= 1
+                applyLookupResult(nil, token: lookupToken)
+            } else {
+                scheduleWindowLookup(at: accessibilityPoint)
+            }
 
         case let .mouseDragged(point, modifiers):
             guard let press = pressLocation else { return }
@@ -636,6 +667,13 @@ public final class EventTapDragTracker: WindowDragTracker {
     func _testApplyLookupResult(_ window: DraggedWindow?, token: UInt64) {
         applyLookupResult(window, token: token)
     }
+
+    /// Ob der Lookup für den aktuellen Druck schon aufgelöst ist. Unterscheidet
+    /// deterministisch den Menüleisten-Schutz (#69, löst synchron auf) von
+    /// `scheduleWindowLookup` (bleibt bis zum Ergebnis der losgelösten Task auf
+    /// „noch nicht aufgelöst“ stehen) — ein Test kann so ohne Rennen auf das
+    /// Ergebnis der echten Task warten müssen.
+    var _testPendingWindowIsResolved: Bool { pendingWindow != nil }
 
     /// Gibt die Kennung des laufenden Rahmenabrufs frei. Für Tests, damit ein
     /// Beleg mit passender — oder bewusst veralteter — Kennung ankommt.

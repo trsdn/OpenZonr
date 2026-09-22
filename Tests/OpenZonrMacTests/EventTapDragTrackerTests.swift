@@ -37,13 +37,15 @@ struct EventTapDragTrackerTests {
         window: DraggedWindow? = nil,
         lookup: (@Sendable (ScreenPoint, Double) -> DraggedWindow?)? = nil,
         frameSampler: @escaping @Sendable (DraggedWindow, Double) -> WindowFrame? = { _, _ in nil },
-        now: @escaping @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now }
+        now: @escaping @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now },
+        menuBarThickness: @escaping @MainActor () -> Double = { 0 }
     ) -> (tracker: EventTapDragTracker, events: EventBox) {
         let box = EventBox()
         let captured = window
         let resolver: @Sendable (ScreenPoint, Double) -> DraggedWindow? = lookup ?? { _, _ in captured }
         let tracker = EventTapDragTracker(
-            primaryTopY: 0, windowLookup: resolver, frameSampler: frameSampler, now: now)
+            primaryTopY: 0, windowLookup: resolver, frameSampler: frameSampler, now: now,
+            menuBarThickness: menuBarThickness)
         tracker.minimumDragDistance = 5
         tracker.onEvent = { event in box.append(event) }
         return (tracker, box)
@@ -189,6 +191,50 @@ struct EventTapDragTrackerTests {
 
         tracker.handle(.tapDisabledByUserInput)
         #expect(box.kinds == ["began", "moved", "cancelled"])
+    }
+
+    // MARK: - #69: Positionsabfrage über der Menüleiste
+
+    /// Reine Geometrie, ohne Tracker: der Streifen ist `[0, dicke)`, oben und
+    /// unten je eine Randprobe.
+    @Test("isWithinMenuBarStrip prüft nur den obersten Streifen")
+    func isWithinMenuBarStripBoundaries() {
+        #expect(EventTapDragTracker.isWithinMenuBarStrip(y: 0, menuBarThickness: 24) == true)
+        #expect(EventTapDragTracker.isWithinMenuBarStrip(y: 23, menuBarThickness: 24) == true)
+        #expect(EventTapDragTracker.isWithinMenuBarStrip(y: 24, menuBarThickness: 24) == false)
+        #expect(EventTapDragTracker.isWithinMenuBarStrip(y: 100, menuBarThickness: 24) == false)
+        #expect(EventTapDragTracker.isWithinMenuBarStrip(y: -1, menuBarThickness: 24) == false)
+        // Keine Menüleiste (Vorgabe in Tests): nichts gilt als „darin“.
+        #expect(EventTapDragTracker.isWithinMenuBarStrip(y: 0, menuBarThickness: 0) == false)
+    }
+
+    /// `AXUIElementCopyElementAtPosition` über einem Statuselement hat AppKits
+    /// eigenen Bedienungshilfen-Code abstürzen lassen (zwei unabhängige
+    /// Absturzberichte, siehe Issue #69). Ein Druck in der Menüleiste darf die
+    /// Abfrage deshalb gar nicht erst auslösen — geprüft daran, dass das
+    /// Ergebnis *synchron* feststeht (der echte Lookup lief erst nach der
+    /// losgelösten Task und stünde direkt nach `mouseDown` noch aus).
+    @Test("Ein Druck in der Menüleiste löst den Lookup synchron auf, ohne abzufragen")
+    func mouseDownInMenuBarSkipsLookup() {
+        let (tracker, box) = makeTracker(window: makeWindow(), menuBarThickness: { 24 })
+
+        tracker.handle(.mouseDown(point: ScreenPoint(x: 300, y: 12), accessibilityPoint: ScreenPoint(x: 300, y: 12)))
+
+        #expect(tracker._testPendingWindowIsResolved == true)
+        // Verhält sich wie ein Druck ohne Fenster darunter: kein Zug beginnt.
+        tracker.handle(.mouseDragged(point: ScreenPoint(x: 400, y: 100), modifiers: []))
+        #expect(box.events.isEmpty)
+    }
+
+    @Test("Ein Druck knapp unterhalb der Menüleiste bleibt beim üblichen, aufgeschobenen Lookup")
+    func mouseDownJustBelowMenuBarStillDefersLookup() {
+        let (tracker, _) = makeTracker(window: makeWindow(), menuBarThickness: { 24 })
+
+        tracker.handle(.mouseDown(point: ScreenPoint(x: 300, y: 24), accessibilityPoint: ScreenPoint(x: 300, y: 24)))
+
+        // Noch nicht aufgelöst: die Abfrage wurde tatsächlich eingeplant, nicht
+        // übersprungen — genau der Unterschied zum Menüleisten-Fall oben.
+        #expect(tracker._testPendingWindowIsResolved == false)
     }
 
     // MARK: - Kleinigkeiten
