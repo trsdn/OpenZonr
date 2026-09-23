@@ -212,18 +212,25 @@ struct ZoneEditor: View {
                     }
                 }
 
-                // Die Herkunftsbeschriftung sitzt in derselben Ebene wie die
-                // Vorschau, damit sie mit ihr wandert und nicht mit dem
-                // umgebenden Fenster. Ein unbeschrifteter Wert, der aussieht
-                // wie eine Messung, ist die Fehlerklasse aus #18 — hier steht
-                // deshalb immer eine der beiden Auskünfte, nie keine.
+            }
+            .frame(width: side.width, height: side.height)
+            // Der feste Bezug für alle Gesten darin — siehe ``ZoneCanvas``.
+            // Sitzt auf der Zeichenfläche selbst, nicht auf dem umgebenden
+            // Bereich: die Rechtecke der Zonen sind relativ zu ihr gerechnet.
+            .coordinateSpace(.named(ZoneCanvas.space))
+            // Die Herkunftsbeschriftung wandert weiterhin mit der Vorschau und
+            // nicht mit dem Fenster — aber **unter** ihr statt darin. In der
+            // Zeichnung lag sie auf den Zonen und verdeckte genau das, was man
+            // beim Ändern der Größe ablesen will. Ein unbeschrifteter Wert, der
+            // aussieht wie eine Messung, ist die Fehlerklasse aus #18; deshalb
+            // steht hier immer eine der beiden Auskünfte, nie keine.
+            .overlay(alignment: .bottom) {
                 aspectBadge(aspect)
-                    .frame(width: side.width, height: side.height, alignment: .bottomLeading)
+                    .fixedSize()
+                    .offset(y: 22)
                     .allowsHitTesting(false)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
-            // Der feste Bezug für alle Gesten darin — siehe ``ZoneCanvas``.
-            .coordinateSpace(.named(ZoneCanvas.space))
         }
         .padding(16)
     }
@@ -496,41 +503,60 @@ private struct ZoneHandle: View {
                 .overlay(
                     Group {
                         if isSelected {
-                            Text(zone.name)
-                                .font(.caption)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 3))
-                                .padding(4)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(zone.name)
+                                    .font(.caption)
+                                // Während der Geste die Masse, auf die beim
+                                // Loslassen gerastet wird — nicht der
+                                // gespeicherte Wert. Ohne das zieht man blind:
+                                // das Formular rechts zeigt erst nach dem
+                                // Loslassen etwas anderes an.
+                                if isGesturing {
+                                    Text(measurement(of: rect))
+                                        .font(.system(.caption2, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 3))
+                            .padding(4)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         }
                     }
                 )
 
             // The resize grip. A corner rather than eight edge handles: at this
             // size an edge handle is a two-pixel target.
-            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                .font(.system(size: 8))
-                .padding(3)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 3))
-                .padding(2)
-                // `highPriorityGesture`, damit der Zug am Griff **nicht**
-                // zusätzlich die Verschiebe-Geste des Elternstapels auslöst.
-                // Vorher änderten sich `dragOffset` und `resizeDelta`
-                // gleichzeitig: die Zone wanderte, während sie wuchs.
-                .highPriorityGesture(
-                    DragGesture(coordinateSpace: .named(ZoneCanvas.space))
-                        .onChanged { value in
-                            onSelect()
-                            onGestureChanged(true)
-                            resizeDelta = CGSize(width: value.translation.width, height: value.translation.height)
-                        }
-                        .onEnded { _ in
-                            commit(rect: rect)
-                            resizeDelta = .zero
-                            onGestureChanged(false)
-                        }
-                )
+            //
+            // Nur an der **gewählten** Zone. Gestapelte Zonen teilen sich ihre
+            // untere rechte Ecke — mit einem Griff je Zone liegen dort mehrere
+            // übereinander, und welchen man fasst, ist nicht mehr erkennbar.
+            // Genau der Fall, für den es die Trefferflächen gibt.
+            if isSelected {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 8))
+                    .padding(3)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 3))
+                    .padding(2)
+                    // `highPriorityGesture`, damit der Zug am Griff **nicht**
+                    // zusätzlich die Verschiebe-Geste des Elternstapels auslöst.
+                    // Vorher änderten sich `dragOffset` und `resizeDelta`
+                    // gleichzeitig: die Zone wanderte, während sie wuchs.
+                    .highPriorityGesture(
+                        DragGesture(coordinateSpace: .named(ZoneCanvas.space))
+                            .onChanged { value in
+                                onSelect()
+                                onGestureChanged(true)
+                                resizeDelta = CGSize(width: value.translation.width, height: value.translation.height)
+                            }
+                            .onEnded { _ in
+                                commit(rect: rect)
+                                resizeDelta = .zero
+                                onGestureChanged(false)
+                            }
+                    )
+            }
         }
         .frame(width: rect.width, height: rect.height)
         .offset(x: rect.minX, y: rect.minY)
@@ -548,6 +574,42 @@ private struct ZoneHandle: View {
                     onGestureChanged(false)
                 }
         )
+    }
+
+    /// Wahr, solange an dieser Zone gezogen wird.
+    private var isGesturing: Bool {
+        dragOffset != .zero || resizeDelta != .zero
+    }
+
+    /// Die Masse, auf die beim Loslassen gerastet wird — als Bruchteil und in
+    /// Zwölfteln.
+    ///
+    /// Zwölftel stehen dabei, weil das Raster in Zwölfteln liegt: „4/12" sagt
+    /// mehr darüber, ob eine Kante sitzt, als „0,333". Fällt ein Wert nicht auf
+    /// ein Zwölftel, steht kein Bruch da statt eines gerundeten — eine Zahl,
+    /// die Genauigkeit vortäuscht, ist schlimmer als keine.
+    private func measurement(of rect: CGRect) -> String {
+        let snapped = snappedRect(from: rect)
+        return "\(format(snapped.width)) × \(format(snapped.height))"
+    }
+
+    private func format(_ value: Double) -> String {
+        let twelfths = value * 12
+        let rounded = twelfths.rounded()
+        let number = String(format: "%.3f", value)
+        guard abs(twelfths - rounded) < 0.001, rounded > 0 else { return number }
+        return "\(number) (\(Int(rounded))/12)"
+    }
+
+    /// Dasselbe Ergebnis, das ``commit(rect:)`` schreiben würde.
+    private func snappedRect(from rect: CGRect) -> RelativeRect {
+        let relative = RelativeRect(
+            x: rect.minX / canvas.width,
+            y: rect.minY / canvas.height,
+            width: rect.width / canvas.width,
+            height: rect.height / canvas.height
+        )
+        return EdgeSnap.snap(relative, neighbours: neighbours).clampedToUnitSquare()
     }
 
     private func commit(rect: CGRect) {
