@@ -10,6 +10,21 @@ import SwiftUI
 /// Leinwand, ein Umschalter, und die jeweils andere Ebene bleibt blass
 /// sichtbar — der Abstand zwischen beiden ist bei Randauslösung der ganze
 /// Punkt und darf nicht unsichtbar sein.
+/// Der Name des Koordinatenraums der Leinwand.
+///
+/// Gesten am Zonengriff **müssen** in diesem Raum messen und nicht in `.local`.
+/// Der Griff sitzt unten rechts in einem Stapel, dessen Grösse aus dem
+/// laufenden Zug berechnet wird: misst die Geste im eigenen View, wächst der
+/// View mit der Geste, der Griff wandert unter dem Zeiger weg und die
+/// Translation wird gegen einen bewegten Ursprung gemessen. Das Ergebnis
+/// schwingt, statt dem Zeiger zu folgen — vom Nutzer gemeldet als „bewegt sich
+/// nicht mit meinem Cursor" und „springt ständig hin und her".
+///
+/// Die Leinwand bewegt sich nicht. Deshalb misst hier alles gegen sie.
+enum ZoneCanvas {
+    static let space = "zoneCanvas"
+}
+
 enum EditorLayer: String, CaseIterable, Identifiable {
     case target
     case activation
