@@ -75,6 +75,28 @@ struct ZoneReachabilityCheckTests {
         #expect(pathDescription.contains("ganz"))
     }
 
+    /// Alle anderen Tests dieser Datei rufen den Check direkt auf. Fiele
+    /// ``ZoneReachabilityCheck()`` aus ``ConfigurationValidator/init()``
+    /// heraus, blieben sie trotzdem grün — nur dieser Test, der über den
+    /// Validator läuft, würde es merken. Dieselbe Ebene des Autors wie oben.
+    @Test("Der Validator meldet right-quarter als unerreichbar, nicht nur der Check direkt")
+    func configurationValidatorReportsTheAuthorsUnreachableZone() {
+        let configuration = configuration(zones: [
+            zone("left-quarter",  RelativeRect(x: 0, y: 0, width: 0.25, height: 1)),
+            zone("center-half",   RelativeRect(x: 0.25, y: 0, width: 0.41666666666666663, height: 1)),
+            zone("right-quarter", RelativeRect(x: 0.6666666666666666, y: 0, width: 0.33333333333333337, height: 1)),
+            zone("neue-zone",     RelativeRect(x: 0.6666666666666666, y: 0, width: 0.33333333333333337, height: 0.5)),
+            zone("neue-zone-2",   RelativeRect(x: 0.6666666666666666, y: 0.5, width: 0.33333333333333337, height: 0.5))
+        ])
+
+        let report = ConfigurationValidator().validate(configuration)
+        let unreachable = report.findings.filter { $0.code == .zoneUnreachable }
+
+        #expect(unreachable.count == 1)
+        let pathDescription = String(describing: unreachable.first?.path)
+        #expect(pathDescription.contains("right-quarter"))
+    }
+
     @Test("Mit disjunkten Trefferflächen ist niemand mehr unerreichbar")
     func separateActivationAreasResolveTheStack() {
         let configuration = configuration(zones: [
