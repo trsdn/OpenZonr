@@ -42,7 +42,9 @@ public enum ZoneGeometry {
     /// The **only** place the margin is applied. ``DefaultZoneResolver`` (rules)
     /// and ``Dropzone/placement`` (drag/drop and zoom menu) both call it, so the
     /// three placement routes cannot disagree. Hit testing deliberately does not
-    /// call it: ``Dropzone/frame`` stays the full zone so the overlay has no gaps.
+    /// call it: it works against ``Dropzone/activationFrame``, not
+    /// ``Dropzone/frame``, and with a declared activation area that surface is
+    /// meant to have gaps — margin plays no part in that either way.
     public static func placementFrame(
         for rect: RelativeRect,
         margin: Double,

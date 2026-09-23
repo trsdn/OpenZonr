@@ -25,9 +25,12 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
     public var visibleFrame: VisibleFrame
     /// ``Layout/margin`` of the zone's layout, as a fraction of the display.
     ///
-    /// Not applied to ``frame``: the hit test stays gap-free. Applied only by
-    /// ``placement``, through ``ZoneGeometry/placementFrame(for:margin:in:)``,
-    /// so a dropped window lands where automatic placement would put it.
+    /// Placement-only: applied by ``placement``, through
+    /// ``ZoneGeometry/placementFrame(for:margin:in:)``, so a dropped window
+    /// lands where automatic placement would put it. The hit test never reads
+    /// ``frame`` at all — it reads ``activationFrame`` — and with a declared
+    /// activation area that surface is deliberately gappy, not gap-free;
+    /// ``margin`` has no effect on it either way.
     public var margin: Double
     /// Wo losgelassen werden muss, absolut, im selben Raum wie ``frame``.
     ///
@@ -99,8 +102,10 @@ public enum DropzoneMap {
     /// attached, and a zone on a monitor that is not there cannot be dropped
     /// into.
     ///
-    /// Der Rand wirkt nicht auf ``Dropzone/frame`` (Treffertest bleibt lückenlos),
-    /// sondern nur auf ``Dropzone/placement``.
+    /// Der Rand wirkt nicht auf ``Dropzone/frame`` oder ``Dropzone/activationFrame``,
+    /// sondern nur auf ``Dropzone/placement``. Der Treffertest liest ohnehin
+    /// ``Dropzone/activationFrame``, nicht ``Dropzone/frame`` — mit eigener
+    /// Trefferfläche ist die Fläche dort absichtlich lückenhaft.
     public static func zones(
         in configuration: Configuration,
         profile: ProfileID,
