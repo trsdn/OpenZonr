@@ -404,14 +404,21 @@ public final class EventTapDragTracker: WindowDragTracker {
             outcomeReported = false
             resetMovementEvidence()
             if Self.isWithinMenuBarStrip(y: accessibilityPoint.y, menuBarThickness: menuBarThickness()) {
-                // Kein App-Fenster beginnt unter der Menüleiste, und die
-                // Positionsabfrage genau dort ist eine gemessene Absturzquelle
-                // (Issue #69): `AXUIElementCopyElementAtPosition` über einem
-                // Statuselement lässt AppKits eigenen Bedienungshilfen-Code
-                // (`NSAccessibilityMockStatusBarItem`) intern abstürzen. Der
-                // Aufruf bleibt deshalb ganz aus; derselbe Tokenwechsel wie in
-                // `scheduleWindowLookup` verwirft trotzdem jeden noch
-                // ausstehenden Lookup aus einem vorigen Druck.
+                // Abkürzung, **kein** Schutz: kein App-Fenster beginnt unter
+                // der Menüleiste, also spart der Fall die Task.
+                //
+                // Als Schutz gegen Issue #69 taugt diese Prüfung nicht, und sie
+                // war auch nie einer — der Absturz vom 23.09. 08:51 Uhr lief
+                // trotz ihrer durch: `y >= 0 && y < thickness` misst in
+                // globalen Koordinaten und trifft damit nur die Menüleiste des
+                // **Haupt**bildschirms. Jeder weitere Bildschirm hat seine
+                // eigene, bei negativem oder weit grösserem `y`. Der Schutz
+                // liegt seitdem dort, wo die Ursache sitzt: in
+                // `window(atAccessibilityPoint:primaryTopY:)`, die vor jedem
+                // AX-Aufruf den Besitzer des Punktes prüft.
+                //
+                // Derselbe Tokenwechsel wie in `scheduleWindowLookup` verwirft
+                // jeden noch ausstehenden Lookup aus einem vorigen Druck.
                 lookupToken &+= 1
                 applyLookupResult(nil, token: lookupToken)
             } else {
@@ -735,16 +742,45 @@ public final class EventTapDragTracker: WindowDragTracker {
     /// infinite loop.
     ///
     /// **`nonisolated`, damit der Aufruf auf einem Hintergrund-Thread laufen
-    /// kann.** Apples Accessibility-API ist dokumentiert threadsicher; das
-    /// einzige, was hier vom Hauptthread abhängen könnte, wäre die Auswertung
-    /// eines Ergebnisses in unserer Zustandsmaschine — die passiert getrennt in
-    /// `applyLookupResult(_:token:)`. Siehe Issue #26 und den Kommentar in
-    /// `scheduleWindowLookup`.
+    /// kann.** Das ist nur zulässig, solange das Ziel der Abfrage ein
+    /// **fremder** Prozess ist — deshalb steht der Besitzer-Test davor.
+    ///
+    /// Die frühere Fassung hielt das für unnötig, mit der Begründung, Apples
+    /// Accessibility-API sei dokumentiert threadsicher. Das gilt für die
+    /// **Client**-Seite gegen andere Prozesse: dort ist der Aufruf Mach-IPC. Es
+    /// gilt **nicht**, wenn der eigene Prozess die **Server**-Seite ist. Trifft
+    /// `AXUIElementCopyElementAtPosition` auf dem systemweiten Element ein
+    /// eigenes Element — das eigene Menüleisten-Symbol —, führt AppKit
+    /// `accessibilityHitTest:` im eigenen Prozess auf dem **aufrufenden** Thread
+    /// aus. `NSAccessibility` ist hauptthread-gebunden, seine Attributlisten
+    /// sind gewöhnliche `NSMutableDictionary`. Zusammen mit dem Hauptthread, der
+    /// beim Klick denselben Code für dasselbe Statuselement durchläuft, ergibt
+    /// das ein Wettrennen um dieselben Objekte — die Ursache der vier
+    /// Absturzberichte zu Issue #69, in denen beide Threads genau dort stehen.
+    ///
+    /// Also: erst den Fenster-Server fragen, wem der Punkt gehört
+    /// (``CoreGraphicsWindowIndex/ownerOfOrdinaryWindow(at:excluding:)`` — reines
+    /// CoreGraphics, kein AppKit), dann die Abfrage auf genau diese fremde App
+    /// eingrenzen. Damit ist der AX-Aufruf wieder das, wofür die Zusicherung
+    /// gilt: ein Aufruf über eine Prozessgrenze.
+    ///
+    /// Kosten: ein zusätzlicher `CGWindowListCopyWindowInfo` je Druck. Er läuft
+    /// auf demselben Hintergrund-Thread wie die AX-Abfrage, deren gemessene
+    /// Spitzen (970 ms, Issue #26) um Größenordnungen darüber liegen; den
+    /// Hauptthread trifft weiterhin nichts.
+    ///
+    /// Siehe Issue #26 und den Kommentar in `scheduleWindowLookup`.
     nonisolated static func window(atAccessibilityPoint point: ScreenPoint, primaryTopY: Double) -> DraggedWindow? {
-        let systemWide = AXUIElementCreateSystemWide()
+        // Muss **vor** jedem AX-Aufruf stehen: liegt der Punkt auf einem
+        // eigenen Element, darf hier gar nichts abgefragt werden (#69).
+        guard let ownerPID = CoreGraphicsWindowIndex().ownerOfOrdinaryWindow(
+            at: CGPoint(x: point.x, y: point.y), excluding: getpid()
+        ) else { return nil }
+
+        let application = AXUIElementCreateApplication(ownerPID)
         var element: AXUIElement?
         guard AXUIElementCopyElementAtPosition(
-            systemWide, Float(point.x), Float(point.y), &element
+            application, Float(point.x), Float(point.y), &element
         ) == .success, let hit = element else { return nil }
 
         var current: AXUIElement? = hit

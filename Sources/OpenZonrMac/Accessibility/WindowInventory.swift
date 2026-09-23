@@ -52,6 +52,71 @@ public struct CoreGraphicsWindowIndex {
         byPID = Dictionary(grouping: entries, by: \.ownerPID)
     }
 
+    /// PID der App, der das vorderste **gewöhnliche** Fenster am Punkt gehört —
+    /// oder `nil`, wenn dort keines liegt, es uns selbst gehört oder oben
+    /// Systemmöbel steht.
+    ///
+    /// Gebraucht wird das vor jedem Treffertest der Bedienungshilfen, und zwar
+    /// aus einem Grund, der nichts mit Geometrie zu tun hat (Issue #69):
+    /// `AXUIElementCopyElementAtPosition` auf dem **systemweiten** Element ist
+    /// nur dann der dokumentiert threadsichere Aufruf über Prozessgrenzen, den
+    /// der Kommentar in ``EventTapDragTracker`` unterstellt hat. Liegt der Punkt
+    /// auf einem **eigenen** Element — dem eigenen Menüleisten-Symbol —, bedient
+    /// AppKit die Abfrage im eigenen Prozess und führt seinen hauptthread-
+    /// gebundenen Bedienungshilfen-Code auf dem **aufrufenden** Thread aus.
+    /// Läuft die Abfrage dort im Hintergrund, während der Hauptthread denselben
+    /// Code für dasselbe Statuselement durchläuft, werden AppKits Attributlisten
+    /// von zwei Threads zugleich verändert. Genau diese zwei Threads stehen in
+    /// allen vier Absturzberichten.
+    ///
+    /// Der Fenster-Server beantwortet dieselbe Frage, ohne AppKit überhaupt zu
+    /// betreten. Mit der PID in der Hand wird der AX-Aufruf auf
+    /// `AXUIElementCreateApplication(pid)` eingegrenzt — ein Ziel, das
+    /// **garantiert** ein fremder Prozess ist, womit die Threadsicherheit wieder
+    /// gilt, auf die sich der Pfad beruft.
+    ///
+    /// Die Schichtgrenze ist keine neue Regel: ``DefaultWindowFilter`` lässt
+    /// ohnehin nur ``DefaultWindowFilter/applicationLayer`` durch. Was hier
+    /// abgewiesen wird, hätte die Kette weiter unten also ohnehin verworfen —
+    /// die Abfrage wird enger, das Ergebnis nicht ärmer.
+    ///
+    /// - Parameters:
+    ///   - point: Punkt in globalen Koordinaten mit Ursprung oben links
+    ///     (derselbe Raum wie `CGEvent.location`; siehe ``ScreenArrangement``).
+    ///   - entries: Fenster von **vorne nach hinten**, wie
+    ///     `CGWindowListCopyWindowInfo` sie liefert.
+    ///   - ownPID: der eigene Prozess.
+    public static func ownerOfOrdinaryWindow(
+        at point: CGPoint,
+        in entries: [Entry],
+        excluding ownPID: pid_t
+    ) -> pid_t? {
+        // Gesucht ist das vorderste **gewöhnliche** Fenster, nicht das vorderste
+        // Fenster überhaupt. Der Unterschied ist nicht akademisch: der Dock-
+        // Prozess hält ein Fenster auf Ebene 20, dessen Bounds den **ganzen**
+        // Hauptbildschirm abdecken (gemessen: 0,0 5120x1440). Wer zuerst das
+        // vorderste Fenster nimmt und dann die Ebene prüft, weist damit jeden
+        // Punkt des Hauptbildschirms ab und bricht das Ziehen vollständig.
+        // Genau das ist passiert, als dieser Torwächter eingeführt wurde.
+        //
+        // Systemmöbel wird also übersehen, nicht als Sperre gelesen. Das ist
+        // auch für die Sicherheitszusage unerheblich: die verlangt nur, dass
+        // kein AX-Aufruf gegen den **eigenen** Prozess läuft (#69). Das eigene
+        // Menüleisten-Symbol liegt auf Ebene 25 und kann hier deshalb gar nicht
+        // gewinnen; ein eigenes gewöhnliches Fenster schon — und genau das
+        // fängt die PID-Prüfung ab.
+        guard let top = entries.first(where: {
+            $0.layer == DefaultWindowFilter.applicationLayer && $0.bounds.contains(point)
+        }), top.ownerPID != ownPID
+        else { return nil }
+        return top.ownerPID
+    }
+
+    /// Wie oben, über den eigenen Index.
+    public func ownerOfOrdinaryWindow(at point: CGPoint, excluding ownPID: pid_t) -> pid_t? {
+        Self.ownerOfOrdinaryWindow(at: point, in: entries, excluding: ownPID)
+    }
+
     /// The layer of the window of `pid` whose bounds match `frame`.
     ///
     /// Falls back to the process's lowest observed layer when no exact match is
