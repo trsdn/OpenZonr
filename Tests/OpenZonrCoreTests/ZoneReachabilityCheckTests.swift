@@ -43,26 +43,33 @@ struct ZoneReachabilityCheckTests {
         #expect(unreachable.first?.severity == .warning)
     }
 
-    /// Der Hauptfall der Funktion: alle drei Zonen deklarieren eine eigene
-    /// Trefferfläche, die vom Zielrahmen abweicht. Die Zielrahmen selbst sind
-    /// Spalten ohne Überlappung — über sie allein wäre niemand unerreichbar.
-    /// Erst die deklarierten Trefferflächen stapeln sich: „oben" und „unten"
-    /// überdecken zusammen lückenlos die Trefferfläche von „ganz".
+    /// Der Hauptfall der Funktion: die Zielrahmen sind drei disjunkte,
+    /// bildschirmhohe Spalten — über sie allein wäre niemand unerreichbar.
+    /// Erst die deklarierten Trefferflächen stapeln sich, alle im selben
+    /// waagerechten Band: „oben" und „unten" überdecken zusammen lückenlos
+    /// die Trefferfläche von „ganz".
+    ///
+    /// Weil die Trefferflächen bewusst weit von den eigenen Zielrahmen weg
+    /// liegen (Spalten bei x=0…0.6, Trefferflächen bei x=0.8…1), meldet die
+    /// Prüfung für „ganz" und „oben" zusätzlich ``ValidationCode/activationAreaDetached`` —
+    /// das ist das bereits an anderer Stelle getestete, eigenständige Verhalten
+    /// dieses Checks und hier ein erwarteter Nebeneffekt der Geometrie, kein
+    /// Fehler. Für „unten" liegt die Trefferfläche innerhalb des eigenen
+    /// Zielrahmens, also kein solcher Zusatzbefund.
     @Test("Deckt sich über deklarierte Trefferflächen: die grosse Zone ist unerreichbar")
     func reportsUnreachableZoneThroughDeclaredActivationAreas() {
         let configuration = configuration(zones: [
-            zone("ganz",  RelativeRect(x: 0.5, y: 0, width: 0.5, height: 1),
-                 activation: RelativeRect(x: 0.5, y: 0.25, width: 0.5, height: 0.5)),
-            zone("oben",  RelativeRect(x: 0.5, y: 0, width: 0.5, height: 0.5),
-                 activation: RelativeRect(x: 0.5, y: 0.25, width: 0.5, height: 0.25)),
-            zone("unten", RelativeRect(x: 0.5, y: 0.5, width: 0.5, height: 0.5),
-                 activation: RelativeRect(x: 0.5, y: 0.5, width: 0.5, height: 0.25))
+            zone("ganz",  RelativeRect(x: 0, y: 0, width: 0.3, height: 1),
+                 activation: RelativeRect(x: 0.8, y: 0.4, width: 0.2, height: 0.2)),
+            zone("oben",  RelativeRect(x: 0.3, y: 0, width: 0.3, height: 1),
+                 activation: RelativeRect(x: 0.8, y: 0.4, width: 0.1, height: 0.2)),
+            zone("unten", RelativeRect(x: 0.6, y: 0, width: 0.4, height: 1),
+                 activation: RelativeRect(x: 0.9, y: 0.4, width: 0.1, height: 0.2))
         ])
 
         let findings = ZoneReachabilityCheck().findings(in: configuration)
         let unreachable = findings.filter { $0.code == .zoneUnreachable }
 
-        #expect(findings.count == 1)
         #expect(unreachable.count == 1)
         let pathDescription = String(describing: unreachable.first?.path)
         #expect(pathDescription.contains("ganz"))
