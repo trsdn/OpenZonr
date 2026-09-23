@@ -222,6 +222,8 @@ struct ZoneEditor: View {
                     .allowsHitTesting(false)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
+            // Der feste Bezug für alle Gesten darin — siehe ``ZoneCanvas``.
+            .coordinateSpace(.named(ZoneCanvas.space))
         }
         .padding(16)
     }
@@ -486,11 +488,23 @@ private struct ZoneHandle: View {
                             )
                         )
                 )
+                // Nur die gewählte Zone trägt ihren Namen. Bei gestapelten
+                // Zonen — dem Fall, für den es die Trefferflächen gibt —
+                // liegen sonst mehrere Beschriftungen in derselben Ecke
+                // übereinander und keine ist mehr zu lesen. Die Seitenleiste
+                // nennt ohnehin alle.
                 .overlay(
-                    Text(zone.name)
-                        .font(.caption)
-                        .padding(4)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    Group {
+                        if isSelected {
+                            Text(zone.name)
+                                .font(.caption)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 3))
+                                .padding(4)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        }
+                    }
                 )
 
             // The resize grip. A corner rather than eight edge handles: at this
@@ -500,8 +514,12 @@ private struct ZoneHandle: View {
                 .padding(3)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 3))
                 .padding(2)
-                .gesture(
-                    DragGesture()
+                // `highPriorityGesture`, damit der Zug am Griff **nicht**
+                // zusätzlich die Verschiebe-Geste des Elternstapels auslöst.
+                // Vorher änderten sich `dragOffset` und `resizeDelta`
+                // gleichzeitig: die Zone wanderte, während sie wuchs.
+                .highPriorityGesture(
+                    DragGesture(coordinateSpace: .named(ZoneCanvas.space))
                         .onChanged { value in
                             onSelect()
                             onGestureChanged(true)
@@ -518,7 +536,7 @@ private struct ZoneHandle: View {
         .offset(x: rect.minX, y: rect.minY)
         .onTapGesture(perform: onSelect)
         .gesture(
-            DragGesture()
+            DragGesture(coordinateSpace: .named(ZoneCanvas.space))
                 .onChanged { value in
                     onSelect()
                     onGestureChanged(true)
@@ -627,6 +645,11 @@ private struct ZoneForm: View {
                     }
                 ), format: .number.precision(.fractionLength(0...3)))
                 .frame(width: 70)
+                // `LabeledContent` zeichnet die Beschriftung schon; das
+                // `TextField` bekommt denselben Text nur als
+                // Bedienungshilfen-Namen, nicht noch einmal sichtbar.
+                // Sonst steht dort „Breite Breite 0,3".
+                .labelsHidden()
 
                 if let points = pointHint(for: zone.frame[keyPath: keyPath], dimension: dimension) {
                     Text(points)
