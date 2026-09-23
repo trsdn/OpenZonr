@@ -107,12 +107,32 @@ final class DropzoneOverlayView: NSView {
         NSColor.clear.setFill()
         dirtyRect.fill()
 
-        // Kontur: die Trefferfläche jeder Zone der Ebene, ungefüllt — sie zeigt,
-        // wo man den Zeiger loslassen darf, nicht, wo das Fenster landet.
+        // Jede Zone der Ebene als schwach gefüllter Block: das ist die Karte,
+        // wohin Fenster überhaupt können, und sie muss von weitem lesbar sein.
+        //
+        // Sie war einmal weg. Die erste Fassung zeichnete statt dessen nur die
+        // Kontur der Trefferfläche — mit dem Ergebnis, dass Zonen ohne eigene
+        // Trefferfläche (also alle in jeder heutigen Konfiguration) von einer
+        // 1-pt-Linie dargestellt wurden, wo vorher ein Block war. Auf 5120
+        // Punkten Breite ist das praktisch unsichtbar. Die Kontur hat die
+        // Füllung ersetzt, statt sie zu ergänzen.
         for zone in zones {
+            let path = NSBezierPath(roundedRect: viewRect(for: zone.frame), xRadius: 10, yRadius: 10)
+            NSColor.controlAccentColor.withAlphaComponent(0.10).setFill()
+            path.fill()
+            NSColor.controlAccentColor.withAlphaComponent(0.55).setStroke()
+            path.lineWidth = 1.5
+            path.stroke()
+        }
+
+        // Die Trefferfläche zusätzlich, aber **nur wenn sie sich vom
+        // Zielrahmen unterscheidet**. Sind beide gleich, trägt eine zweite
+        // Linie auf derselben Kante nichts bei und kostet nur Lesbarkeit.
+        for zone in zones where zone.activationFrame != zone.frame {
             let path = NSBezierPath(roundedRect: viewRect(for: zone.activationFrame), xRadius: 10, yRadius: 10)
-            NSColor.controlAccentColor.withAlphaComponent(0.45).setStroke()
-            path.lineWidth = 1
+            NSColor.controlAccentColor.withAlphaComponent(0.85).setStroke()
+            path.lineWidth = 2
+            path.setLineDash([6, 4], count: 2, phase: 0)
             path.stroke()
         }
 
