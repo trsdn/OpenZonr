@@ -243,28 +243,159 @@ public enum Accessibility {
         return WindowFrame(x: point.x, y: point.y, width: size.width, height: size.height)
     }
 
-    /// Writes position, then size, then position again.
+    /// One write of a frame, as Accessibility splits it.
     ///
-    /// The repetition is not superstition: an application may clamp a size that
-    /// does not fit at the window's *previous* position — typically when the
-    /// target display is larger than the current one — and it may nudge the
-    /// position when the size changes. Writing position twice around the size
-    /// makes the common case converge in a single attempt.
+    /// Exists so the *order* can be tested without a live window: the order is
+    /// the whole point of ``applyFrame(_:write:)``.
+    public enum FrameWrite: Equatable {
+        case position(CGPoint)
+        case size(CGSize)
+        /// Die Bedienungshilfen-Kennung der **Anwendung**, nicht des Fensters.
+        case enhancedUserInterface(Bool)
+    }
+
+    /// Name der Kennung, mit der eine App erfährt, dass eine Bedienungshilfe
+    /// zuschaut. Kein öffentliches Symbol — die Zeichenkette ist der Vertrag.
+    static let enhancedUserInterfaceAttribute = "AXEnhancedUserInterface"
+
+    /// Läuft gerade eine Bedienungshilfe, auf die ein Mensch angewiesen ist?
+    ///
+    /// Die Kennung abzuschalten ist für uns eine Beschleunigung, für VoiceOver
+    /// oder die Schaltersteuerung aber die Sekunde, in der ihr Werkzeug
+    /// ausfällt. In dem Fall bleibt sie stehen und die Platzierung nimmt den
+    /// langsameren Weg über die Wiederholung.
+    @MainActor
+    static func assistiveTechnologyIsRunning() -> Bool {
+        NSWorkspace.shared.isVoiceOverEnabled || NSWorkspace.shared.isSwitchControlEnabled
+    }
+
+    /// Writes position, then size. **Nothing after the size.**
+    ///
+    /// Position first, because a size is judged against the position the window
+    /// currently has: an application may clamp a size that does not fit where
+    /// the window still is, typically when the target display is larger than
+    /// the current one. Moving first removes that reason to clamp.
+    ///
+    /// Nothing after the size, because the two attributes are not independent
+    /// in every application. Safari re-derives its size as soon as a position
+    /// is written afterwards and discards the size just set — while every
+    /// single call still returns `.success`. Gemessen am 23.09.2026, Ziel
+    /// `1340,277 966x688` aus `1280,227 1610x1147`, mit der echten
+    /// Voreinstellung (`attempts 3`, `initialDelay 50 ms`, `interval 200 ms`,
+    /// `tolerance 4`):
+    ///
+    /// | Folge            | V1       | V2       | V3       | Ergebnis       |
+    /// |------------------|----------|----------|----------|----------------|
+    /// | `pos, size, pos` | Abw. 607 | Abw. 607 | Abw. 607 | nie angenommen |
+    /// | `pos, size`      | Abw. 60  | **0**    | —        | **angenommen** |
+    ///
+    /// Die frühere dritte Schreibung war als Abkürzung gedacht — sie sollte den
+    /// Fall abfangen, dass eine App die Position verschiebt, wenn sich die
+    /// Größe ändert, und „kostet nichts, wenn die App sich anständig verhält".
+    /// Bei Safari kostete sie die gesamte Größenänderung: das Fenster sprang
+    /// bei jedem Versuch an eine neue Stelle, ohne je die Größe anzunehmen.
+    ///
+    /// Der Fall, für den sie gedacht war, bleibt gedeckt — nur eine Runde
+    /// später: verschiebt eine App sich beim Ändern der Größe, steht die Größe
+    /// schon; beim nächsten Versuch von ``RetryingWindowPlacer`` ist die
+    /// Größenschreibung folgenlos und die Position bleibt stehen. Genau so
+    /// findet Safari im zweiten Versuch sein Ziel. Die Pause zwischen den
+    /// Versuchen (200 ms) ist dabei das, was Safari braucht — zwei Schreibungen
+    /// unmittelbar hintereinander verliert es.
+    ///
+    /// Kontrolle am selben Tag: Finder nimmt beide Folgen im ersten Versuch an.
+    @MainActor
     @discardableResult
     public static func setFrame(_ frame: WindowFrame, on window: AXUIElement) -> Bool {
-        var point = CGPoint(x: frame.x, y: frame.y)
-        var size = CGSize(width: frame.width, height: frame.height)
+        // Die Kennung sitzt an der **Anwendung**, nicht am Fenster. Die PID
+        // steht am Element selbst, deshalb braucht der Aufrufer nichts davon
+        // zu wissen.
+        var pid: pid_t = 0
+        let application: AXUIElement? = AXUIElementGetPid(window, &pid) == .success
+            ? AXUIElementCreateApplication(pid)
+            : nil
+        let enhancedWasOn = application
+            .flatMap { copyAttribute($0, enhancedUserInterfaceAttribute) as? Bool } ?? false
 
-        guard
-            let positionValue = AXValueCreate(.cgPoint, &point),
-            let sizeValue = AXValueCreate(.cgSize, &size)
-        else { return false }
+        return applyFrame(
+            frame,
+            enhancedUserInterfaceWasOn: enhancedWasOn,
+            maySuppressEnhancedUserInterface: !assistiveTechnologyIsRunning()
+        ) { write in
+            switch write {
+            case var .position(point):
+                guard let value = AXValueCreate(.cgPoint, &point) else { return false }
+                return AXUIElementSetAttributeValue(
+                    window, kAXPositionAttribute as CFString, value
+                ) == .success
+            case var .size(size):
+                guard let value = AXValueCreate(.cgSize, &size) else { return false }
+                return AXUIElementSetAttributeValue(
+                    window, kAXSizeAttribute as CFString, value
+                ) == .success
+            case let .enhancedUserInterface(on):
+                guard let application else { return false }
+                return AXUIElementSetAttributeValue(
+                    application,
+                    enhancedUserInterfaceAttribute as CFString,
+                    on ? kCFBooleanTrue : kCFBooleanFalse
+                ) == .success
+            }
+        }
+    }
 
-        let first = AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue)
-        let second = AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue)
-        let third = AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue)
+    /// Die Schreibfolge, losgelöst vom lebenden Fenster.
+    ///
+    /// Beide Rahmen-Schreibungen laufen immer — eine gescheiterte Position darf
+    /// die Größe nicht aufhalten, sonst bliebe das Fenster halb gesetzt stehen.
+    /// Gemeldet wird trotzdem ein Fehlschlag, damit die Wiederholung greift.
+    ///
+    /// Um sie herum liegt die Kennung ``enhancedUserInterfaceAttribute``. Steht
+    /// sie auf wahr, animiert Safari jede Rahmenänderung; die Größenschreibung
+    /// landet dann mitten in der laufenden Animation und rechnet gegen eine
+    /// Position, die es noch nicht gibt. Sichtbar wird das als Abweichung, die
+    /// mit dem Abstand zwischen den Schreibungen stetig kleiner wird — gemessen
+    /// am 23.09.2026 an Safari, eine Runde je Abstand:
+    ///
+    /// | Abstand | 0 | 10 | 20 | 30 | 40 | 50 | 70 | 100 |
+    /// |---------|---|----|----|----|----|----|----|-----|
+    /// | Abw.    | 85| 85 | 45 | 29 | 19 | 9  | 3  | 0   |
+    ///
+    /// Kennung aus heisst: keine Animation, also kein Abstand nötig. Je vier
+    /// Runden, ein einziger Versuch, dasselbe Fenster:
+    ///
+    /// | Vorgehen                              | Treffer | grösste Abw. |
+    /// |---------------------------------------|---------|--------------|
+    /// | nur `pos, size`                       | 0/4     | 91           |
+    /// | Kennung aus, `pos, size`, Kennung an  | **4/4** | **0**        |
+    /// | `AXFrame` in einem Rutsch             | 0/4     | nicht setzbar (−25205) |
+    ///
+    /// Zwei Regeln, die nicht verhandelbar sind:
+    ///
+    /// * **Nur zurückschalten, was an war.** Eine App, die die Kennung nie
+    ///   hatte, bekommt sie hier nicht eingeschaltet.
+    /// * **Immer zurückschalten**, auch wenn eine Rahmen-Schreibung scheitert —
+    ///   sonst hinterlässt jede misslungene Platzierung eine App mit
+    ///   abgeschalteter Bedienungshilfen-Kennung. Ob das Zurückschalten selbst
+    ///   gelingt, ändert das Urteil über die Platzierung nicht: das Fenster
+    ///   sitzt ja.
+    ///
+    /// Läuft VoiceOver oder die Schaltersteuerung, unterbleibt der Eingriff
+    /// ganz (`maySuppressEnhancedUserInterface`).
+    static func applyFrame(
+        _ frame: WindowFrame,
+        enhancedUserInterfaceWasOn: Bool,
+        maySuppressEnhancedUserInterface: Bool,
+        write: (FrameWrite) -> Bool
+    ) -> Bool {
+        let suppressing = enhancedUserInterfaceWasOn && maySuppressEnhancedUserInterface
+        if suppressing { _ = write(.enhancedUserInterface(false)) }
 
-        return first == .success && second == .success && third == .success
+        let wrotePosition = write(.position(CGPoint(x: frame.x, y: frame.y)))
+        let wroteSize = write(.size(CGSize(width: frame.width, height: frame.height)))
+
+        if suppressing { _ = write(.enhancedUserInterface(true)) }
+        return wrotePosition && wroteSize
     }
 
     public static func raise(_ window: AXUIElement, pid: pid_t) {
