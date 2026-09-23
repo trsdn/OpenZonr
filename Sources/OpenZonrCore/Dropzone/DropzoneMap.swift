@@ -25,10 +25,24 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
     public var visibleFrame: VisibleFrame
     /// ``Layout/margin`` of the zone's layout, as a fraction of the display.
     ///
-    /// Not applied to ``frame``: the hit test stays gap-free. Applied only by
-    /// ``placement``, through ``ZoneGeometry/placementFrame(for:margin:in:)``,
-    /// so a dropped window lands where automatic placement would put it.
+    /// Placement-only: applied by ``placement``, through
+    /// ``ZoneGeometry/placementFrame(for:margin:in:)``, so a dropped window
+    /// lands where automatic placement would put it. The hit test never reads
+    /// ``frame`` at all — it reads ``activationFrame`` — and with a declared
+    /// activation area that surface is deliberately gappy, not gap-free;
+    /// ``margin`` has no effect on it either way.
     public var margin: Double
+    /// Wo losgelassen werden muss, absolut, im selben Raum wie ``frame``.
+    ///
+    /// Gleich ``frame``, solange die Zone keine eigene Trefferfläche trägt.
+    /// Getrennt mitgeführt, weil ein Stapel überlappender Zielrahmen sonst
+    /// nicht auflösbar ist: erst disjunkte Trefferflächen machen jede Ebene
+    /// einzeln erreichbar.
+    ///
+    /// Der ``margin`` wirkt hierauf **nicht**. Er ist ein Platzierungsrand;
+    /// eine Fläche zu schrumpfen, die der Nutzer selbst gezeichnet hat, wäre
+    /// Bevormundung.
+    public var activationFrame: WindowFrame
 
     public init(
         display: DisplayAlias,
@@ -37,7 +51,8 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
         relativeFrame: RelativeRect,
         frame: WindowFrame,
         visibleFrame: VisibleFrame,
-        margin: Double = 0
+        margin: Double = 0,
+        activationFrame: WindowFrame? = nil
     ) {
         self.display = display
         self.zone = zone
@@ -46,6 +61,9 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
         self.frame = frame
         self.visibleFrame = visibleFrame
         self.margin = margin
+        // Vorgabe statt eigenem Feldtyp: jede bestehende Konstruktionsstelle —
+        // auch jeder von Hand gebauter Testfall — bleibt gültig.
+        self.activationFrame = activationFrame ?? frame
     }
 
     public var id: String { "\(display)/\(zone)" }
@@ -84,8 +102,10 @@ public enum DropzoneMap {
     /// attached, and a zone on a monitor that is not there cannot be dropped
     /// into.
     ///
-    /// Der Rand wirkt nicht auf ``Dropzone/frame`` (Treffertest bleibt lückenlos),
-    /// sondern nur auf ``Dropzone/placement``.
+    /// Der Rand wirkt nicht auf ``Dropzone/frame`` oder ``Dropzone/activationFrame``,
+    /// sondern nur auf ``Dropzone/placement``. Der Treffertest liest ohnehin
+    /// ``Dropzone/activationFrame``, nicht ``Dropzone/frame`` — mit eigener
+    /// Trefferfläche ist die Fläche dort absichtlich lückenhaft.
     public static func zones(
         in configuration: Configuration,
         profile: ProfileID,
@@ -106,7 +126,10 @@ public enum DropzoneMap {
                         relativeFrame: zone.frame,
                         frame: ZoneGeometry.absoluteFrame(for: zone.frame, in: visibleFrame),
                         visibleFrame: visibleFrame,
-                        margin: layout.margin
+                        margin: layout.margin,
+                        activationFrame: zone.activationArea.map {
+                            ZoneGeometry.absoluteFrame(for: $0, in: visibleFrame)
+                        }
                     )
                 )
             }
@@ -119,25 +142,32 @@ public enum DropzoneMap {
     /// - Parameter point: the pointer in **AppKit** coordinates, origin
     ///   bottom-left, the same space the zone frames are in.
     ///
-    /// Zones may overlap — a large focus zone stacked on two halves is an
-    /// explicitly supported layout — so "contains the point" is not enough of an
-    /// answer. The **smallest** containing zone wins: the focus zone contains
-    /// every point the halves contain, and if it won, the halves would be
-    /// unreachable by mouse and the feature would be broken for exactly the
-    /// layouts the concept encourages.
+    /// Geprüft wird die **Trefferfläche**, nicht der Zielrahmen. Ohne eigene
+    /// Trefferfläche sind beide gleich, und dann entscheidet wie bisher die
+    /// kleinste Fläche: ein Fokusfenster über zwei Hälften enthält jeden Punkt
+    /// der Hälften, und gewänne es, wären die Hälften unerreichbar.
+    ///
+    /// Diese Regel allein reicht aber nicht, und das war der Fehler, den dieses
+    /// Feld behebt: sie kippt das Problem nur auf die andere Seite. Deckt ein
+    /// Stapel kleinerer Zonen eine grössere lückenlos ab, ist die **grosse**
+    /// unerreichbar — gemessen an der Ebene des Autors, in der „Rechts außen"
+    /// von „Rechts oben" und „Rechts unten" vollständig überdeckt wurde. Mit
+    /// einem Rechteck für beides ist das nicht lösbar; mit getrennten
+    /// Trefferflächen schon, weil die disjunkt sein dürfen, auch wenn die
+    /// Zielrahmen es nicht sind.
     ///
     /// Equal areas are decided by display alias and then zone identifier, never
     /// by array order, so the same pointer always produces the same answer.
     public static func zone(at point: ScreenPoint, in zones: [Dropzone]) -> Dropzone? {
         var best: Dropzone?
-        for candidate in zones where candidate.frame.contains(point) {
+        for candidate in zones where candidate.activationFrame.contains(point) {
             guard let current = best else {
                 best = candidate
                 continue
             }
-            if candidate.frame.area < current.frame.area {
+            if candidate.activationFrame.area < current.activationFrame.area {
                 best = candidate
-            } else if candidate.frame.area == current.frame.area,
+            } else if candidate.activationFrame.area == current.activationFrame.area,
                       isOrderedBefore(candidate, current) {
                 best = candidate
             }
@@ -163,7 +193,7 @@ public enum DropzoneMap {
 
     /// The small pin badge each zone carries while the overlay is up.
     ///
-    /// A **pure function** of the zone's frame, deliberately. Dropping *and
+    /// A **pure function** of the zone's activation frame, deliberately. Dropping *and
     /// pinning* used to be two moments — drop, then answer a question — with a
     /// gesture wedged between them. Moving the decision into the drag itself
     /// means the drop and the pin land in one motion: release on the zone for a
@@ -186,8 +216,17 @@ public enum DropzoneMap {
     ///   badge whose hit test would answer *yes* for every point of the zone —
     ///   that would remove the plain-drop path from the layouts that need it
     ///   most.
+    ///
+    ///   Eine Trefferfläche unter `4·2 + 8·2 + 24 + 24 = 72` Punkten in der
+    ///   kürzeren Kante trägt deshalb **keine** Marke. Das Platzieren
+    ///   funktioniert dort weiter; nur die Regel muss dann über das Menü
+    ///   entstehen.
     public static func pinBadgeFrame(for zone: Dropzone) -> WindowFrame? {
-        let frame = zone.frame
+        // An der Trefferfläche, nicht am Zielrahmen: die Marke ist das zweite
+        // Ziel derselben Mausbewegung. Bei Randauslösung läge sie sonst am
+        // anderen Ende des Bildschirms und wäre unbenutzbar. Ohne eigene
+        // Trefferfläche sind beide gleich und nichts ändert sich.
+        let frame = zone.activationFrame
         // Same values as the on-screen badge; kept here as constants so the
         // hit test and the drawing agree without one importing the other.
         let inset: Double = 4

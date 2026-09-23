@@ -76,7 +76,7 @@ Normal loslassen: einmalige Platzierung, keine Regel, keine Frage. Auf der
 Marke loslassen: dieselbe Platzierung und `QuickPin` schreibt die Regel — in
 derselben Bewegung.
 
-Ablegen und Zoom-Menü platzieren mit `Dropzone.placement` (Layout-Rand abgezogen, identisch zur Automatik, #43); Treffertest und Overlay nutzen `Dropzone.frame` (volle Zone).
+Ablegen und Zoom-Menü platzieren mit `Dropzone.placement` (Layout-Rand abgezogen, identisch zur Automatik, #43); der Treffertest nutzt `Dropzone.activationFrame` — die **Trefferfläche**, nicht mehr zwangsläufig die volle Zone. Was das ist und warum, steht im nächsten Abschnitt.
 
 Die Trefferprüfung ist eine **reine Funktion** neben `DropzoneMap`
 (`DropzoneMap.pinBadgeFrame(for:)` und `DropzoneMap.isOnPinBadge(_:of:)`), damit
@@ -95,6 +95,72 @@ Punkten und stellt sicher, dass die Mitte jeder Zone, für die überhaupt eine
 Marke gezeichnet wird, kein Marken-Treffer ist. Ist die Zone zu klein für Marke
 plus verbleibenden Streifen, wird gar keine Marke gezeichnet — dann ist jeder
 Drop einmalig, ohne dass der Controller einen zweiten Pfad kennen muss.
+
+## Trefferflächen — zwei Rechtecke statt einem
+
+Jede Zone trägt seit Kurzem ein zweites, optionales Rechteck: `activationArea`.
+`frame` sagt weiterhin, wohin das Fenster kommt; `activationArea` sagt, wo
+losgelassen werden muss. Fehlt sie, ist sie der Zielrahmen — jede
+Konfiguration, die das Feld nicht kennt, verhält sich unverändert, und
+`Configuration.currentVersion` bleibt bei `1`.
+
+Der Grund für die Trennung ist ein Fall, der mit einem einzigen Rechteck nicht
+lösbar ist, und er ist nicht konstruiert — er liegt auf dem Rechner des
+Betreuers. Eine Ebene dort (`C49RG9x`, 5120×1440) trägt eine volltiefe Zone
+„Rechts außen" und darüber gestapelt zwei halbhohe Zonen, „Rechts oben" und
+„Rechts unten":
+
+| Zone | rel. Fläche |
+|---|---|
+| Rechts außen | 0,333 |
+| Rechts oben | 0,167 |
+| Rechts unten | 0,167 |
+
+Der Treffertest lässt die kleinste enthaltende Zone gewinnen — ohne diese Regel
+wären die beiden Hälften nie erreichbar, weil „Rechts außen" jeden ihrer Punkte
+mit enthält. Aber „Rechts oben" und „Rechts unten" decken „Rechts außen"
+zusammen lückenlos ab, und **genau das** macht „Rechts außen" unerreichbar:
+jeder Punkt darin liegt auch in einer der beiden kleineren Zonen. Nicht schwer
+zu treffen — unerreichbar. Keine andere Regel behebt das: solange ein Rechteck
+zugleich Zielrahmen und Auslöser ist, sind die Punkte eines Stapels unteilbar,
+und wer auch immer die Regel begünstigt, die andere Ebene verliert vollständig.
+
+`activationArea` löst das, indem sie Ziel und Auslöser trennt: „Rechts außen"
+bekommt eine eigene, von den beiden Hälften unabhängige Trefferfläche, ohne
+dass sich ihr Zielrahmen ändert. Das JSON-Feld steht in
+[konfiguration.md](konfiguration.md), Abschnitt `activationArea`.
+
+Zwei Warnungen gehören zur Prüfung (`ZoneReachabilityCheck`), beide Warnungen,
+keine Fehler — die Konfiguration bleibt ladbar:
+
+- **Zone unerreichbar** — wenn die **Vereinigung** der bevorzugten
+  Trefferflächen (kleinere Fläche, bei Gleichstand frühere Zonen-ID) eine Zone
+  vollständig überdeckt. Der Fall des Autors ist genau deshalb ein Test dieser
+  Prüfung: keine einzelne Hälfte überdeckt „Rechts außen", erst beide
+  zusammen — eine Prüfung, die nur paarweise vergleicht, fände ihn nicht.
+- **Trefferfläche losgelöst** — wenn eine deklarierte `activationArea` den
+  eigenen Zielrahmen gar nicht berührt. Erlaubt (siehe unten), aber häufiger
+  ein Tippfehler als Absicht.
+
+Die Trefferfläche muss nicht im Zielrahmen liegen — sie ist bildschirmbezogen,
+nicht zonenbezogen. Das macht **Randauslösung möglich**: am Bildschirmrand
+loslassen, Fenster landet in einer entfernten Zone. Ausdrücklich *möglich*,
+nicht *erprobt*: bisher hat niemand am Bildschirmrand losgelassen und
+beobachtet, ob sich das im Gebrauch bewährt oder trifft, was gemeint war. Die
+Tabelle „Was gemessen ist und was nicht" weiter unten führt dazu keine Zeile —
+es gibt nichts zu berichten, nur die Möglichkeit.
+
+Das Overlay zeichnet seither zweigeteilt: die Trefferflächen aller Zonen der
+Ebene als dünne Kontur, damit sichtbar ist, wohin man zielen kann, und der
+Zielrahmen der getroffenen Zone gefüllt, damit sichtbar ist, wo das Fenster
+landet. Die Anheft-Marke sitzt seither ebenfalls auf der Trefferfläche statt
+auf dem Zielrahmen — folgerichtig, denn sie ist das zweite Ziel derselben
+Mausbewegung; bei Randauslösung läge sie sonst am anderen Ende des
+Bildschirms. Eine Konsequenz daraus, die man von Hand nicht sofort sieht:
+eine Trefferfläche unter `4·2 + 8·2 + 24 + 24 = 72` Punkten in der kürzeren
+Kante trägt keine Marke mehr (siehe oben, „Die Anheft-Marke"). Platzieren
+funktioniert dort weiter, die Regel muss dann über das Rechtsklickmenü
+entstehen.
 
 ## Rechtsklick am grünen Knopf — Menü statt Ziehen (Issue #27)
 

@@ -92,6 +92,8 @@ struct ConfigurationValidationTests {
         case relativeRectOutOfRange
         case relativeRectNonPositiveSize
         case relativeRectOverflow
+        case activationAreaOutOfRange
+        case activationAreaNonPositiveSize
         case zoneShareTooFewSlots
         case zoneShareSlotIndexOutOfRange
         case aspectRatioInverted
@@ -122,6 +124,8 @@ struct ConfigurationValidationTests {
             case .relativeRectOutOfRange: .relativeRectOutOfRange
             case .relativeRectNonPositiveSize: .relativeRectNonPositiveSize
             case .relativeRectOverflow: .relativeRectOverflow
+            case .activationAreaOutOfRange: .relativeRectOutOfRange
+            case .activationAreaNonPositiveSize: .relativeRectNonPositiveSize
             case .zoneShareTooFewSlots: .zoneShareTooFewSlots
             case .zoneShareSlotIndexOutOfRange: .zoneShareSlotIndexOutOfRange
             case .aspectRatioInverted: .aspectRatioInverted
@@ -154,6 +158,8 @@ struct ConfigurationValidationTests {
             case .relativeRectOutOfRange: "displays[main].layouts[halves].zones[left].frame.x"
             case .relativeRectNonPositiveSize: "displays[main].layouts[halves].zones[left].frame.width"
             case .relativeRectOverflow: "displays[main].layouts[halves].zones[left].frame.width"
+            case .activationAreaOutOfRange: "displays[main].layouts[halves].zones[left].activationArea.x"
+            case .activationAreaNonPositiveSize: "displays[main].layouts[halves].zones[left].activationArea.width"
             case .zoneShareTooFewSlots: "rules[editor-rule].action.share.slots"
             case .zoneShareSlotIndexOutOfRange: "rules[editor-rule].action.share.slotIndex"
             case .aspectRatioInverted: "rules[editor-rule].match.aspectRatio"
@@ -215,6 +221,14 @@ struct ConfigurationValidationTests {
                 case .relativeRectOverflow:
                     configuration.displays[0].layouts[0].zones[0].frame.x = 0.75
                     configuration.displays[0].layouts[0].zones[0].frame.width = 0.5
+                case .activationAreaOutOfRange:
+                    configuration.displays[0].layouts[0].zones[0].activationArea = RelativeRect(
+                        x: -0.1, y: 0, width: 0.3, height: 0.3
+                    )
+                case .activationAreaNonPositiveSize:
+                    configuration.displays[0].layouts[0].zones[0].activationArea = RelativeRect(
+                        x: 0.1, y: 0.1, width: 0, height: 0.3
+                    )
                 case .zoneShareTooFewSlots:
                     configuration.rules[0].action.share = ZoneShare(axis: .horizontal, slots: 1, slotIndex: 0)
                 case .zoneShareSlotIndexOutOfRange:

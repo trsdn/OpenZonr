@@ -68,16 +68,20 @@ final class DropzoneOverlay: DropzoneOverlaying {
     }
 
     private func union(of zones: [Dropzone]) -> WindowFrame {
-        guard var minX = zones.first?.frame.x, var minY = zones.first?.frame.y else {
+        // Beide Rechtecke jeder Zone: eine Trefferfläche darf ausserhalb ihres
+        // Zielrahmens liegen (Randauslösung), und ein Fenster, das nur die
+        // Zielrahmen umspannt, schnitte sie ab.
+        let rects = zones.flatMap { [$0.frame, $0.activationFrame] }
+        guard var minX = rects.first?.x, var minY = rects.first?.y else {
             return WindowFrame(x: 0, y: 0, width: 0, height: 0)
         }
         var maxX = minX
         var maxY = minY
-        for zone in zones {
-            minX = min(minX, zone.frame.x)
-            minY = min(minY, zone.frame.y)
-            maxX = max(maxX, zone.frame.x + zone.frame.width)
-            maxY = max(maxY, zone.frame.y + zone.frame.height)
+        for rect in rects {
+            minX = min(minX, rect.x)
+            minY = min(minY, rect.y)
+            maxX = max(maxX, rect.x + rect.width)
+            maxY = max(maxY, rect.y + rect.height)
         }
         return WindowFrame(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
@@ -103,32 +107,44 @@ final class DropzoneOverlayView: NSView {
         NSColor.clear.setFill()
         dirtyRect.fill()
 
+        // Kontur: die Trefferfläche jeder Zone der Ebene, ungefüllt — sie zeigt,
+        // wo man den Zeiger loslassen darf, nicht, wo das Fenster landet.
         for zone in zones {
-            let isHighlighted = zone.id == highlighted?.id
-            let rect = NSRect(
-                x: zone.frame.x - offset.x,
-                y: zone.frame.y - offset.y,
-                width: zone.frame.width,
-                height: zone.frame.height
-            ).insetBy(dx: 4, dy: 4)
-            let path = NSBezierPath(roundedRect: rect, xRadius: 10, yRadius: 10)
-
-            // The zone under the pointer is filled, the others are outlined.
-            // Filling everything would tell the user where the zones are but not
-            // where the window is going, which is the only question during a
-            // drag.
-            NSColor.controlAccentColor.withAlphaComponent(isHighlighted ? 0.32 : 0.10).setFill()
-            path.fill()
-            NSColor.controlAccentColor.withAlphaComponent(isHighlighted ? 0.95 : 0.45).setStroke()
-            path.lineWidth = isHighlighted ? 3 : 1.5
+            let path = NSBezierPath(roundedRect: viewRect(for: zone.activationFrame), xRadius: 10, yRadius: 10)
+            NSColor.controlAccentColor.withAlphaComponent(0.45).setStroke()
+            path.lineWidth = 1
             path.stroke()
-
-            if isHighlighted { drawName(of: zone, in: rect) }
-            drawPinBadge(of: zone)
         }
+
+        // Füllung: nur der Zielrahmen der getroffenen Zone — das ist die
+        // einzige Frage während eines Zugs, nicht, welche Trefferflächen es
+        // sonst noch gibt.
+        guard let highlighted else { return }
+        let targetRect = viewRect(for: highlighted.frame)
+        let path = NSBezierPath(roundedRect: targetRect, xRadius: 10, yRadius: 10)
+        NSColor.controlAccentColor.withAlphaComponent(0.32).setFill()
+        path.fill()
+        NSColor.controlAccentColor.withAlphaComponent(0.95).setStroke()
+        path.lineWidth = 3
+        path.stroke()
+
+        drawName(of: highlighted, in: targetRect)
+        drawPinBadge(of: highlighted)
     }
 
-    /// The pin badge as the mouse sees it.
+    /// `frame` in Ansichtskoordinaten, mit demselben Rand wie bisher.
+    private func viewRect(for frame: WindowFrame) -> NSRect {
+        NSRect(
+            x: frame.x - offset.x,
+            y: frame.y - offset.y,
+            width: frame.width,
+            height: frame.height
+        ).insetBy(dx: 4, dy: 4)
+    }
+
+    /// The pin badge as the mouse sees it, drawn only for the highlighted zone —
+    /// the one the pointer is currently over, and therefore the only one whose
+    /// badge a release could actually hit.
     ///
     /// A release inside this square writes a rule; a release anywhere else in
     /// the zone does not. The hit test is in ``DropzoneMap/isOnPinBadge(_:of:)``

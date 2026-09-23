@@ -15,13 +15,33 @@ public struct Zone: Codable, Hashable, Sendable, Identifiable {
     public var id: ZoneID
     /// Human readable label shown in the UI, e.g. "rechts oben".
     public var name: String
-    /// Geometry relative to the visible frame of the owning display.
+    /// Wohin das Fenster kommt. Relativ zum sichtbaren Rahmen des Displays.
     public var frame: RelativeRect
+    /// Wo losgelassen werden muss, im **selben** Raum wie ``frame`` — also
+    /// bildschirmbezogen, nicht zonenbezogen. Die Fläche muss deshalb nicht im
+    /// Zielrahmen liegen: „am linken Rand loslassen, Fenster landet rechts" ist
+    /// ausdrücklich erlaubt.
+    ///
+    /// `nil` heisst: der Zielrahmen selbst. Genau das lässt jede Konfiguration,
+    /// die dieses Feld nicht kennt, unverändert weiterlaufen — weshalb hier
+    /// auch kein Schemawechsel nötig ist.
+    ///
+    /// Der Sinn der Trennung: mit **einem** Rechteck für beides ist ein Stapel
+    /// überlappender Zonen nicht auflösbar. Welche Regel der Treffertest auch
+    /// wählt, eine Ebene verliert vollständig — siehe
+    /// `docs/superpowers/specs/2026-09-23-trefferflaechen-design.md`.
+    public var activationArea: RelativeRect?
 
-    public init(id: ZoneID, name: String, frame: RelativeRect) {
+    public init(
+        id: ZoneID,
+        name: String,
+        frame: RelativeRect,
+        activationArea: RelativeRect? = nil
+    ) {
         self.id = id
         self.name = name
         self.frame = frame
+        self.activationArea = activationArea
     }
 }
 
@@ -51,6 +71,10 @@ public struct LayoutID: StringIdentifier {
 /// zwischen den Fenstern und zieht trotzdem über eine geschlossene Fläche.
 /// Wer den Rand an beiden Stellen abzöge, bekäme optisch dasselbe Ergebnis
 /// und ein Overlay, das an jeder Naht blinkt.
+///
+/// Seit es Trefferflächen gibt (``Zone/activationArea``), gilt der zweite Teil
+/// nur noch für Ebenen ohne eigene Trefferflächen: wer welche zeichnet, macht
+/// die Fläche absichtlich lückenhaft. Der Rand wirkt auf sie ohnehin nicht.
 public struct Layout: Codable, Hashable, Sendable, Identifiable {
     public var id: LayoutID
     public var name: String
