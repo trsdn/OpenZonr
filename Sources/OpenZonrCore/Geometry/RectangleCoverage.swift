@@ -45,8 +45,7 @@ public enum RectangleCoverage {
                 let midX = (xs[xIndex] + xs[xIndex + 1]) / 2
                 let midY = (ys[yIndex] + ys[yIndex + 1]) / 2
                 let covered = relevant.contains { other in
-                    midX >= other.x && midX < other.x + other.width
-                        && midY >= other.y && midY < other.y + other.height
+                    other.contains(ScreenPoint(x: midX, y: midY))
                 }
                 if !covered { return false }
             }
