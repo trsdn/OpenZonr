@@ -29,6 +29,17 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
     /// ``placement``, through ``ZoneGeometry/placementFrame(for:margin:in:)``,
     /// so a dropped window lands where automatic placement would put it.
     public var margin: Double
+    /// Wo losgelassen werden muss, absolut, im selben Raum wie ``frame``.
+    ///
+    /// Gleich ``frame``, solange die Zone keine eigene Trefferfläche trägt.
+    /// Getrennt mitgeführt, weil ein Stapel überlappender Zielrahmen sonst
+    /// nicht auflösbar ist: erst disjunkte Trefferflächen machen jede Ebene
+    /// einzeln erreichbar.
+    ///
+    /// Der ``margin`` wirkt hierauf **nicht**. Er ist ein Platzierungsrand;
+    /// eine Fläche zu schrumpfen, die der Nutzer selbst gezeichnet hat, wäre
+    /// Bevormundung.
+    public var activationFrame: WindowFrame
 
     public init(
         display: DisplayAlias,
@@ -37,7 +48,8 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
         relativeFrame: RelativeRect,
         frame: WindowFrame,
         visibleFrame: VisibleFrame,
-        margin: Double = 0
+        margin: Double = 0,
+        activationFrame: WindowFrame? = nil
     ) {
         self.display = display
         self.zone = zone
@@ -46,6 +58,9 @@ public struct Dropzone: Hashable, Sendable, Identifiable {
         self.frame = frame
         self.visibleFrame = visibleFrame
         self.margin = margin
+        // Vorgabe statt eigenem Feldtyp: jede bestehende Konstruktionsstelle —
+        // auch jeder von Hand gebauter Testfall — bleibt gültig.
+        self.activationFrame = activationFrame ?? frame
     }
 
     public var id: String { "\(display)/\(zone)" }
@@ -106,7 +121,10 @@ public enum DropzoneMap {
                         relativeFrame: zone.frame,
                         frame: ZoneGeometry.absoluteFrame(for: zone.frame, in: visibleFrame),
                         visibleFrame: visibleFrame,
-                        margin: layout.margin
+                        margin: layout.margin,
+                        activationFrame: zone.activationArea.map {
+                            ZoneGeometry.absoluteFrame(for: $0, in: visibleFrame)
+                        }
                     )
                 )
             }
