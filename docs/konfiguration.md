@@ -301,6 +301,19 @@ eine Zone am Bildschirmrand auslösen, während das Fenster woanders landet.
 Diese Randauslösung ist als Möglichkeit im Modell angelegt, aber bisher nicht
 erprobt — siehe denselben Abschnitt in `dropzones.md`.
 
+Über den eigenen Bildschirm hinaus reicht sie trotzdem nie: `DropzoneOverlayPlan.plan`
+grenzt vor dem Treffertest auf das Display unter dem Zeiger ein, und
+`activationArea` ist relativ zum sichtbaren Rahmen genau dieses Displays — ein
+Wert im gültigen Bereich 0 bis 1 kann also keinen anderen Bildschirm
+adressieren.
+
+**Der Zoneneditor kennt `activationArea` nicht** (bewusst außerhalb des
+Umfangs). Wer eine Zone dort per Ziehen verschiebt, verändert nur `frame` —
+eine gesetzte `activationArea` bleibt an ihrer alten Stelle stehen und löst
+sich damit lautlos vom Zielrahmen. Genau dafür ist die Warnung
+`activationAreaDetached` das Sicherheitsnetz: sie macht diesen Fall danach
+sichtbar.
+
 **Folge für die Anheft-Marke:** Der Anheft-Punkt sitzt auf der Trefferfläche,
 nicht auf dem Zielrahmen — er ist das zweite Ziel derselben Mausbewegung. Eine
 Trefferfläche unter `4·2 + 8·2 + 24 + 24 = 72` Punkten in der kürzeren Kante
