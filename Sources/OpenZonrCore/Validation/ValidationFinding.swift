@@ -63,9 +63,9 @@ public enum ValidationCode: String, Codable, Hashable, Sendable, CaseIterable {
     /// bevorzugter Zonen lückenlos überdeckt — der Treffertest kann sie nie
     /// zurückgeben.
     case zoneUnreachable
-    /// Die Trefferfläche überschneidet den eigenen Zielrahmen nicht oder liegt
-    /// ausserhalb des sichtbaren Rahmens. Erlaubt, aber häufiger ein Tippfehler
-    /// als eine Absicht.
+    /// Die Trefferfläche überschneidet den eigenen Zielrahmen nicht. Erlaubt —
+    /// so lässt sich eine Zone am Bildschirmrand auslösen —, aber häufiger ein
+    /// Tippfehler als eine Absicht.
     case activationAreaDetached
 
     /// The severity this code is always reported with.

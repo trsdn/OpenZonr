@@ -51,6 +51,13 @@ public struct ZoneReachabilityCheck: ConfigurationCheck {
                 ))
             }
 
+            // Eine Trefferfläche ohne Fläche gilt für ``RectangleCoverage`` immer
+            // als überdeckt, unabhängig von anderen Zonen — das wäre hier eine
+            // falsche Ursache: „von kleineren Zonen überdeckt" stimmt nicht, wenn
+            // niemand sie überdeckt. Eine solche Zone ist zwar unbenutzbar, aber
+            // das ist kein Stapelkonflikt und wird hier nicht gemeldet.
+            guard area(activation) > 0 else { continue }
+
             let preferred = layout.zones
                 .filter { $0.id != zone.id }
                 .filter { other in prefers(other, over: zone) }

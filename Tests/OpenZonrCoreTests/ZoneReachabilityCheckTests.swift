@@ -43,6 +43,31 @@ struct ZoneReachabilityCheckTests {
         #expect(unreachable.first?.severity == .warning)
     }
 
+    /// Der Hauptfall der Funktion: alle drei Zonen deklarieren eine eigene
+    /// Trefferfläche, die vom Zielrahmen abweicht. Die Zielrahmen selbst sind
+    /// Spalten ohne Überlappung — über sie allein wäre niemand unerreichbar.
+    /// Erst die deklarierten Trefferflächen stapeln sich: „oben" und „unten"
+    /// überdecken zusammen lückenlos die Trefferfläche von „ganz".
+    @Test("Deckt sich über deklarierte Trefferflächen: die grosse Zone ist unerreichbar")
+    func reportsUnreachableZoneThroughDeclaredActivationAreas() {
+        let configuration = configuration(zones: [
+            zone("ganz",  RelativeRect(x: 0.5, y: 0, width: 0.5, height: 1),
+                 activation: RelativeRect(x: 0.5, y: 0.25, width: 0.5, height: 0.5)),
+            zone("oben",  RelativeRect(x: 0.5, y: 0, width: 0.5, height: 0.5),
+                 activation: RelativeRect(x: 0.5, y: 0.25, width: 0.5, height: 0.25)),
+            zone("unten", RelativeRect(x: 0.5, y: 0.5, width: 0.5, height: 0.5),
+                 activation: RelativeRect(x: 0.5, y: 0.5, width: 0.5, height: 0.25))
+        ])
+
+        let findings = ZoneReachabilityCheck().findings(in: configuration)
+        let unreachable = findings.filter { $0.code == .zoneUnreachable }
+
+        #expect(findings.count == 1)
+        #expect(unreachable.count == 1)
+        let pathDescription = String(describing: unreachable.first?.path)
+        #expect(pathDescription.contains("ganz"))
+    }
+
     @Test("Mit disjunkten Trefferflächen ist niemand mehr unerreichbar")
     func separateActivationAreasResolveTheStack() {
         let configuration = configuration(zones: [
