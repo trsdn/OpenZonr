@@ -214,47 +214,26 @@ struct DropzoneActivationFrameTests {
 
     private static let visible = VisibleFrame(x: 0, y: 0, width: 1000, height: 800)
 
-    private func configuration(activation: RelativeRect?) -> Configuration {
-        var configuration = Configuration()
-        configuration.displays = [
-            DisplayDescriptor(
-                alias: DisplayAlias(rawValue: "haupt"),
-                displayName: "Haupt",
-                identity: .fallback(vendorNumber: 1, modelNumber: 1, pixelWidth: 1000, pixelHeight: 800, portIndex: 0),
-                layouts: [
-                    Layout(
-                        id: LayoutID(rawValue: "eine"),
-                        name: "Eine",
-                        zones: [
-                            Zone(
-                                id: ZoneID(rawValue: "rechts"),
-                                name: "Rechts",
-                                frame: RelativeRect(x: 0.5, y: 0, width: 0.5, height: 1),
-                                activationArea: activation
-                            )
-                        ]
-                    )
-                ],
-                defaultLayoutID: LayoutID(rawValue: "eine")
-            )
-        ]
-        configuration.profiles = [
-            Profile(
-                id: ProfileID(rawValue: "p"),
-                name: "P",
-                fingerprint: ProfileFingerprint(displays: [DisplayAlias(rawValue: "haupt")]),
-                layouts: [DisplayAlias(rawValue: "haupt"): LayoutID(rawValue: "eine")]
-            )
-        ]
-        return configuration
-    }
-
+    /// Hausmuster: ``TestConfigurations/minimal()`` liefert ein Display „main"
+    /// mit der Ebene „halves" und den Zonen „left" und „right". Wir ersetzen
+    /// nur die Zonen — alles andere (Profil „solo", Rollen, Regeln) steht
+    /// schon und muss hier nicht erfunden werden.
     private func onlyZone(activation: RelativeRect?) -> Dropzone {
-        let frames: VisibleFrames = [DisplayAlias(rawValue: "haupt"): Self.visible]
+        let configuration = TestConfigurations.minimal { config in
+            config.displays[0].layouts[0].zones = [
+                Zone(
+                    id: "rechts",
+                    name: "Rechts",
+                    frame: RelativeRect(x: 0.5, y: 0, width: 0.5, height: 1),
+                    activationArea: activation
+                )
+            ]
+        }
+
         let zones = DropzoneMap.zones(
-            in: configuration(activation: activation),
-            profile: ProfileID(rawValue: "p"),
-            visibleFrames: frames
+            in: configuration,
+            profile: "solo",
+            visibleFrames: ["main": Self.visible]
         )
         return zones[0]
     }
@@ -623,13 +602,13 @@ struct DropzoneActivationBadgeTests {
     }
 
     @Test("Die Marke sitzt in der Trefferfläche, nicht im Zielrahmen")
-    func badgeSitsOnTheActivationFrame() {
+    func badgeSitsOnTheActivationFrame() throws {
         let subject = zone(
             frame: WindowFrame(x: 600, y: 0, width: 400, height: 800),
             activation: WindowFrame(x: 0, y: 0, width: 200, height: 200)
         )
 
-        let badge = try! #require(DropzoneMap.pinBadgeFrame(for: subject))
+        let badge = try #require(DropzoneMap.pinBadgeFrame(for: subject))
         // Oben rechts in der Trefferfläche: x = 0 + 200 - 4 - 8 - 24
         #expect(badge == WindowFrame(x: 164, y: 164, width: 24, height: 24))
         #expect(DropzoneMap.isOnPinBadge(ScreenPoint(x: 170, y: 170), of: subject))
@@ -914,18 +893,12 @@ import Testing
 @Suite("Prüfung — erreichbare Zonen")
 struct ZoneReachabilityCheckTests {
 
+    /// Hausmuster: nur die Zonen der einen Ebene ersetzen, alles andere aus
+    /// ``TestConfigurations/minimal()`` übernehmen.
     private func configuration(zones: [Zone]) -> Configuration {
-        var configuration = Configuration()
-        configuration.displays = [
-            DisplayDescriptor(
-                alias: DisplayAlias(rawValue: "c49rg9x"),
-                displayName: "C49RG9x",
-                identity: .fallback(vendorNumber: 19501, modelNumber: 3996, pixelWidth: 5120, pixelHeight: 1440, portIndex: 1),
-                layouts: [Layout(id: LayoutID(rawValue: "drei"), name: "Drei", zones: zones)],
-                defaultLayoutID: LayoutID(rawValue: "drei")
-            )
-        ]
-        return configuration
+        TestConfigurations.minimal { config in
+            config.displays[0].layouts[0].zones = zones
+        }
     }
 
     private func zone(_ id: String, _ frame: RelativeRect, activation: RelativeRect? = nil) -> Zone {
@@ -948,7 +921,7 @@ struct ZoneReachabilityCheckTests {
         let unreachable = findings.filter { $0.code == .zoneUnreachable }
 
         #expect(unreachable.count == 1)
-        #expect(unreachable.first?.path.description.contains("right-quarter") == true)
+        #expect(String(describing: unreachable.first?.path).contains("right-quarter"))
         #expect(unreachable.first?.severity == .warning)
     }
 
@@ -1074,7 +1047,9 @@ public struct ZoneReachabilityCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .activationAreaDetached,
                     path: path.field("activationArea"),
-                    message: "Die Trefferfläche der Zone „\(zone.name)" überschneidet ihren "
+                    // Deutsche Anführungszeichen „…“ sind keine String-Begrenzer;
+                    // ein gerades " an dieser Stelle beendete das Literal.
+                    message: "Die Trefferfläche der Zone „\(zone.name)“ überschneidet ihren "
                         + "eigenen Zielrahmen nicht. Erlaubt — so lässt sich eine Zone am "
                         + "Bildschirmrand auslösen —, aber häufiger ein Versehen."
                 ))
@@ -1089,9 +1064,9 @@ public struct ZoneReachabilityCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .zoneUnreachable,
                     path: path,
-                    message: "Die Zone „\(zone.name)" ist nicht erreichbar: ihre Trefferfläche "
+                    message: "Die Zone „\(zone.name)“ ist nicht erreichbar: ihre Trefferfläche "
                         + "wird von kleineren Zonen derselben Ebene vollständig überdeckt. "
-                        + "Gib ihr eine eigene „activationArea", die frei liegt."
+                        + "Gib ihr eine eigene „activationArea“, die frei liegt."
                 ))
             }
         }
