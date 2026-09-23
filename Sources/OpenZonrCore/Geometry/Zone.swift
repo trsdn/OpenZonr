@@ -71,6 +71,10 @@ public struct LayoutID: StringIdentifier {
 /// zwischen den Fenstern und zieht trotzdem über eine geschlossene Fläche.
 /// Wer den Rand an beiden Stellen abzöge, bekäme optisch dasselbe Ergebnis
 /// und ein Overlay, das an jeder Naht blinkt.
+///
+/// Seit es Trefferflächen gibt (``Zone/activationArea``), gilt der zweite Teil
+/// nur noch für Ebenen ohne eigene Trefferflächen: wer welche zeichnet, macht
+/// die Fläche absichtlich lückenhaft. Der Rand wirkt auf sie ohnehin nicht.
 public struct Layout: Codable, Hashable, Sendable, Identifiable {
     public var id: LayoutID
     public var name: String

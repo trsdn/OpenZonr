@@ -273,6 +273,40 @@ ein ein- oder ausgeblendetes Dock ändern die nutzbare Fläche.
 Layouts gehören ans Display, nicht ans Profil — ein Ultrawide will drei Spalten,
 ein 24-Zöller zwei, unabhängig davon, welches Setup gerade aktiv ist.
 
+### `activationArea` — wo losgelassen werden muss, getrennt von wo das Fenster hinkommt
+
+Optional. Derselbe Koordinatenraum wie `frame`: prozentual, relativ zum
+sichtbaren Rahmen des Displays, Ursprung oben links. Fehlt das Feld, gilt
+`frame` selbst als Trefferfläche — das bisherige Verhalten, unverändert.
+
+```jsonc
+{
+  "id": "right-quarter",
+  "name": "Rechts außen",
+  "frame":          { "x": 0.667, "y": 0,   "width": 0.333, "height": 1   },
+  "activationArea": { "x": 0.667, "y": 0.4, "width": 0.333, "height": 0.2 }
+}
+```
+
+Der Grund für die Trennung: liegen mehrere Zonen übereinander, gewinnt beim
+Ziehen die kleinste. Deckt ein Stapel kleinerer Zonen eine größere lückenlos
+ab, ist die größere damit unerreichbar — mit `frame` als einzigem Rechteck
+lässt sich das nicht auflösen, egal welche Regel man wählt. Eine eigene
+`activationArea` macht die Trefferflächen disjunkt, auch wenn die Zielrahmen
+es nicht sind. Der ganze Fall — „Rechts außen" unter zwei gestapelten Hälften
+— steht in [`dropzones.md`](dropzones.md), Abschnitt „Trefferflächen".
+
+`activationArea` muss nicht in `frame` liegen. Das ist Absicht: so lässt sich
+eine Zone am Bildschirmrand auslösen, während das Fenster woanders landet.
+Diese Randauslösung ist als Möglichkeit im Modell angelegt, aber bisher nicht
+erprobt — siehe denselben Abschnitt in `dropzones.md`.
+
+**Folge für die Anheft-Marke:** Der Anheft-Punkt sitzt auf der Trefferfläche,
+nicht auf dem Zielrahmen — er ist das zweite Ziel derselben Mausbewegung. Eine
+Trefferfläche unter `4·2 + 8·2 + 24 + 24 = 72` Punkten in der kürzeren Kante
+trägt deshalb **keine** Marke mehr. Platzieren funktioniert dort weiter; die
+Regel muss dann über das Rechtsklickmenü entstehen.
+
 ---
 
 ## `roles`
