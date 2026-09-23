@@ -188,7 +188,7 @@ public enum DropzoneMap {
 
     /// The small pin badge each zone carries while the overlay is up.
     ///
-    /// A **pure function** of the zone's frame, deliberately. Dropping *and
+    /// A **pure function** of the zone's activation frame, deliberately. Dropping *and
     /// pinning* used to be two moments — drop, then answer a question — with a
     /// gesture wedged between them. Moving the decision into the drag itself
     /// means the drop and the pin land in one motion: release on the zone for a
@@ -211,8 +211,17 @@ public enum DropzoneMap {
     ///   badge whose hit test would answer *yes* for every point of the zone —
     ///   that would remove the plain-drop path from the layouts that need it
     ///   most.
+    ///
+    ///   Eine Trefferfläche unter `4·2 + 8·2 + 24 + 24 = 72` Punkten in der
+    ///   kürzeren Kante trägt deshalb **keine** Marke. Das Platzieren
+    ///   funktioniert dort weiter; nur die Regel muss dann über das Menü
+    ///   entstehen.
     public static func pinBadgeFrame(for zone: Dropzone) -> WindowFrame? {
-        let frame = zone.frame
+        // An der Trefferfläche, nicht am Zielrahmen: die Marke ist das zweite
+        // Ziel derselben Mausbewegung. Bei Randauslösung läge sie sonst am
+        // anderen Ende des Bildschirms und wäre unbenutzbar. Ohne eigene
+        // Trefferfläche sind beide gleich und nichts ändert sich.
+        let frame = zone.activationFrame
         // Same values as the on-screen badge; kept here as constants so the
         // hit test and the drawing agree without one importing the other.
         let inset: Double = 4
