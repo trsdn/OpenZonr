@@ -137,25 +137,32 @@ public enum DropzoneMap {
     /// - Parameter point: the pointer in **AppKit** coordinates, origin
     ///   bottom-left, the same space the zone frames are in.
     ///
-    /// Zones may overlap — a large focus zone stacked on two halves is an
-    /// explicitly supported layout — so "contains the point" is not enough of an
-    /// answer. The **smallest** containing zone wins: the focus zone contains
-    /// every point the halves contain, and if it won, the halves would be
-    /// unreachable by mouse and the feature would be broken for exactly the
-    /// layouts the concept encourages.
+    /// Geprüft wird die **Trefferfläche**, nicht der Zielrahmen. Ohne eigene
+    /// Trefferfläche sind beide gleich, und dann entscheidet wie bisher die
+    /// kleinste Fläche: ein Fokusfenster über zwei Hälften enthält jeden Punkt
+    /// der Hälften, und gewänne es, wären die Hälften unerreichbar.
+    ///
+    /// Diese Regel allein reicht aber nicht, und das war der Fehler, den dieses
+    /// Feld behebt: sie kippt das Problem nur auf die andere Seite. Deckt ein
+    /// Stapel kleinerer Zonen eine grössere lückenlos ab, ist die **grosse**
+    /// unerreichbar — gemessen an der Ebene des Autors, in der „Rechts außen"
+    /// von „Rechts oben" und „Rechts unten" vollständig überdeckt wurde. Mit
+    /// einem Rechteck für beides ist das nicht lösbar; mit getrennten
+    /// Trefferflächen schon, weil die disjunkt sein dürfen, auch wenn die
+    /// Zielrahmen es nicht sind.
     ///
     /// Equal areas are decided by display alias and then zone identifier, never
     /// by array order, so the same pointer always produces the same answer.
     public static func zone(at point: ScreenPoint, in zones: [Dropzone]) -> Dropzone? {
         var best: Dropzone?
-        for candidate in zones where candidate.frame.contains(point) {
+        for candidate in zones where candidate.activationFrame.contains(point) {
             guard let current = best else {
                 best = candidate
                 continue
             }
-            if candidate.frame.area < current.frame.area {
+            if candidate.activationFrame.area < current.activationFrame.area {
                 best = candidate
-            } else if candidate.frame.area == current.frame.area,
+            } else if candidate.activationFrame.area == current.activationFrame.area,
                       isOrderedBefore(candidate, current) {
                 best = candidate
             }
