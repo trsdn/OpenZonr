@@ -28,6 +28,10 @@ struct ZoneEditor: View {
     /// dann, und die aktive Zone weiß es nicht selbst — die Rastentscheidung
     /// gehört zum Editor, nicht zur einzelnen Zone.
     @State private var activeGesture: ZoneID?
+    /// Welches der beiden Rechtecke einer Zone gerade bearbeitet wird.
+    @State private var layer: EditorLayer = .target
+    /// Wahr, solange über Zellen gestrichen wird — schaltet das Raster ein.
+    @State private var sweeping = false
     /// Vorschau einer Vorlagenanwendung, bevor sie bestätigt wird.
     @State private var pendingTemplate: PendingTemplateApplication?
 
@@ -83,6 +87,19 @@ struct ZoneEditor: View {
                 templatesMenu(display: display, layout: id)
             }
             Spacer()
+
+            // Der Ebenenumschalter. Rechts aussen, weil er den Zustand der
+            // ganzen Leinwand bestimmt und nicht zu einer einzelnen Zone
+            // gehört.
+            Picker("Ebene", selection: $layer) {
+                ForEach(EditorLayer.allCases) { value in
+                    Text(value.title).tag(value)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 240)
+            .help("Zielrahmen: wohin das Fenster kommt. Trefferfläche: wo losgelassen werden muss.")
         }
         .padding(10)
         .sheet(item: $pendingTemplate) { pending in
@@ -141,17 +158,34 @@ struct ZoneEditor: View {
                 UncoveredHatch(zones: layout.zones.map(\.frame), canvas: side)
                     .allowsHitTesting(false)
 
-                // Zwölftel-Raster nur während einer Geste. Erklärt den Sprung
-                // beim Loslassen und stört sonst nicht.
-                if activeGesture != nil {
+                // Zwölftel-Raster während einer Geste — und dauerhaft, solange
+                // gestrichen werden kann: wer über Zellen zieht, muss sehen,
+                // welche Zellen es sind.
+                if activeGesture != nil || sweeping {
                     TwelfthGrid(canvas: side)
                         .allowsHitTesting(false)
+                }
+
+                // Die Ebene, die gerade nicht bearbeitet wird, als blasse
+                // gestrichelte Kontur. Ohne sie wäre der Abstand zwischen
+                // Zielrahmen und Trefferfläche unsichtbar — und der ist bei
+                // Randauslösung das Einzige, worauf es ankommt.
+                GhostRects(rects: layout.zones.map { ghostRect(for: $0) }, canvas: side)
+
+                // Unter den Griffen: eine Geste auf freier Fläche zieht auf,
+                // eine auf einer Zone bewegt diese Zone.
+                GridSweepSurface(canvas: side) { isSweeping in
+                    sweeping = isSweeping
+                } onSweep: { rect in
+                    applySweep(rect, layout: layout, display: display)
                 }
 
                 ForEach(layout.zones) { zone in
                     ZoneHandle(
                         zone: zone,
-                        neighbours: layout.zones.filter { $0.id != zone.id }.map(\.frame),
+                        frame: editedRect(for: zone),
+                        isPlaceholder: layer == .activation && zone.activationArea == nil,
+                        neighbours: layout.zones.filter { $0.id != zone.id }.map { editedRect(for: $0) },
                         canvas: side,
                         isSelected: selection == zone.id,
                         severity: document.findings.severity(under: .zone(zone.id, layout: layout.id, display: display))
@@ -159,10 +193,8 @@ struct ZoneEditor: View {
                         selection = zone.id
                     } onGestureChanged: { isActive in
                         activeGesture = isActive ? zone.id : (activeGesture == zone.id ? nil : activeGesture)
-                    } onChange: { frame in
-                        document.apply {
-                            $0.settingZoneFrame(frame, zone: zone.id, layout: layout.id, display: display)
-                        }
+                    } onChange: { rect in
+                        write(rect, zone: zone.id, layout: layout.id, display: display)
                     }
                 }
 
@@ -178,6 +210,73 @@ struct ZoneEditor: View {
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
         }
         .padding(16)
+    }
+
+    /// Wahr, wenn es an der gewählten Zone nichts zu entfernen gibt — keine
+    /// Auswahl, oder eine Zone, deren Trefferfläche ohnehin der Zielrahmen ist.
+    private func selectedZoneHasNoActivationArea(in layout: OpenZonrCore.Layout) -> Bool {
+        guard let selection, let zone = layout.zones.first(where: { $0.id == selection }) else { return true }
+        return zone.activationArea == nil
+    }
+
+    /// Das Rechteck, das auf der aktiven Ebene bearbeitet wird.
+    ///
+    /// Auf der Trefferflächen-Ebene fällt eine Zone ohne eigene Trefferfläche
+    /// auf den Zielrahmen zurück — dieselbe Regel wie im Treffertest, und der
+    /// Griff zeichnet sie gestrichelt, damit „geerbt" sichtbar bleibt.
+    private func editedRect(for zone: Zone) -> RelativeRect {
+        switch layer {
+        case .target: return zone.frame
+        case .activation: return zone.activationArea ?? zone.frame
+        }
+    }
+
+    /// Das Rechteck der jeweils **anderen** Ebene, als blasse Kontur.
+    private func ghostRect(for zone: Zone) -> RelativeRect {
+        switch layer {
+        case .target: return zone.activationArea ?? zone.frame
+        case .activation: return zone.frame
+        }
+    }
+
+    /// Schreibt ein bearbeitetes Rechteck in das Feld der aktiven Ebene.
+    private func write(_ rect: RelativeRect, zone: ZoneID, layout: LayoutID, display: DisplayAlias) {
+        document.apply {
+            switch layer {
+            case .target:
+                return $0.settingZoneFrame(rect, zone: zone, layout: layout, display: display)
+            case .activation:
+                return $0.settingZoneActivationArea(rect, zone: zone, layout: layout, display: display)
+            }
+        }
+    }
+
+    /// Was eine Streich-Geste bewirkt.
+    ///
+    /// Ist eine Zone gewählt, wird **sie** neu bestimmt — das ist der schnelle
+    /// Weg, einer Zone eine Trefferfläche zu geben. Ist keine gewählt, entsteht
+    /// auf der Zielrahmen-Ebene eine neue Zone.
+    ///
+    /// Auf der Trefferflächen-Ebene ohne Auswahl passiert nichts: eine
+    /// Trefferfläche ohne Zone, zu der sie gehört, gibt es nicht.
+    private func applySweep(_ rect: RelativeRect, layout: OpenZonrCore.Layout, display: DisplayAlias) {
+        if let selected = selection, layout.zones.contains(where: { $0.id == selected }) {
+            write(rect, zone: selected, layout: layout.id, display: display)
+            return
+        }
+        guard layer == .target else { return }
+
+        // Dieselbe Namensvergabe wie „Zone hinzufügen"; zwei Wege, eine Zone
+        // anzulegen, dürfen nicht zwei Arten von Kennung erzeugen.
+        let id = document.configuration.availableZoneID(basedOn: "Neue Zone", layout: layout.id, display: display)
+        document.apply {
+            $0.adding(
+                zone: Zone(id: id, name: "Neue Zone", frame: rect),
+                layout: layout.id,
+                display: display
+            )
+        }
+        selection = id
     }
 
     /// Wählt das Vorschau-Seitenverhältnis für den gerade sichtbaren Bildschirm.
@@ -264,6 +363,22 @@ struct ZoneEditor: View {
                 } label: { Image(systemName: "minus") }
                     .disabled(selection == nil)
                     .help("Zone entfernen — Bindungen darauf bleiben stehen und werden gemeldet")
+
+                // Nur auf der Trefferflächen-Ebene, und nur wenn es etwas zu
+                // entfernen gibt. Ohne diesen Weg liesse sich eine einmal
+                // gezeichnete Trefferfläche nie wieder loswerden — danach ist
+                // sie wieder der Zielrahmen.
+                if layer == .activation {
+                    Button {
+                        if let selection {
+                            document.apply {
+                                $0.settingZoneActivationArea(nil, zone: selection, layout: layout.id, display: display)
+                            }
+                        }
+                    } label: { Image(systemName: "arrow.uturn.backward") }
+                        .disabled(selectedZoneHasNoActivationArea(in: layout))
+                        .help("Trefferfläche entfernen — danach gilt wieder der Zielrahmen")
+                }
                 Spacer()
             }
             .buttonStyle(.borderless)
@@ -314,6 +429,15 @@ struct ZoneEditor: View {
 private struct ZoneHandle: View {
 
     let zone: Zone
+    /// Das Rechteck, das dieser Griff gerade bewegt — je nach Ebene der
+    /// Zielrahmen oder die Trefferfläche. Der Griff weiss nicht, welches; er
+    /// bekommt es gesagt und meldet die Änderung über ``onChange`` zurück.
+    let frame: RelativeRect
+    /// Wahr, wenn die Zone auf dieser Ebene noch **kein** eigenes Rechteck
+    /// trägt und hier der Zielrahmen als Platzhalter steht. Wird gestrichelt
+    /// gezeichnet, damit „geerbt" und „selbst gezeichnet" nicht gleich
+    /// aussehen.
+    let isPlaceholder: Bool
     let neighbours: [RelativeRect]
     let canvas: CGSize
     let isSelected: Bool
@@ -328,7 +452,6 @@ private struct ZoneHandle: View {
     @State private var resizeDelta: CGSize = .zero
 
     var body: some View {
-        let frame = zone.frame
         let rect = CGRect(
             x: frame.x * canvas.width + dragOffset.width,
             y: frame.y * canvas.height + dragOffset.height,
@@ -338,10 +461,16 @@ private struct ZoneHandle: View {
 
         ZStack(alignment: .bottomTrailing) {
             RoundedRectangle(cornerRadius: 4)
-                .fill(fill)
+                .fill(isPlaceholder ? fill.opacity(0.35) : fill)
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
-                        .stroke(stroke, lineWidth: isSelected ? 2 : 1)
+                        .stroke(
+                            stroke,
+                            style: StrokeStyle(
+                                lineWidth: isSelected ? 2 : 1,
+                                dash: isPlaceholder ? [5, 3] : []
+                            )
+                        )
                 )
                 .overlay(
                     Text(zone.name)

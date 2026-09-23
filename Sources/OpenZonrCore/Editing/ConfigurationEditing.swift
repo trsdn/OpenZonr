@@ -235,6 +235,27 @@ extension Configuration {
         }
     }
 
+    /// Returns a copy in which the activation area of one zone changed.
+    ///
+    /// Zwilling zu ``settingZoneFrame(_:zone:layout:display:)`` und aus
+    /// denselben Gründen so knapp: der Editor ruft das bei jedem Schritt einer
+    /// Geste auf.
+    ///
+    /// `nil` heisst **entfernen**, nicht „nichts tun" — danach ist die
+    /// Trefferfläche wieder der Zielrahmen. Ohne diesen Weg liesse sich eine
+    /// einmal gezeichnete Trefferfläche im Editor nie wieder loswerden.
+    public func settingZoneActivationArea(
+        _ activationArea: RelativeRect?,
+        zone: ZoneID,
+        layout: LayoutID,
+        display: DisplayAlias
+    ) -> Configuration {
+        mutatingZones(layout: layout, display: display) { zones in
+            guard let index = zones.firstIndex(where: { $0.id == zone }) else { return }
+            zones[index].activationArea = activationArea
+        }
+    }
+
     public func updating(zone: Zone, layout: LayoutID, display: DisplayAlias) -> Configuration {
         mutatingZones(layout: layout, display: display) { zones in
             guard let index = zones.firstIndex(where: { $0.id == zone.id }) else { return }
