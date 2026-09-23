@@ -65,11 +65,23 @@ struct GhostRects: View {
 struct GridSweepSurface: View {
 
     let canvas: CGSize
+    /// Die Rechtecke, die bereits belegt sind — auf ihnen beginnt **kein**
+    /// Aufziehen.
+    ///
+    /// Ohne diese Grenze fängt die Fläche auch Gesten ab, die auf einer Zone
+    /// beginnen: der Griff verschiebt oder skaliert die Zone, und am Ende
+    /// bestimmt das Aufziehen dieselbe Zone noch einmal neu. Zwei
+    /// Schreibvorgänge pro Geste, die gegeneinander laufen — sichtbar als
+    /// Rahmen, der wild hin und her springt. Vom Nutzer im Gebrauch gemeldet.
+    let occupied: [RelativeRect]
     let onSweepChanged: (Bool) -> Void
     let onSweep: (RelativeRect) -> Void
 
     @State private var start: CGPoint?
     @State private var current: CGPoint?
+    /// Wahr, wenn die laufende Geste auf einer Zone begann und deshalb nicht
+    /// als Aufziehen zählt.
+    @State private var abandoned = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -95,23 +107,44 @@ struct GridSweepSurface: View {
             DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     if start == nil {
+                        // Einmal am Anfang entscheiden, nicht bei jedem Schritt:
+                        // wer auf einer Zone losdrückt, will sie bewegen.
+                        abandoned = isOccupied(value.startLocation)
+                        guard !abandoned else { return }
                         start = value.startLocation
                         onSweepChanged(true)
                     }
+                    guard !abandoned else { return }
                     current = value.location
                 }
                 .onEnded { value in
                     defer {
                         start = nil
                         current = nil
+                        abandoned = false
                         onSweepChanged(false)
                     }
-                    guard let begin = start,
+                    guard !abandoned,
+                          let begin = start,
                           let rect = GridSweep.rect(from: begin, to: value.location, canvas: canvas)
                     else { return }
                     onSweep(rect)
                 }
         )
+    }
+
+    /// Liegt der Punkt auf einer bereits belegten Fläche?
+    ///
+    /// Dieselbe Kantenregel wie überall sonst: links und oben einschliesslich,
+    /// rechts und unten ausschliesslich — sonst gehörte die gemeinsame Kante
+    /// zweier Zonen beiden.
+    private func isOccupied(_ point: CGPoint) -> Bool {
+        let x = point.x / canvas.width
+        let y = point.y / canvas.height
+        return occupied.contains { rect in
+            x >= rect.x && x < rect.x + rect.width
+                && y >= rect.y && y < rect.y + rect.height
+        }
     }
 
     /// Das Rechteck, das die laufende Geste aufziehen würde — schon gerastet,
