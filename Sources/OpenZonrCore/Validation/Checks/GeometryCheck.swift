@@ -12,12 +12,14 @@ public struct GeometryCheck: ConfigurationCheck {
         for display in configuration.displays {
             for layout in display.layouts {
                 for zone in layout.zones {
-                    let path = ConfigurationPath()
+                    let zonePath = ConfigurationPath()
                         .element("displays", display.alias)
                         .element("layouts", layout.id)
                         .element("zones", zone.id)
-                        .field("frame")
-                    findings.append(contentsOf: validate(rect: zone.frame, at: path))
+                    findings.append(contentsOf: validate(rect: zone.frame, at: zonePath.field("frame")))
+                    if let activationArea = zone.activationArea {
+                        findings.append(contentsOf: validate(rect: activationArea, at: zonePath.field("activationArea")))
+                    }
                 }
             }
         }
