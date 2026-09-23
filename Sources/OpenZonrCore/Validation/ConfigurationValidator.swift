@@ -12,6 +12,7 @@ public struct ConfigurationValidator: Sendable {
             IdentifierUniquenessCheck(),
             ReferenceIntegrityCheck(),
             GeometryCheck(),
+            ZoneReachabilityCheck(),
             PolicyCheck(),
             PatternCheck(),
             ProfileFingerprintCheck(),

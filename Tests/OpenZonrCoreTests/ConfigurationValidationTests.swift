@@ -19,7 +19,7 @@ struct ConfigurationValidationTests {
     func everyValidationCodeIsReportedAtExpectedPath(scenario: ValidationScenario) {
         let report = validator.validate(scenario.configuration())
 
-        #expect(report.findings.count == 1)
+        #expect(report.findings.count == scenario.expectedFindingCount)
         #expect(report.findings.first?.code == scenario.code)
         #expect(report.findings.first?.path.description == scenario.path)
         #expect(report.contains(scenario.code, at: scenario.path))
@@ -135,6 +135,20 @@ struct ConfigurationValidationTests {
             case .emptyProfileFingerprint: .emptyProfileFingerprint
             case .unusedRole: .unusedRole
             case .shadowedRule: .shadowedRule
+            }
+        }
+
+        /// Wie viele Befunde die Konfiguration dieses Szenarios insgesamt
+        /// erzeugt. Fast immer `1` — ausser bei ``relativeRectNonPositiveSize``:
+        /// eine Zone mit Breite `0` hat keine Fläche und gilt für
+        /// ``ZoneReachabilityCheck`` deshalb immer als überdeckt (siehe
+        /// ``RectangleCoverage``). Das ist kein Fehler im Check, sondern ein
+        /// echter, zusätzlicher Befund — eine Zone ohne Fläche ist tatsächlich
+        /// nie erreichbar.
+        var expectedFindingCount: Int {
+            switch self {
+            case .relativeRectNonPositiveSize: 2
+            default: 1
             }
         }
 

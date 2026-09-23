@@ -59,6 +59,14 @@ public enum ValidationCode: String, Codable, Hashable, Sendable, CaseIterable {
 
     case unusedRole
     case shadowedRule
+    /// Die Trefferfläche der Zone ist von der Vereinigung der Trefferflächen
+    /// bevorzugter Zonen lückenlos überdeckt — der Treffertest kann sie nie
+    /// zurückgeben.
+    case zoneUnreachable
+    /// Die Trefferfläche überschneidet den eigenen Zielrahmen nicht oder liegt
+    /// ausserhalb des sichtbaren Rahmens. Erlaubt, aber häufiger ein Tippfehler
+    /// als eine Absicht.
+    case activationAreaDetached
 
     /// The severity this code is always reported with.
     ///
@@ -67,7 +75,7 @@ public enum ValidationCode: String, Codable, Hashable, Sendable, CaseIterable {
     /// another, or the distinction stops meaning anything.
     public var severity: ValidationSeverity {
         switch self {
-        case .unusedRole, .shadowedRule:
+        case .unusedRole, .shadowedRule, .zoneUnreachable, .activationAreaDetached:
             return .warning
         default:
             return .error
