@@ -170,11 +170,25 @@ struct ZoneEditor: View {
                 // gestrichelte Kontur. Ohne sie wäre der Abstand zwischen
                 // Zielrahmen und Trefferfläche unsichtbar — und der ist bei
                 // Randauslösung das Einzige, worauf es ankommt.
-                GhostRects(rects: layout.zones.map { ghostRect(for: $0) }, canvas: side)
+                // Nur zeichnen, wo sie sich vom bearbeiteten Rechteck
+                // unterscheidet. Eine gestrichelte Linie genau auf der Kante
+                // der Zone trägt nichts bei und macht das Bild unruhig — ohne
+                // Trefferflächen wäre das bei *jeder* Zone der Fall.
+                GhostRects(
+                    rects: layout.zones
+                        .map { (ghost: ghostRect(for: $0), edited: editedRect(for: $0)) }
+                        .filter { $0.ghost != $0.edited }
+                        .map(\.ghost),
+                    canvas: side
+                )
 
                 // Unter den Griffen: eine Geste auf freier Fläche zieht auf,
-                // eine auf einer Zone bewegt diese Zone.
-                GridSweepSurface(canvas: side) { isSweeping in
+                // eine auf einer Zone bewegt diese Zone. `occupied` ist der
+                // Grund, warum das zweite wirklich gilt — siehe dort.
+                GridSweepSurface(
+                    canvas: side,
+                    occupied: layout.zones.map { editedRect(for: $0) }
+                ) { isSweeping in
                     sweeping = isSweeping
                 } onSweep: { rect in
                     applySweep(rect, layout: layout, display: display)
