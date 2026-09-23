@@ -63,7 +63,16 @@ struct DropzoneActivationFrameTests {
     func activationMayLieOutsideTheFrame() {
         let zone = onlyZone(activation: RelativeRect(x: 0, y: 0, width: 0.1, height: 1))
 
-        #expect(zone.activationFrame.x == 0)
+        // Die Aktivierungsfläche liegt wirklich ausserhalb (nicht überlappt).
+        #expect(zone.activationFrame.x + zone.activationFrame.width <= zone.frame.x)
+
+        // Der Zielrahmen bleibt auf der rechten Seite.
         #expect(zone.frame.x == 500)
+
+        // Die Trefferfläche stimmt mit dem absoluten Rahmen überein.
+        #expect(zone.activationFrame == ZoneGeometry.absoluteFrame(
+            for: RelativeRect(x: 0, y: 0, width: 0.1, height: 1),
+            in: Self.visible
+        ))
     }
 }
