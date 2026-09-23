@@ -45,11 +45,24 @@ struct AccessibilityFrameWriteTests {
     private static let position = CGPoint(x: 1340, y: 277)
     private static let size = CGSize(width: 966, height: 688)
 
+    private func apply(
+        _ recorder: Recorder,
+        enhancedWasOn: Bool = false,
+        maySuppress: Bool = true
+    ) -> Bool {
+        Accessibility.applyFrame(
+            Self.frame,
+            enhancedUserInterfaceWasOn: enhancedWasOn,
+            maySuppressEnhancedUserInterface: maySuppress,
+            write: recorder.write
+        )
+    }
+
     @Test("Erst die Position, dann die Größe — und sonst nichts")
     func writesPositionThenSizeOnly() {
         let recorder = Recorder()
 
-        let ok = Accessibility.applyFrame(Self.frame, write: recorder.write)
+        let ok = apply(recorder)
 
         #expect(ok)
         #expect(recorder.writes == [.position(Self.position), .size(Self.size)])
@@ -61,7 +74,7 @@ struct AccessibilityFrameWriteTests {
     func noPositionWriteAfterSize() {
         let recorder = Recorder()
 
-        _ = Accessibility.applyFrame(Self.frame, write: recorder.write)
+        _ = apply(recorder)
 
         let lastSizeIndex = recorder.writes.lastIndex { if case .size = $0 { return true }; return false }
         #expect(lastSizeIndex != nil)
@@ -74,9 +87,76 @@ struct AccessibilityFrameWriteTests {
     func writesExactlyTwice() {
         let recorder = Recorder()
 
-        _ = Accessibility.applyFrame(Self.frame, write: recorder.write)
+        _ = apply(recorder)
 
         #expect(recorder.writes.count == 2)
+    }
+
+    // MARK: - AXEnhancedUserInterface
+
+    /// Der eigentliche Beschleuniger. Steht die Bedienungshilfen-Kennung der
+    /// App auf wahr, animiert Safari jede Rahmenänderung — die Größenschreibung
+    /// landet dann mitten in der laufenden Animation und rechnet gegen eine
+    /// Position, die es noch gar nicht gibt.
+    ///
+    /// Gemessen am 23.09.2026 an Safari, je vier Runden, ein einziger Versuch:
+    ///
+    /// | Vorgehen                                   | Treffer | grösste Abw. |
+    /// |--------------------------------------------|---------|--------------|
+    /// | nur `pos, size`                            | 0/4     | 91           |
+    /// | Kennung aus, `pos, size`, Kennung an       | **4/4** | **0**        |
+    /// | `AXFrame` in einem Rutsch                  | 0/4     | 873 (nicht setzbar, −25205) |
+    @Test("Kennung an: aus, schreiben, wieder an")
+    func suppressesAndRestoresEnhancedUserInterface() {
+        let recorder = Recorder()
+
+        let ok = apply(recorder, enhancedWasOn: true)
+
+        #expect(ok)
+        #expect(recorder.writes == [
+            .enhancedUserInterface(false),
+            .position(Self.position),
+            .size(Self.size),
+            .enhancedUserInterface(true)
+        ])
+    }
+
+    /// War die Kennung ohnehin aus, wird sie nicht angefasst — sonst schalteten
+    /// wir sie einer App **ein**, die sie nie hatte.
+    @Test("Kennung aus: sie wird gar nicht angefasst")
+    func leavesEnhancedUserInterfaceAloneWhenAlreadyOff() {
+        let recorder = Recorder()
+
+        _ = apply(recorder, enhancedWasOn: false)
+
+        #expect(recorder.writes == [.position(Self.position), .size(Self.size)])
+    }
+
+    /// Läuft VoiceOver oder die Schaltersteuerung, bleibt die Kennung stehen.
+    /// Sie abzuschalten wäre genau die Sekunde, in der ein Mensch, der auf sie
+    /// angewiesen ist, sein Werkzeug verliert — ein langsamer Zug ist der
+    /// bessere Preis.
+    @Test("Aktive Bedienungshilfe: Kennung bleibt unangetastet")
+    func neverSuppressesWhileAssistiveTechnologyRuns() {
+        let recorder = Recorder()
+
+        _ = apply(recorder, enhancedWasOn: true, maySuppress: false)
+
+        #expect(recorder.writes == [.position(Self.position), .size(Self.size)])
+    }
+
+    /// Wiederherstellen ist Pflicht, nicht Kür: bleibt die Kennung aus, weil
+    /// eine Schreibung scheiterte, hinterlässt jede misslungene Platzierung
+    /// eine App mit abgeschalteter Bedienungshilfen-Kennung.
+    @Test("Auch nach einer gescheiterten Schreibung wird die Kennung zurückgesetzt")
+    func restoresEnhancedUserInterfaceEvenWhenAWriteFails() {
+        let recorder = Recorder()
+        recorder.failOn = .size(Self.size)
+
+        let ok = apply(recorder, enhancedWasOn: true)
+
+        #expect(ok == false)
+        #expect(recorder.writes.last == .enhancedUserInterface(true))
     }
 
     /// Eine fehlgeschlagene Schreibung hält die andere nicht auf — sonst bliebe
@@ -87,7 +167,7 @@ struct AccessibilityFrameWriteTests {
         let recorder = Recorder()
         recorder.failOn = .position(Self.position)
 
-        let ok = Accessibility.applyFrame(Self.frame, write: recorder.write)
+        let ok = apply(recorder)
 
         #expect(ok == false)
         #expect(recorder.writes == [.position(Self.position), .size(Self.size)])
@@ -98,6 +178,16 @@ struct AccessibilityFrameWriteTests {
         let recorder = Recorder()
         recorder.failOn = .size(Self.size)
 
-        #expect(Accessibility.applyFrame(Self.frame, write: recorder.write) == false)
+        #expect(apply(recorder) == false)
+    }
+
+    /// Eine Kennung, die sich nicht zurückschreiben lässt, darf die
+    /// Platzierung nicht als gescheitert melden — das Fenster sitzt ja.
+    @Test("Eine misslungene Kennungs-Schreibung macht die Platzierung nicht kaputt")
+    func failingEnhancedUserInterfaceWriteDoesNotFailThePlacement() {
+        let recorder = Recorder()
+        recorder.failOn = .enhancedUserInterface(false)
+
+        #expect(apply(recorder, enhancedWasOn: true))
     }
 }

@@ -250,6 +250,23 @@ public enum Accessibility {
     public enum FrameWrite: Equatable {
         case position(CGPoint)
         case size(CGSize)
+        /// Die Bedienungshilfen-Kennung der **Anwendung**, nicht des Fensters.
+        case enhancedUserInterface(Bool)
+    }
+
+    /// Name der Kennung, mit der eine App erfährt, dass eine Bedienungshilfe
+    /// zuschaut. Kein öffentliches Symbol — die Zeichenkette ist der Vertrag.
+    static let enhancedUserInterfaceAttribute = "AXEnhancedUserInterface"
+
+    /// Läuft gerade eine Bedienungshilfe, auf die ein Mensch angewiesen ist?
+    ///
+    /// Die Kennung abzuschalten ist für uns eine Beschleunigung, für VoiceOver
+    /// oder die Schaltersteuerung aber die Sekunde, in der ihr Werkzeug
+    /// ausfällt. In dem Fall bleibt sie stehen und die Platzierung nimmt den
+    /// langsameren Weg über die Wiederholung.
+    @MainActor
+    static func assistiveTechnologyIsRunning() -> Bool {
+        NSWorkspace.shared.isVoiceOverEnabled || NSWorkspace.shared.isSwitchControlEnabled
     }
 
     /// Writes position, then size. **Nothing after the size.**
@@ -287,9 +304,24 @@ public enum Accessibility {
     /// unmittelbar hintereinander verliert es.
     ///
     /// Kontrolle am selben Tag: Finder nimmt beide Folgen im ersten Versuch an.
+    @MainActor
     @discardableResult
     public static func setFrame(_ frame: WindowFrame, on window: AXUIElement) -> Bool {
-        applyFrame(frame) { write in
+        // Die Kennung sitzt an der **Anwendung**, nicht am Fenster. Die PID
+        // steht am Element selbst, deshalb braucht der Aufrufer nichts davon
+        // zu wissen.
+        var pid: pid_t = 0
+        let application: AXUIElement? = AXUIElementGetPid(window, &pid) == .success
+            ? AXUIElementCreateApplication(pid)
+            : nil
+        let enhancedWasOn = application
+            .flatMap { copyAttribute($0, enhancedUserInterfaceAttribute) as? Bool } ?? false
+
+        return applyFrame(
+            frame,
+            enhancedUserInterfaceWasOn: enhancedWasOn,
+            maySuppressEnhancedUserInterface: !assistiveTechnologyIsRunning()
+        ) { write in
             switch write {
             case var .position(point):
                 guard let value = AXValueCreate(.cgPoint, &point) else { return false }
@@ -301,18 +333,68 @@ public enum Accessibility {
                 return AXUIElementSetAttributeValue(
                     window, kAXSizeAttribute as CFString, value
                 ) == .success
+            case let .enhancedUserInterface(on):
+                guard let application else { return false }
+                return AXUIElementSetAttributeValue(
+                    application,
+                    enhancedUserInterfaceAttribute as CFString,
+                    on ? kCFBooleanTrue : kCFBooleanFalse
+                ) == .success
             }
         }
     }
 
     /// Die Schreibfolge, losgelöst vom lebenden Fenster.
     ///
-    /// Beide Schreibungen laufen immer — eine gescheiterte Position darf die
-    /// Größe nicht aufhalten, sonst bliebe das Fenster halb gesetzt stehen.
+    /// Beide Rahmen-Schreibungen laufen immer — eine gescheiterte Position darf
+    /// die Größe nicht aufhalten, sonst bliebe das Fenster halb gesetzt stehen.
     /// Gemeldet wird trotzdem ein Fehlschlag, damit die Wiederholung greift.
-    static func applyFrame(_ frame: WindowFrame, write: (FrameWrite) -> Bool) -> Bool {
+    ///
+    /// Um sie herum liegt die Kennung ``enhancedUserInterfaceAttribute``. Steht
+    /// sie auf wahr, animiert Safari jede Rahmenänderung; die Größenschreibung
+    /// landet dann mitten in der laufenden Animation und rechnet gegen eine
+    /// Position, die es noch nicht gibt. Sichtbar wird das als Abweichung, die
+    /// mit dem Abstand zwischen den Schreibungen stetig kleiner wird — gemessen
+    /// am 23.09.2026 an Safari, eine Runde je Abstand:
+    ///
+    /// | Abstand | 0 | 10 | 20 | 30 | 40 | 50 | 70 | 100 |
+    /// |---------|---|----|----|----|----|----|----|-----|
+    /// | Abw.    | 85| 85 | 45 | 29 | 19 | 9  | 3  | 0   |
+    ///
+    /// Kennung aus heisst: keine Animation, also kein Abstand nötig. Je vier
+    /// Runden, ein einziger Versuch, dasselbe Fenster:
+    ///
+    /// | Vorgehen                              | Treffer | grösste Abw. |
+    /// |---------------------------------------|---------|--------------|
+    /// | nur `pos, size`                       | 0/4     | 91           |
+    /// | Kennung aus, `pos, size`, Kennung an  | **4/4** | **0**        |
+    /// | `AXFrame` in einem Rutsch             | 0/4     | nicht setzbar (−25205) |
+    ///
+    /// Zwei Regeln, die nicht verhandelbar sind:
+    ///
+    /// * **Nur zurückschalten, was an war.** Eine App, die die Kennung nie
+    ///   hatte, bekommt sie hier nicht eingeschaltet.
+    /// * **Immer zurückschalten**, auch wenn eine Rahmen-Schreibung scheitert —
+    ///   sonst hinterlässt jede misslungene Platzierung eine App mit
+    ///   abgeschalteter Bedienungshilfen-Kennung. Ob das Zurückschalten selbst
+    ///   gelingt, ändert das Urteil über die Platzierung nicht: das Fenster
+    ///   sitzt ja.
+    ///
+    /// Läuft VoiceOver oder die Schaltersteuerung, unterbleibt der Eingriff
+    /// ganz (`maySuppressEnhancedUserInterface`).
+    static func applyFrame(
+        _ frame: WindowFrame,
+        enhancedUserInterfaceWasOn: Bool,
+        maySuppressEnhancedUserInterface: Bool,
+        write: (FrameWrite) -> Bool
+    ) -> Bool {
+        let suppressing = enhancedUserInterfaceWasOn && maySuppressEnhancedUserInterface
+        if suppressing { _ = write(.enhancedUserInterface(false)) }
+
         let wrotePosition = write(.position(CGPoint(x: frame.x, y: frame.y)))
         let wroteSize = write(.size(CGSize(width: frame.width, height: frame.height)))
+
+        if suppressing { _ = write(.enhancedUserInterface(true)) }
         return wrotePosition && wroteSize
     }
 
