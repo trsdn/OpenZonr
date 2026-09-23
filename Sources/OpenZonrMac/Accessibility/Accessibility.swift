@@ -243,28 +243,77 @@ public enum Accessibility {
         return WindowFrame(x: point.x, y: point.y, width: size.width, height: size.height)
     }
 
-    /// Writes position, then size, then position again.
+    /// One write of a frame, as Accessibility splits it.
     ///
-    /// The repetition is not superstition: an application may clamp a size that
-    /// does not fit at the window's *previous* position — typically when the
-    /// target display is larger than the current one — and it may nudge the
-    /// position when the size changes. Writing position twice around the size
-    /// makes the common case converge in a single attempt.
+    /// Exists so the *order* can be tested without a live window: the order is
+    /// the whole point of ``applyFrame(_:write:)``.
+    public enum FrameWrite: Equatable {
+        case position(CGPoint)
+        case size(CGSize)
+    }
+
+    /// Writes position, then size. **Nothing after the size.**
+    ///
+    /// Position first, because a size is judged against the position the window
+    /// currently has: an application may clamp a size that does not fit where
+    /// the window still is, typically when the target display is larger than
+    /// the current one. Moving first removes that reason to clamp.
+    ///
+    /// Nothing after the size, because the two attributes are not independent
+    /// in every application. Safari re-derives its size as soon as a position
+    /// is written afterwards and discards the size just set — while every
+    /// single call still returns `.success`. Gemessen am 23.09.2026, Ziel
+    /// `1340,277 966x688` aus `1280,227 1610x1147`, mit der echten
+    /// Voreinstellung (`attempts 3`, `initialDelay 50 ms`, `interval 200 ms`,
+    /// `tolerance 4`):
+    ///
+    /// | Folge            | V1       | V2       | V3       | Ergebnis       |
+    /// |------------------|----------|----------|----------|----------------|
+    /// | `pos, size, pos` | Abw. 607 | Abw. 607 | Abw. 607 | nie angenommen |
+    /// | `pos, size`      | Abw. 60  | **0**    | —        | **angenommen** |
+    ///
+    /// Die frühere dritte Schreibung war als Abkürzung gedacht — sie sollte den
+    /// Fall abfangen, dass eine App die Position verschiebt, wenn sich die
+    /// Größe ändert, und „kostet nichts, wenn die App sich anständig verhält".
+    /// Bei Safari kostete sie die gesamte Größenänderung: das Fenster sprang
+    /// bei jedem Versuch an eine neue Stelle, ohne je die Größe anzunehmen.
+    ///
+    /// Der Fall, für den sie gedacht war, bleibt gedeckt — nur eine Runde
+    /// später: verschiebt eine App sich beim Ändern der Größe, steht die Größe
+    /// schon; beim nächsten Versuch von ``RetryingWindowPlacer`` ist die
+    /// Größenschreibung folgenlos und die Position bleibt stehen. Genau so
+    /// findet Safari im zweiten Versuch sein Ziel. Die Pause zwischen den
+    /// Versuchen (200 ms) ist dabei das, was Safari braucht — zwei Schreibungen
+    /// unmittelbar hintereinander verliert es.
+    ///
+    /// Kontrolle am selben Tag: Finder nimmt beide Folgen im ersten Versuch an.
     @discardableResult
     public static func setFrame(_ frame: WindowFrame, on window: AXUIElement) -> Bool {
-        var point = CGPoint(x: frame.x, y: frame.y)
-        var size = CGSize(width: frame.width, height: frame.height)
+        applyFrame(frame) { write in
+            switch write {
+            case var .position(point):
+                guard let value = AXValueCreate(.cgPoint, &point) else { return false }
+                return AXUIElementSetAttributeValue(
+                    window, kAXPositionAttribute as CFString, value
+                ) == .success
+            case var .size(size):
+                guard let value = AXValueCreate(.cgSize, &size) else { return false }
+                return AXUIElementSetAttributeValue(
+                    window, kAXSizeAttribute as CFString, value
+                ) == .success
+            }
+        }
+    }
 
-        guard
-            let positionValue = AXValueCreate(.cgPoint, &point),
-            let sizeValue = AXValueCreate(.cgSize, &size)
-        else { return false }
-
-        let first = AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue)
-        let second = AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue)
-        let third = AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue)
-
-        return first == .success && second == .success && third == .success
+    /// Die Schreibfolge, losgelöst vom lebenden Fenster.
+    ///
+    /// Beide Schreibungen laufen immer — eine gescheiterte Position darf die
+    /// Größe nicht aufhalten, sonst bliebe das Fenster halb gesetzt stehen.
+    /// Gemeldet wird trotzdem ein Fehlschlag, damit die Wiederholung greift.
+    static func applyFrame(_ frame: WindowFrame, write: (FrameWrite) -> Bool) -> Bool {
+        let wrotePosition = write(.position(CGPoint(x: frame.x, y: frame.y)))
+        let wroteSize = write(.size(CGSize(width: frame.width, height: frame.height)))
+        return wrotePosition && wroteSize
     }
 
     public static func raise(_ window: AXUIElement, pid: pid_t) {
