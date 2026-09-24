@@ -94,6 +94,17 @@ existiert; dessen Text wird zu den Release-Notes.
   mehr zusätzlich das Verschieben aus
   ([#77](https://github.com/trsdn/OpenZonr/pull/77)).
 
+- **In der Übersicht überlagerten sich die Beschriftungen gestapelter Zonen** —
+  aus „Rechts außen" und „Recht oben" wurde `Rechts:oben`, aus „Vollbild" über
+  „Links" wurde `Linksild`. Durch Anordnung der Etiketten ist das nicht zu
+  beheben: zwei Rechtecke am selben Ort haben dieselbe freie Ecke. Die Übersicht
+  zeigt die Überlagerung jetzt, statt gegen sie zu zeichnen — die Zonen eines
+  Bildschirms werden in überlappungsfreie Gruppen zerlegt und je Gruppe eine
+  Karte gezeichnet, beschriftet mit „Ebene n von m". Geteilte Kanten zählen
+  dabei nicht als Überlappung, sonst zerfiele jede gewöhnliche
+  Spaltenaufteilung in Einzelebenen
+  ([#80](https://github.com/trsdn/OpenZonr/pull/80)).
+
 - **Kleinigkeiten im Editor:** doppelte Feldbeschriftungen („Breite Breite"),
   überlagerte Zonennamen bei gestapelten Zonen, ein Griff je Zone statt nur an
   der gewählten, und die Herkunftsbeschriftung, die auf den Zonen lag
