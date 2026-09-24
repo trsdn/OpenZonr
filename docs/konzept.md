@@ -1,415 +1,417 @@
-# OpenZonr — Konzept und Architektur
+# OpenZonr — Concept and Architecture
 
-Stand: früher Konzeptstand. Dieses Dokument beschreibt das Modell, nicht eine
-fertige Implementierung. Die Swift-Typen unter `Sources/OpenZonrCore/` sind die
-formale Fassung desselben Modells.
-
----
-
-## 1. Zielbild und Nicht-Ziele
-
-**Ziel:** Fenster landen beim Öffnen automatisch dort, wo sie hingehören —
-über wechselnde Monitor-Setups hinweg, ohne dass Regeln pro Setup dupliziert
-werden müssen.
-
-**Ausdrücklich nicht das Ziel:**
-
-- Kein Tiling-Window-Manager. Es wird nicht automatisch alles angeordnet,
-  sondern nur das, was der Nutzer explizit geregelt hat.
-- Kein Ersatz für Mission Control oder Spaces-Verwaltung.
-- Keine kontinuierliche Überwachung, die jedes Fenster dauerhaft festhält.
-  Platziert wird beim Öffnen; danach gehört das Fenster dem Nutzer.
-
-Der letzte Punkt ist eine Haltung, keine technische Einschränkung: ein Tool,
-das auf seinen Regeln beharrt, kämpft gegen den Nutzer statt für ihn.
+Status: early concept stage. This document describes the model, not a
+finished implementation. The Swift types under `Sources/OpenZonrCore/` are
+the formal rendering of the same model.
 
 ---
 
-## 2. Die Platzierungs-Pipeline
+## 1. Vision and non-goals
+
+**Goal:** windows land automatically, upon opening, where they belong —
+across changing monitor setups, without rules having to be duplicated per
+setup.
+
+**Explicitly not the goal:**
+
+- Not a tiling window manager. It does not automatically arrange
+  everything, only what the user has explicitly set a rule for.
+- Not a replacement for Mission Control or Spaces management.
+- No continuous monitoring that permanently pins every window in place.
+  Placement happens on open; after that, the window belongs to the user.
+
+The last point is a stance, not a technical limitation: a tool that insists
+on its rules fights against the user instead of for them.
+
+---
+
+## 2. The placement pipeline
 
 ```
 NSWorkspace.didLaunchApplication
         │
         ▼
-AXObserver je App  ──  kAXWindowCreatedNotification
+AXObserver per app  ──  kAXWindowCreatedNotification
         │
         ▼
-[1] Fensterfilter        Subrole, Mindestgröße, „erstes Fenster nach Launch"
+[1] Window filter        Subrole, minimum size, "first window after launch"
         │
         ▼
-[2] Regelauswertung      erste passende Regel nach Priorität gewinnt
+[2] Rule evaluation      first matching rule by priority wins
         │
         ▼
-[3] Rollenauflösung      Rolle → aktives Profil → Display + Zone
+[3] Role resolution      role → active profile → display + zone
         │
         ▼
-[4] Geometrie            RelativeRect × visibleFrame → absoluter Frame
+[4] Geometry             RelativeRect × visibleFrame → absolute frame
         │
         ▼
-[5] Platzieren           kAXPositionAttribute / kAXSizeAttribute
-        │                mit Retry-Loop und Rücklesen des Ergebnisses
+[5] Placement            kAXPositionAttribute / kAXSizeAttribute
+        │                with retry loop and read-back of the result
         ▼
-   PlacementOutcome      protokolliert für Diagnose und UI
+   PlacementOutcome      logged for diagnostics and UI
 ```
 
-### Fensterquelle
+### Window source
 
-Zwei Ereignisquellen greifen ineinander:
+Two event sources interlock:
 
-- `NSWorkspace.didLaunchApplicationNotification` meldet neu gestartete Apps.
-  Für jede wird ein `AXObserver` erzeugt und auf
-  `kAXWindowCreatedNotification` registriert.
-- Beim Start von OpenZonr scannt ein einmaliger Durchlauf die bereits laufenden
-  Apps und hängt dort ebenfalls Observer an.
+- `NSWorkspace.didLaunchApplicationNotification` reports newly launched
+  apps. For each one, an `AXObserver` is created and registered for
+  `kAXWindowCreatedNotification`.
+- When OpenZonr starts, a one-time pass scans the already-running apps and
+  attaches observers there as well.
 
-`NSWorkspace` allein genügt nicht, weil eine App beim Start noch kein Fenster
-hat. Der `AXObserver` allein genügt nicht, weil er an eine konkrete PID gebunden
-ist und für neue Prozesse erst angelegt werden muss.
+`NSWorkspace` alone is not enough, because an app has no window yet at
+launch. The `AXObserver` alone is not enough, because it is bound to a
+specific PID and must first be created for new processes.
 
-### Die entscheidende Stelle: Timing
+### The decisive point: timing
 
-Ein Fenster existiert häufig, bevor es endgültig dimensioniert ist. Electron-Apps
-und die Office-Suite setzen nach dem ersten Zeichnen ihre gespeicherte
-Fenstergeometrie, teilweise mehrfach und asynchron. Einmaliges Setzen von
-Position und Größe wird deshalb Millisekunden später überschrieben — das Fenster
-springt kurz und liegt dann doch wieder falsch.
+A window often exists before it is finally sized. Electron apps and the
+Office suite apply their stored window geometry after the first draw,
+sometimes repeatedly and asynchronously. Setting position and size once is
+therefore overwritten milliseconds later — the window briefly jumps and
+ends up in the wrong place after all.
 
-Gegenmaßnahme: **platzieren, zurücklesen, wiederholen**. Der Frame wird nach dem
-Setzen erneut über die Accessibility-API gelesen und mit dem gewünschten Frame
-verglichen. Weicht er außerhalb der Toleranz ab, folgt der nächste Versuch.
-Voreinstellung: drei Versuche, verteilt über rund 500 ms (`initialDelay` 50 ms,
-`interval` 200 ms, Toleranz 4 Punkte). Das ist das Kleinste, was sich zuverlässig
-gegen selbst-resizende Apps durchsetzt, ohne dass Fenster sichtbar zappeln.
+Countermeasure: **place, read back, repeat**. After setting, the frame is
+read again via the Accessibility API and compared to the desired frame. If
+it deviates beyond the tolerance, the next attempt follows. Default: three
+attempts spread over about 500 ms (`initialDelay` 50 ms, `interval` 200 ms,
+tolerance 4 points). That is the smallest amount that reliably prevails
+against self-resizing apps without windows visibly jittering.
 
-Die Toleranz ist kein Detail: Terminals erzwingen Größenschritte in Zeichenbreiten,
-manche Apps haben eine Mindestgröße. Ohne Toleranz würde gegen ein Fenster
-angerannt, das seinem Ziel bereits so nah ist, wie es je kommen wird.
-
----
-
-## 3. Welches Fenster überhaupt?
-
-Outlook öffnet ein Hauptfenster, Verfassen-Fenster, Terminserien-Dialoge und
-Erinnerungs-Popups. Ohne Filter würde jedes davon platziert.
-
-Drei Filterstufen, aufsteigend nach Aufwand für den Nutzer:
-
-1. **Subrole `AXStandardWindow`.** Schließt Dialoge, Sheets, Paletten und die
-   meisten Popups aus, ohne dass irgendetwas konfiguriert werden muss.
-2. **Mindestgröße** (Standard 400×300 Punkte). Fängt ab, was durchrutscht:
-   Erinnerungsfenster, Fortschrittsanzeigen, Tool-Paletten.
-3. **Titel-Regex** — die scharfe Waffe, aber die letzte Wahl. Fenstertitel sind
-   lokalisiert und ändern sich oft Sekundenbruchteile nach dem Öffnen.
-
-### Die wichtigste Voreinstellung
-
-**„Nur erstes Fenster nach App-Start"** ist standardmäßig aktiv. Dialoge,
-Verfassen-Fenster und Popups erscheinen *später* und fallen dadurch automatisch
-heraus — ohne dass jemand eine Titel-Regex schreiben muss. Diese eine
-Voreinstellung erspart einen großen Teil der sonst nötigen Feinarbeit.
-
-Wer ein Verfassen-Fenster gezielt platzieren will, schaltet sie für genau diese
-Regel ab und ergänzt ein Titel-Pattern — siehe die Regel `outlook-compose` in der
-Beispielkonfiguration.
+The tolerance is not a detail: terminals enforce size steps in character
+widths, and some apps have a minimum size. Without tolerance, the loop
+would keep running against a window that is already as close to its target
+as it will ever get.
 
 ---
 
-## 4. Das Regelmodell: Match → Aktion
+## 3. Which window, exactly?
 
-Eine Regel besteht aus Kriterien und einer Aktion.
+Outlook opens a main window, compose windows, recurring-appointment
+dialogs, and reminder popups. Without a filter, every one of them would get
+placed.
 
-### Match-Kriterien
+Three filter stages, in ascending order of effort for the user:
 
-Alle optional, alle mit **UND** verknüpft:
+1. **Subrole `AXStandardWindow`.** Excludes dialogs, sheets, palettes, and
+   most popups without anything needing to be configured.
+2. **Minimum size** (default 400×300 points). Catches what slips through:
+   reminder windows, progress indicators, tool palettes.
+3. **Title regex** — the sharp weapon, but the last resort. Window titles
+   are localized and often change fractions of a second after opening.
 
-| Kriterium | Zweck |
+### The most important default
+
+**"Only first window after app launch"** is active by default. Dialogs,
+compose windows, and popups appear *later* and thus automatically fall
+out — without anyone having to write a title regex. This one default saves
+a large part of the fine-tuning that would otherwise be needed.
+
+Anyone who wants to specifically place a compose window turns it off for
+exactly that rule and adds a title pattern — see the `outlook-compose` rule
+in the example configuration.
+
+---
+
+## 4. The rule model: match → action
+
+A rule consists of criteria and an action.
+
+### Match criteria
+
+All optional, all joined with **AND**:
+
+| Criterion | Purpose |
 |---|---|
-| `bundleIdentifier` | Der Basisfall, z. B. `com.microsoft.Outlook`. |
-| `titlePattern` | Trennt „Posteingang" von Verfassen-Fenstern. |
-| `roles` / `subroles` | Standardfenster gegen Dialog. |
-| `minimumSize` / `maximumSize` | Filtert Popups und Paletten. |
-| `aspectRatio` | Fängt die restlichen ungewöhnlichen Formate ab. |
-| `onlyFirstWindowAfterLaunch` | Siehe oben; überschreibt die globale Voreinstellung. |
+| `bundleIdentifier` | The base case, e.g. `com.microsoft.Outlook`. |
+| `titlePattern` | Distinguishes „Posteingang“ (Inbox) from compose windows. |
+| `roles` / `subroles` | Standard window vs. dialog. |
+| `minimumSize` / `maximumSize` | Filters popups and palettes. |
+| `aspectRatio` | Catches the remaining unusual shapes. |
+| `onlyFirstWindowAfterLaunch` | See above; overrides the global default. |
 
-Eine leere Match-Definition passt auf jedes Fenster. Als Auffangregel mit
-niedrigster Priorität am Ende ist das sinnvoll, überall sonst gefährlich.
+An empty match definition matches every window. As a catch-all rule with
+the lowest priority at the end, that makes sense; anywhere else, it is
+dangerous.
 
-Die Kriterien bilden bewusst genau das ab, was die Accessibility-API zum
-Zeitpunkt von `kAXWindowCreatedNotification` billig liefert. Alles, was tiefere
-Inspektion verlangt, würde den Platzierungspfad verlangsamen — und der ist
-ohnehin im Wettlauf mit dem Layout-Code der App.
+The criteria deliberately map exactly what the Accessibility API cheaply
+provides at the time of `kAXWindowCreatedNotification`. Anything requiring
+deeper inspection would slow down the placement path — which is already in
+a race against the app's own layout code.
 
-### Aktion
+### Action
 
-- **`role`** — das semantische Ziel (siehe Abschnitt 5). Pflichtangabe.
-- **`share`** — optionale Unterteilung der Zone in gleich große Slots
-  (Achse, Slot-Anzahl, Slot-Index). Damit teilen sich Mail und Chat eine
-  Kommunikationszone, ohne dass dafür eine zweite Zone gezeichnet werden muss.
-  Alles Komplexere gehört als eigene Zone ins Layout.
-- **`focus`** — `activate` oder `leaveAsIs`. Für Apps, die beim Login im
-  Hintergrund starten, ist `leaveAsIs` die vernünftige Wahl.
-- **`mode`** — `place` oder `suggest`. `suggest` verschiebt nichts, sondern bietet
-  die Platzierung an. Nützlich beim Einfahren einer neuen Regel und für Apps, die
-  schlecht darauf reagieren, während des Starts bewegt zu werden.
-
----
-
-## 5. Die zentrale Indirektion: Rollen statt Zonen
-
-Regeln zeigen **nicht** auf eine Zone, sondern auf eine **Rolle**. Jedes Profil
-mappt Rollen auf seine eigenen Zonen:
-
-```
-Regel:              Outlook → Rolle „Kommunikation"
-
-Profil Büro:        Kommunikation = Dell U2723,  Zone rechts (50 %)
-Profil Home:        Kommunikation = LG 38",      Zone rechts außen (25 %)
-Profil Unterwegs:   Kommunikation = Builtin,     rechte Hälfte
-```
-
-Der Gewinn: App-Regeln werden **einmal** geschrieben statt pro Setup dupliziert.
-Ein neuer Monitor bedeutet ein neues Profil mit fünf Rollenbindungen — nicht das
-Neuschreiben aller App-Regeln. Und eine Rolle umzuhängen („Kommunikation gehört
-ab jetzt links") ist ein einziger Eintrag statt einer Suche durch alle Regeln.
-
-Der Datenfluss insgesamt:
-
-```
-Regel ──match──▶ Rolle ──Profil──▶ Display + Zone ──Layout──▶ Geometrie
-```
-
-### Fallback ist Pflicht
-
-Ist eine Rolle im aktiven Profil nicht gemappt, greift die im Profil hinterlegte
-`fallback`-Bindung. Sie ist ein Pflichtfeld, und das mit Absicht: eine nicht
-gemappte Rolle darf niemals „irgendwo" bedeuten. Das Fenster landet an einer
-definierten Stelle, und das Ereignis wird protokolliert, damit die Lücke sichtbar
-wird statt still zu bleiben.
+- **`role`** — the semantic target (see section 5). Required.
+- **`share`** — optional subdivision of the zone into equally sized slots
+  (axis, slot count, slot index). This lets mail and chat share one
+  communication zone without a second zone having to be drawn for it.
+  Anything more complex belongs in the layout as its own zone.
+- **`focus`** — `activate` or `leaveAsIs`. For apps that start in the
+  background at login, `leaveAsIs` is the sensible choice.
+- **`mode`** — `place` or `suggest`. `suggest` moves nothing but offers the
+  placement instead. Useful while breaking in a new rule, and for apps that
+  react badly to being moved during startup.
 
 ---
 
-## 6. Monitor-Identität
+## 5. The central indirection: roles instead of zones
 
-Der schwierigste Teil, weil hier alle naheliegenden Lösungen falsch sind.
+Rules point **not** to a zone, but to a **role**. Each profile maps roles to
+its own zones:
 
-### Was nicht funktioniert
+```
+Rule:                Outlook → role "communication"
 
-| Ansatz | Warum er scheitert |
+Profile Office:      communication = Dell U2723,  zone right (50%)
+Profile Home:        communication = LG 38",      zone right edge (25%)
+Profile On the Road: communication = Builtin,     right half
+```
+
+The payoff: app rules are written **once** instead of duplicated per setup.
+A new monitor means a new profile with five role bindings — not rewriting
+every app rule. And reassigning a role ("communication now belongs on the
+left") is a single entry instead of a search through every rule.
+
+The overall data flow:
+
+```
+Rule ──match──▶ Role ──Profile──▶ Display + Zone ──Layout──▶ Geometry
+```
+
+### Fallback is mandatory
+
+If a role is not mapped in the active profile, the `fallback` binding
+stored in the profile applies. It is a required field, deliberately so: an
+unmapped role must never mean "somewhere." The window lands at a defined
+place, and the event is logged so the gap becomes visible instead of
+staying silent.
+
+---
+
+## 6. Monitor identity
+
+The hardest part, because every obvious solution here is wrong.
+
+### What does not work
+
+| Approach | Why it fails |
 |---|---|
-| Position im Arrangement | Ändert sich beim Umstecken oder Verschieben in den Systemeinstellungen. |
-| Index in `NSScreen.screens` | Reihenfolge ist nicht stabil, insbesondere beim Aufwachen. |
-| Auflösung allein | Zwei baugleiche Monitore sind nicht unterscheidbar. |
-| `CGDirectDisplayID` | Wird pro Sitzung vergeben, nicht über Neustarts hinweg stabil. |
+| Position in the arrangement | Changes when re-plugging or rearranging in System Settings. |
+| Index in `NSScreen.screens` | Order is not stable, especially on wake. |
+| Resolution alone | Two identical monitor models are indistinguishable. |
+| `CGDirectDisplayID` | Assigned per session, not stable across restarts. |
 
-### Was funktioniert
+### What works
 
-Die EDID-Daten, die CoreGraphics bereitstellt:
+The EDID data that CoreGraphics provides:
 
 - `CGDisplayVendorNumber`
 - `CGDisplayModelNumber`
 - `CGDisplaySerialNumber`
 
-Damit ist ein Monitor eindeutig, egal an welchem Port und in welcher Reihenfolge
-er angeschlossen wird.
+With this, a monitor is unambiguous, regardless of which port or in what
+order it is connected.
 
-**Sonderfall integriertes Display:** wird über `CGDisplayIsBuiltin` erkannt und
-als eigener Identitätsfall geführt. Es ist der einzige Bildschirm, der in jedem
-Setup vorhanden ist und nie gegen ein anderes Modell getauscht wird, ohne dass
-gleichzeitig die Maschine getauscht wird.
+**Special case, the built-in display:** detected via `CGDisplayIsBuiltin`
+and treated as its own identity case. It is the only screen present in
+every setup and never swapped for a different model without the machine
+itself being swapped at the same time.
 
-**Fallback ohne Seriennummer:** manche Monitore melden `0` als Seriennummer.
-Dann greift Vendor + Model + Port-Index (aus `CGDisplayUnitNumber` gelesen). Die
-Pixelgröße ist bewusst **kein** Merkmal, denn sie hängt am aktuellen
-Anzeigemodus und ändert sich beim Umschalten; sie wird nur zur Anzeige
-mitgeführt. Das ist nicht global eindeutig: baugleiche Monitore ohne
-Seriennummer sind nur über ihren Port unterscheidbar und können beim Vertauschen
-verwechselt werden. Ob es bessere öffentliche Merkmale gibt, ist
-bisher nicht untersucht; `CGDisplayScreenSize` ist nicht als stabil belegt. Die
-Modus-Unabhängigkeit ist im Code begründet und per Test abgesichert, auf echter
-Hardware aber nicht gemessen (Handprüfung in
-[konfiguration.md](konfiguration.md), Abschnitt `identity`). Der Fall wird im
-Datenmodell ausdrücklich als `fallback` markiert, damit die UI genau davor
-warnen kann.
+**Fallback without a serial number:** some monitors report `0` as the
+serial number. Then vendor + model + port index (read from
+`CGDisplayUnitNumber`) applies. Pixel size is deliberately **not** a
+characteristic, since it depends on the current display mode and changes
+when switching; it is carried along only for display. This is not globally
+unique: identical monitor models without a serial number are distinguishable
+only by their port and can be confused when swapped. Whether better public
+characteristics exist has not been investigated so far;
+`CGDisplayScreenSize` is not established as stable. Mode independence is
+justified in the code and covered by a test, but not measured on real
+hardware (manual check in [konfiguration.md](konfiguration.md), the
+`identity` section). The case is explicitly marked as `fallback` in the
+data model so the UI can warn specifically about it.
 
-**Der Port-Index wandert — gemessen am 19.09.2026.** Die Annahme, `portIndex`
-sei ein brauchbarer Unterscheider, weil er an einem Anschluss klebt, ist
-widerlegt: derselbe Monitor (C49RG9x, Vendor 19501, Modell 3996, Seriennummer 0)
-meldete am 29.08.2026 die Unit-Nummer `0` und am 19.09.2026 die `1`, ohne dass
-ein Kabel bewegt wurde. `CGDisplayUnitNumber` wird in Aufzählungsreihenfolge
-vergeben, und Software-Displays („AAA“, „Teleprompter Source“), die kommen und
-gehen, verschieben dabei alles, was hinter ihnen aufgezählt wird. Die Folge war
-kein passendes Profil und damit der vollständige Ausfall der Dropzones.
+**The port index drifts — measured on 19.09.2026.** The assumption that
+`portIndex` is a usable discriminator because it sticks to a connector is
+disproved: the same monitor (C49RG9x, vendor 19501, model 3996, serial
+number 0) reported unit number `0` on 29.08.2026 and `1` on 19.09.2026,
+without any cable being moved. `CGDisplayUnitNumber` is assigned in
+enumeration order, and software displays ("AAA", "Teleprompter Source"),
+which come and go, shift everything enumerated after them. The consequence
+was no matching profile, and thus a complete failure of the dropzones.
 
-Die Konsequenz ist bewusst eng gefasst und lebt in einer eigenen reinen Funktion
-(`DisplayIdentityReconciler`): **ein Monitor ohne Seriennummer wird unabhängig
-vom Port-Index erkannt, wenn seine Kombination aus Vendor und Modell sowohl in
-der Konfiguration als auch unter den angeschlossenen Bildschirmen genau einmal
-vorkommt.** Ein exakter Treffer gewinnt zuerst; sind mehrere Kandidaten oder
-mehrere Anwärter im Spiel, bleibt es beim exakten Vergleich. **Baugleiche
-Monitore ohne Seriennummer hängen also weiterhin am Port-Index und können beim
-Vertauschen verwechselt werden** — diese Einschränkung ist unverändert. Das ist
-ausdrücklich keine Zusage, dass die Unit-Nummer stabil wäre; sie ist es nicht,
-die Erkennung kommt nur in den eindeutigen Fällen ohne sie aus. `edid` und
-`builtin` bleiben unberührt exakt.
+The fix is deliberately narrow and lives in its own pure function
+(`DisplayIdentityReconciler`): **a monitor without a serial number is
+recognized independently of the port index when its vendor-and-model
+combination occurs exactly once, both in the configuration and among the
+connected screens.** An exact match wins first; if several candidates or
+several contenders are in play, the exact comparison still applies.
+**Identical monitor models without a serial number therefore still depend
+on the port index and can be confused when swapped** — this limitation is
+unchanged. This is explicitly not a claim that the unit number is stable;
+it is not — recognition merely manages without it in the unambiguous cases.
+`edid` and `builtin` remain untouched and exact.
 
 ---
 
-## 7. Setup-Fingerprint und Profile
+## 7. Setup fingerprint and profiles
 
-Das aktive Profil ergibt sich aus dem **Fingerprint**: dem sortierten,
-reihenfolgeunabhängigen Set aller aktiven Monitor-Identitäten.
+The active profile results from the **fingerprint**: the sorted,
+order-independent set of all active monitor identities.
 
 ```
-{builtin}                          → „Unterwegs"
-{builtin, DellU2723-SN1194485571}  → „Büro"
-{builtin, LG38-SN909876}           → „Home"
+{builtin}                          → „Unterwegs" ("On the Road")
+{builtin, DellU2723-SN1194485571}  → „Büro" ("Office")
+{builtin, LG38-SN909876}           → "Home"
 ```
 
-Reihenfolgeunabhängigkeit ist wichtig: ob der externe Monitor vor oder nach dem
-Dock erkannt wird, darf die Profilwahl nicht beeinflussen.
+Order independence matters: whether the external monitor is detected before
+or after the dock must not affect profile selection.
 
-**Beobachtung** über `CGDisplayRegisterReconfigurationCallback`. Der Callback
-feuert beim An- und Abstecken mehrfach, während Displays aufwachen und
-Auflösungen aushandeln. Deshalb wird entprellt, bevor der Fingerprint neu
-berechnet wird — sonst wird während eines einzigen Dock-Vorgangs mehrfach das
-Profil gewechselt.
+**Observation** via `CGDisplayRegisterReconfigurationCallback`. The
+callback fires multiple times on plugging and unplugging, while displays
+wake and negotiate resolutions. It is therefore debounced before the
+fingerprint is recomputed — otherwise the profile would switch several
+times during a single docking event.
 
-**Unbekannter Fingerprint → nachfragen, nicht raten.** Ein neues Setup führt zur
-Rückfrage, ob ein Profil angelegt werden soll. Ein „bestes ähnliches Profil" zu
-erraten würde Fenster stillschweigend auf den falschen Bildschirm legen — das ist
-schlechter, als nichts zu tun.
+**Unknown fingerprint → ask, don't guess.** A new setup prompts a question
+about whether to create a profile. Guessing a "best similar profile" would
+silently place windows on the wrong screen — that is worse than doing
+nothing.
 
-In der Konfigurationsdatei referenzieren Profile Displays über einen kurzen
-**Alias** (`"dell-u2723"`) statt über die rohe Identität. Das hält die Datei
-lesbar; die Auflösung Alias → Identität übernimmt die Display-Tabelle.
-
----
-
-## 8. Zonen und Layouts
-
-**Zonen werden niemals in Pixeln gespeichert**, sondern prozentual relativ zum
-*sichtbaren* Frame — also ohne Menüleiste und Dock. Der Büromonitor ist kleiner
-als der Home-Ultrawide; eine in Punkten gespeicherte Zone wäre auf dem einen
-Bildschirm passend und auf dem anderen unbrauchbar. Auch Skalierungsänderungen
-und ein ein- oder ausgeblendetes Dock verschieben die nutzbare Fläche.
-
-Koordinatensystem der `RelativeRect`: Ursprung `(0, 0)` oben links, `(1, 1)`
-unten rechts. AppKit rechnet von unten links; die Umrechnung passiert in der
-Platzierungsschicht, nicht im Dateiformat — oben links ist das, was Menschen in
-einem Zoneneditor zeichnen.
-
-**Layouts gehören an das Display, nicht an das Profil.** Ein 38-Zoll-Ultrawide
-will ein Drei-Spalten-Layout, ein 24-Zöller ein Zwei-Spalten-Layout, und das
-bleibt wahr, egal welches Profil gerade aktiv ist. Ein Display kann mehrere
-Layouts besitzen; das aktive Profil wählt aus, welches verwendet wird
-(`profile.layouts`), sonst gilt `defaultLayoutID`.
-
-Zonen innerhalb eines Layouts dürfen sich überlappen. Das ist eine legitime
-Gestaltung — eine große Fokuszone über zwei Hälften gelegt —, deshalb wird es
-nicht verboten. Mehrdeutigkeit wird über Rollenbindungen aufgelöst, nie durch
-Raten anhand der Geometrie.
+In the configuration file, profiles reference displays via a short **alias**
+(`"dell-u2723"`) instead of the raw identity. This keeps the file readable;
+resolving alias → identity is handled by the display table.
 
 ---
 
-## 9. Konfliktauflösung
+## 8. Zones and layouts
 
-Drei Konfliktarten, alle explizit geregelt.
+**Zones are never stored in pixels**, but as a percentage relative to the
+*visible* frame — that is, excluding the menu bar and Dock. The office
+monitor is smaller than the home ultrawide; a zone stored in points would
+fit on one screen and be useless on the other. Scaling changes and a shown
+or hidden Dock also shift the usable area.
 
-### Mehrere passende Regeln
+Coordinate system of the `RelativeRect`: origin `(0, 0)` top-left, `(1, 1)`
+bottom-right. AppKit counts from the bottom left; the conversion happens in
+the placement layer, not in the file format — top-left is what people draw
+in a zone editor.
 
-Auswertung nach `priority` absteigend, bei Gleichstand in Dateireihenfolge.
-**Die erste passende Regel gewinnt**, danach wird abgebrochen.
+**Layouts belong to the display, not the profile.** A 38-inch ultrawide
+wants a three-column layout, a 24-incher a two-column layout, and that
+stays true regardless of which profile is currently active. A display can
+own several layouts; the active profile selects which one is used
+(`profile.layouts`), otherwise `defaultLayoutID` applies.
 
-Daraus folgt: **spezifisch vor generisch**. Die Outlook-Compose-Regel muss eine
-höhere Priorität haben als die allgemeine Outlook-Regel — sonst greift die
-allgemeine zuerst und die spezifische kommt nie zum Zug. In der
-Beispielkonfiguration ist das an den Prioritäten 100 gegen 50 ablesbar.
-
-### Zielzone ist besetzt
-
-Drei konfigurierbare Strategien (`conflict.occupiedZone`):
-
-- **`stack`** (Voreinstellung) — das neue Fenster kommt zusätzlich in die Zone.
-  Nichts wird verdrängt; die Zone hält mehrere Fenster, durch die man wechseln
-  kann. Die konservative Wahl.
-- **`replace`** — das neue Fenster übernimmt die Zone, der bisherige Insasse
-  wandert in die Fallback-Zone des Profils.
-- **`skip`** — das neue Fenster bleibt dort, wo das System es geöffnet hat.
-
-### Manuelle Übersteuerung
-
-Zieht der Nutzer ein Fenster selbst aus seiner Zone heraus, ist das eine
-Aussage. **Die Regel darf es nicht zurückreißen.** Das Fenster wird als manuell
-übersteuert markiert (`conflict.honorManualOverride`, Voreinstellung `true`) und
-für den Rest seiner Lebensdauer in Ruhe gelassen. Optional lässt sich über
-`manualOverrideTimeout` festlegen, dass die Übersteuerung nach einer Zeitspanne
-verfällt.
+Zones within a layout may overlap. That is a legitimate design — a large
+focus zone laid over two halves — so it is not forbidden. Ambiguity is
+resolved via role bindings, never by guessing from geometry.
 
 ---
 
-## 10. Stolperfallen
+## 9. Conflict resolution
 
-### Berechtigungen
+Three kinds of conflict, all explicitly handled.
 
-Ohne Accessibility-Berechtigung geht nichts — weder Beobachten noch Platzieren.
-Zwei Konsequenzen:
+### Multiple matching rules
 
-- Die App muss den Nutzer sauber durch die Erteilung führen und mit
-  `AXIsProcessTrustedWithOptions` prüfen, statt bei fehlender Berechtigung
-  wortlos nichts zu tun. Dafür existiert `PlacementOutcome.missingPermission`.
-- **Die App muss signiert sein.** Der Accessibility-Grant hängt an der
-  Code-Signatur. Bei einer unsignierten oder ad-hoc signierten App verfällt er
-  bei jedem Update, und der Nutzer muss den Eintrag jedes Mal aus den
-  Systemeinstellungen entfernen und neu erteilen.
+Evaluated by `priority` descending, and by file order in case of a tie.
+**The first matching rule wins**, after which evaluation stops.
 
-### Selbst-resizende Apps
+It follows that: **specific before generic**. The Outlook-compose rule must
+have a higher priority than the general Outlook rule — otherwise the
+general one matches first and the specific one never gets a turn. In the
+example configuration, this is visible in the priorities 100 versus 50.
 
-Siehe Abschnitt 2. Electron-Builds und die Office-Suite stellen ihre gespeicherte
-Geometrie nach dem Öffnen wieder her. Der Retry-Loop mit Rücklesen ist die
-Antwort.
+### Target zone is occupied
 
-### Nicht-kooperative Apps
+Three configurable strategies (`conflict.occupiedZone`):
 
-Java-Toolkits (AWT/Swing) und einzelne Electron-Builds ignorieren
-AX-Positionierung teilweise oder klemmen sie auf ihre eigene Vorstellung eines
-gültigen Frames. Dafür gibt es `PlacementOutcome.rejectedByApplication` mit dem
-tatsächlich erreichten Frame: die UI kann die betroffene App benennen, statt still
-zu scheitern. Wie weit darüber hinaus nachgesetzt werden soll, ist offen — siehe
+- **`stack`** (default) — the new window is added to the zone. Nothing is
+  displaced; the zone holds several windows that one can switch between.
+  The conservative choice.
+- **`replace`** — the new window takes over the zone; the previous occupant
+  moves to the profile's fallback zone.
+- **`skip`** — the new window stays wherever the system opened it.
+
+### Manual override
+
+If the user drags a window out of its zone themselves, that is a statement.
+**The rule must not pull it back.** The window is marked as manually
+overridden (`conflict.honorManualOverride`, default `true`) and left alone
+for the rest of its lifetime. Optionally, `manualOverrideTimeout` can be
+used to specify that the override expires after a period of time.
+
+---
+
+## 10. Pitfalls
+
+### Permissions
+
+Without Accessibility permission, nothing works — neither observing nor
+placing. Two consequences:
+
+- The app must guide the user cleanly through granting it and check with
+  `AXIsProcessTrustedWithOptions`, instead of silently doing nothing when
+  the permission is missing. `PlacementOutcome.missingPermission` exists
+  for this.
+- **The app must be signed.** The Accessibility grant is tied to the code
+  signature. For an unsigned or ad-hoc-signed app, it expires with every
+  update, and the user has to remove the entry from System Settings and
+  grant it again every time.
+
+### Self-resizing apps
+
+See section 2. Electron builds and the Office suite restore their stored
+geometry after opening. The retry loop with read-back is the answer.
+
+### Non-cooperative apps
+
+Java toolkits (AWT/Swing) and individual Electron builds partially ignore
+AX positioning or clamp it to their own notion of a valid frame.
+`PlacementOutcome.rejectedByApplication` exists for this, carrying the
+frame actually achieved: the UI can name the affected app instead of
+failing silently. How much further to push beyond that is open — see
 `docs/offene-fragen.md`.
 
-### Fenstertitel
+### Window titles
 
-Lokalisiert und oft erst nach dem Erscheinen final gesetzt. Titel-Regex deshalb
-nur dort, wo es nicht anders geht.
-
----
-
-## 11. UI in zwei Stufen
-
-**Stufe 1 — einfach, deckt rund 90 % der Fälle:**
-Rechtsklick auf ein platziertes Fenster → *„Diese App immer hier öffnen"*. Im
-Hintergrund entsteht eine Regel auf die Bundle-ID mit der Rolle, die zur aktuellen
-Zone gehört. Kein Regeleditor, kein Formular, keine Erklärung nötig.
-
-**Stufe 2 — erweitert:**
-Ein Regeleditor mit den Match-Kriterien aus Abschnitt 4, für Fälle wie das
-Outlook-Verfassen-Fenster. Wer ihn nicht braucht, sieht ihn nicht.
-
-Darunter liegt in beiden Fällen dieselbe **Konfigurationsdatei im JSON-Format** —
-versionierbar, teilbar, als Text editierbar. Wer möchte, umgeht die UI komplett.
+Localized, and often only finalized after appearing. Title regex is
+therefore used only where there is no other way.
 
 ---
 
-## 12. Ausbaustufen
+## 11. UI in two tiers
 
-1. Datenmodell und Konfigurationsformat *(dieser Stand)*
-2. Monitorerkennung: Identität, Fingerprint, Profilwechsel
-3. Fenstererkennung und Filter, zunächst nur protokollierend
-4. Platzierung mit Retry-Loop
-5. Regelauswertung und Rollenauflösung
-6. Menüleisten-App mit Stufe-1-UI
-7. Zoneneditor und Regeleditor
-8. Signierung und Verteilung
+**Tier 1 — simple, covers roughly 90% of cases:** right-click a placed
+window → *„Diese App immer hier öffnen“* ("Always open this app here"). In
+the background, a rule is created for the bundle ID with the role belonging
+to the current zone. No rule editor, no form, no explanation needed.
 
-Die Reihenfolge folgt dem Risiko: Monitoridentität und Platzierungs-Timing sind
-die Teile, an denen das Konzept scheitern könnte. Sie kommen zuerst.
+**Tier 2 — advanced:** a rule editor with the match criteria from
+section 4, for cases like the Outlook compose window. Whoever doesn't need
+it never sees it.
+
+Underneath, in both cases, lies the same **configuration file in JSON
+format** — versionable, shareable, editable as text. Anyone who wants to
+can bypass the UI entirely.
+
+---
+
+## 12. Build-out stages
+
+1. Data model and configuration format *(current status)*
+2. Monitor detection: identity, fingerprint, profile switching
+3. Window detection and filtering, logging-only at first
+4. Placement with retry loop
+5. Rule evaluation and role resolution
+6. Menu bar app with tier-1 UI
+7. Zone editor and rule editor
+8. Signing and distribution
+
+The order follows the risk: monitor identity and placement timing are the
+parts where the concept could fail. They come first.

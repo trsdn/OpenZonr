@@ -1,692 +1,725 @@
-# Dropzones — Fenster mit der Maus in Zonen ziehen
+# Dropzones — Dragging Windows into Zones with the Mouse
 
-Die Hälfte, die von Anfang an vorausgesetzt war. Das Vorhaben begann mit dem
-Satz: *„Könnte man einen Fenstermanager bauen, der so Dropzones hat, wie die
-meisten — mich nervt aber, dass eine neu geöffnete App nicht automatisch in der
-Zone landet."* Gebaut war bisher nur der zweite Teil. Dies ist der erste.
+The half that was assumed from the start. The project began with the
+sentence: *"Could you build a window manager that has dropzones like most
+others do — but what bugs me is that a newly opened app doesn't land in the
+zone automatically."* Only the second part had been built so far. This is
+the first.
 
-Umgesetzt in Issue #10, danach fortgeschrieben in Issue #23. Kurz:
+Implemented in issue #10, then extended in issue #23. In short:
 
-- Beim Ziehen eines Fensters mit gehaltenem **⌘** erscheinen die Zonen des
-  aktiven Profils auf dem Display unter dem Zeiger; die getroffene Zone ist
-  hervorgehoben.
-- Beim Loslassen wird das Fenster in diese Zone gelegt — **über denselben Code
-  wie die Automatik**, nicht über einen zweiten Pfad.
-- Loslassen auf der **Anheft-Marke** einer Zone schreibt zusätzlich eine Regel
-  über den bestehenden `QuickPin`, in derselben Bewegung. Loslassen daneben
-  bleibt eine einmalige Platzierung.
-- Die alte Rückfrage „Diese App immer hier öffnen?" ist als Vorgabe **aus**;
-  wer sie will, schaltet `defaults.dropzones.offerRule` an.
-- Die Aktivierungsregel `defaults.dropzones.activation` hat zwei Formen: die
-  Vorgabe `{"showsWhile": "command"}` — Zonen erscheinen nur mit ⌘ — und die
-  ältere `{"showsUnless": "option"}` — Zonen bei jedem Zug, ⌥ silent. Eine
-  bestehende `config.json` mit `suppressionModifier: "option"` liest weiter
-  und bildet automatisch auf die ältere Form ab (siehe *Migration* unten).
+- While dragging a window with **⌘** held down, the zones of the active
+  profile appear on the display under the pointer; the zone the pointer is
+  over is highlighted.
+- On release, the window is placed into that zone — **through the same
+  code path as the automatic placement**, not through a second path.
+- Releasing on a zone's **pin badge** additionally writes a rule via the
+  existing `QuickPin`, in the same motion. Releasing elsewhere remains a
+  one-off placement.
+- The old prompt „Diese App immer hier öffnen?" ("Always open this app
+  here?") is **off** by default; anyone who wants it turns on
+  `defaults.dropzones.offerRule`.
+- The activation rule `defaults.dropzones.activation` has two forms: the
+  default `{"showsWhile": "command"}` — zones appear only with ⌘ held — and
+  the older `{"showsUnless": "option"}` — zones on every drag, ⌥ silences
+  them. An existing `config.json` with `suppressionModifier: "option"`
+  still loads and maps automatically to the older form (see *Migration*
+  below).
 
 ---
 
 ---
 
-## Der Tausch bei ⌘ als Einschalter, gemessen
+## The switch to ⌘ as the enabler, measured
 
-Seit Issue #23 ist die Vorgabe: **die Zonen erscheinen nur, solange ⌘ gehalten
-wird**, statt „bei jedem Zug, außer bei ⌥". Die Umkehrung ist bewusst und hat
-einen Preis, der gemessen ist.
+Since issue #23 the default has been: **the zones appear only while ⌘ is
+held**, instead of "on every drag, except with ⌥". The reversal is
+deliberate and has a cost, which is measured.
 
-**Drei Läufe am 29.08.2026:** Ein Zug an der Titelleiste eines Hintergrund­fensters
-holt es nach vorn. **Derselbe Zug mit ⌘ lässt die vordere App vorne.** ⌘ ist auf
-Fenster­zügen also bereits belegt und bedeutet dort *bewegen, ohne zu aktivieren*.
+**Three runs on 2026-08-29:** A drag on the title bar of a background
+window brings it to the front. **The same drag with ⌘ held leaves the
+frontmost app in front.** ⌘ is therefore already in use on window drags,
+and there it means *move without activating*.
 
-Folge: Mit ⌘ als Einschalter erscheinen die Zonen genau dann, wenn nicht
-aktiviert werden soll — ein Hintergrund­fenster einsortieren, ohne den Fokus zu
-verlieren. Es heißt aber auch, dass es die alte Geste *ohne die neue* nicht mehr
-gibt: wer einfach ein Fenster ziehen will, ohne dass Zonen aufleuchten, muss
-nichts drücken (das ist jetzt der Normalfall) — wer sie sehen will, drückt ⌘.
+Consequence: with ⌘ as the enabler, the zones appear exactly when
+activation is *not* wanted — filing a background window away without
+losing focus. But it also means the old gesture no longer exists *without*
+the new one: anyone who just wants to drag a window without zones lighting
+up doesn't press anything (that's now the normal case) — anyone who wants
+to see the zones presses ⌘.
 
-*Nicht gemessen:* ob ⌘-Ziehen ein Hintergrund­fenster tatsächlich **bewegt**. In
-keinem Lauf hat sich ein Hintergrund­fenster bewegt, auch nicht ohne ⌘ — der
-synthetische Zug kann das nicht beantworten. Belegt ist ausschließlich der
-Unterschied bei der Aktivierung.
+*Not measured:* whether ⌘-dragging actually **moves** a background window.
+In no run did a background window move, not even without ⌘ — the
+synthetic drag cannot answer that. What is established is only the
+difference in activation.
 
-*Ebenfalls nicht gemessen:* ob sich ⌘ beim Ziehen bequem anfühlt und ob die
-Anheft-Marke auffindbar ist. Das braucht eine Hand an der Maus; siehe die
-Tabelle „Was gemessen ist und was nicht" weiter unten.
+*Also not measured:* whether holding ⌘ while dragging feels comfortable
+and whether the pin badge is easy to find. That needs a hand on the mouse;
+see the table "What is measured and what isn't" further below.
 
-## Migration bestehender Konfigurationen
+## Migrating existing configurations
 
-Eine `config.json`, die vor Issue #23 geschrieben wurde, trägt
-`defaults.dropzones.suppressionModifier: "option"`. Ohne Migration stünde ein
-Nutzer nach dem Update mit der neuen Vorgabe da — Zonen erscheinen nur mit ⌘ —
-und wüsste nicht, dass eine unbenutzte Sekunde Ziehen jetzt genau das *nicht*
-mehr bedeutet, was sie gestern bedeutet hat.
+A `config.json` written before issue #23 carries
+`defaults.dropzones.suppressionModifier: "option"`. Without migration, a
+user would be left after the update with the new default — zones appear
+only with ⌘ — and would have no way to know that an unmodified second of
+dragging now means exactly the *opposite* of what it meant yesterday.
 
-Der Codec liest den alten Schlüssel weiter und bildet ihn auf
-`activation: {"showsUnless": "option"}` ab — dieselbe Polarität, die die alte
-Datei ausdrückte. **Neu geschrieben wird nur der neue Schlüssel.** Beide Namen
-in derselben Datei würden sich beim nächsten Bearbeiten von Hand widersprechen,
-und der Codec müsste einen Vorrang festlegen: er tut es (`activation` schlägt
-`suppressionModifier`), damit eine handbearbeitete neue Datei nicht von einem
-übrig­gebliebenen alten Feld überstimmt wird. `DropzoneSettingsDecodingTests`
-hält beide Fälle fest.
+The codec keeps reading the old key and maps it onto
+`activation: {"showsUnless": "option"}` — the same polarity the old file
+expressed. **Only the new key is written back.** Both names in the same
+file would contradict each other the next time someone edits it by hand,
+so the codec has to establish a precedence: it does (`activation` wins
+over `suppressionModifier`), so that a hand-edited new file isn't
+overridden by a leftover old field. `DropzoneSettingsDecodingTests`
+records both cases.
 
-## Die Anheft-Marke — Regel im Zug statt Rückfrage danach
+## The pin badge — the rule set during the drag instead of a prompt afterward
 
-Solange die Zonen sichtbar sind, trägt jede Zone eine kleine Marke, oben rechts.
-Normal loslassen: einmalige Platzierung, keine Regel, keine Frage. Auf der
-Marke loslassen: dieselbe Platzierung und `QuickPin` schreibt die Regel — in
-derselben Bewegung.
+As long as the zones are visible, every zone carries a small badge, top
+right. Release normally: a one-off placement, no rule, no prompt. Release
+on the badge: the same placement, and `QuickPin` writes the rule — in the
+same motion.
 
-Ablegen und Zoom-Menü platzieren mit `Dropzone.placement` (Layout-Rand abgezogen, identisch zur Automatik, #43); der Treffertest nutzt `Dropzone.activationFrame` — die **Trefferfläche**, nicht mehr zwangsläufig die volle Zone. Was das ist und warum, steht im nächsten Abschnitt.
+Both the drop and the zoom-button menu place using `Dropzone.placement`
+(with the layout margin subtracted, identical to the automatic placement,
+#43); the hit test uses `Dropzone.activationFrame` — the **activation
+area**, no longer necessarily the full zone. What that is and why is in
+the next section.
 
-Die Trefferprüfung ist eine **reine Funktion** neben `DropzoneMap`
-(`DropzoneMap.pinBadgeFrame(for:)` und `DropzoneMap.isOnPinBadge(_:of:)`), damit
-sie ohne die Bedienungshilfen-Freigabe geprüft werden kann — dieselbe Trennung,
-die der Rest der Dropzones-Hälfte durchzieht. Der Codepfad im Controller ist
-zwei Zeilen: liegt der Zeiger beim Loslassen auf der Marke, wird über die
-Fabrik `DropRuleOffer.pin(...)` (kein Panel-Gate) direkt eine `QuickPin.Request`
-gebaut und angewendet — sonst der bisherige *Panel-anbieten*-Zweig, der aber
-per Vorgabe schweigt.
+The hit test is a **pure function** alongside `DropzoneMap`
+(`DropzoneMap.pinBadgeFrame(for:)` and `DropzoneMap.isOnPinBadge(_:of:)`),
+so it can be tested without the Accessibility permission — the same
+separation that runs through the rest of the dropzones half. The code path
+in the controller is two lines: if the pointer is on the badge at release,
+a `QuickPin.Request` is built and applied directly through the
+`DropRuleOffer.pin(...)` factory (no panel gate) — otherwise the existing
+*offer-the-panel* branch, which stays silent by default.
 
-**Warum die Marke oben rechts und nicht in der Mitte.** Auf einer kleinen Zone
-würde eine mittige Marke die ganze Zone abdecken; die einmalige Platzierung
-*ohne* Regel wäre unerreichbar. Der Sicherheitstest
-`theBadgeNeverSwallowsTheWholeZone` zieht über Zonengrößen von 60 bis 4000
-Punkten und stellt sicher, dass die Mitte jeder Zone, für die überhaupt eine
-Marke gezeichnet wird, kein Marken-Treffer ist. Ist die Zone zu klein für Marke
-plus verbleibenden Streifen, wird gar keine Marke gezeichnet — dann ist jeder
-Drop einmalig, ohne dass der Controller einen zweiten Pfad kennen muss.
+**Why the badge sits top right and not in the center.** On a small zone, a
+centered badge would cover the whole zone; the one-off placement
+*without* a rule would become unreachable. The safety test
+`theBadgeNeverSwallowsTheWholeZone` sweeps zone sizes from 60 to 4000
+points and confirms that the center of every zone that gets a badge drawn
+at all is never a badge hit. If a zone is too small for the badge plus a
+remaining strip, no badge is drawn at all — then every drop is one-off,
+without the controller needing to know a second path.
 
-## Trefferflächen — zwei Rechtecke statt einem
+## Activation areas — two rectangles instead of one
 
-Jede Zone trägt seit Kurzem ein zweites, optionales Rechteck: `activationArea`.
-`frame` sagt weiterhin, wohin das Fenster kommt; `activationArea` sagt, wo
-losgelassen werden muss. Fehlt sie, ist sie der Zielrahmen — jede
-Konfiguration, die das Feld nicht kennt, verhält sich unverändert, und
-`Configuration.currentVersion` bleibt bei `1`.
+Every zone has recently gained a second, optional rectangle:
+`activationArea`. `frame` still says where the window ends up;
+`activationArea` says where you have to release. If it's absent, it
+defaults to the target frame — every configuration that doesn't know the
+field behaves unchanged, and `Configuration.currentVersion` stays at `1`.
 
-Der Grund für die Trennung ist ein Fall, der mit einem einzigen Rechteck nicht
-lösbar ist, und er ist nicht konstruiert — er liegt auf dem Rechner des
-Betreuers. Eine Ebene dort (`C49RG9x`, 5120×1440) trägt eine volltiefe Zone
-„Rechts außen" und darüber gestapelt zwei halbhohe Zonen, „Rechts oben" und
-„Rechts unten":
+The reason for the split is a case that a single rectangle cannot solve,
+and it isn't contrived — it sits on the maintainer's own machine. A layout
+there (`C49RG9x`, 5120×1440) carries a full-height zone „Rechts außen"
+("Right, full") with two half-height zones stacked on top of it, „Rechts
+oben" ("Right, top") and „Rechts unten" ("Right, bottom"):
 
-| Zone | rel. Fläche |
+| Zone | rel. area |
 |---|---|
-| Rechts außen | 0,333 |
-| Rechts oben | 0,167 |
-| Rechts unten | 0,167 |
+| Rechts außen | 0.333 |
+| Rechts oben | 0.167 |
+| Rechts unten | 0.167 |
 
-Der Treffertest lässt die kleinste enthaltende Zone gewinnen — ohne diese Regel
-wären die beiden Hälften nie erreichbar, weil „Rechts außen" jeden ihrer Punkte
-mit enthält. Aber „Rechts oben" und „Rechts unten" decken „Rechts außen"
-zusammen lückenlos ab, und **genau das** macht „Rechts außen" unerreichbar:
-jeder Punkt darin liegt auch in einer der beiden kleineren Zonen. Nicht schwer
-zu treffen — unerreichbar. Keine andere Regel behebt das: solange ein Rechteck
-zugleich Zielrahmen und Auslöser ist, sind die Punkte eines Stapels unteilbar,
-und wer auch immer die Regel begünstigt, die andere Ebene verliert vollständig.
+The hit test lets the smallest containing zone win — without that rule the
+two halves would never be reachable, because „Rechts außen" contains every
+one of their points too. But „Rechts oben" and „Rechts unten" between them
+cover „Rechts außen" without a gap, and **that's exactly** what makes
+„Rechts außen" unreachable: every point inside it also lies in one of the
+two smaller zones. Not hard to hit — unreachable. No other rule fixes
+this: as long as a rectangle is both the target frame and the trigger, the
+points of a stack are indivisible, and whichever rule wins, the other
+layer loses completely.
 
-`activationArea` löst das, indem sie Ziel und Auslöser trennt: „Rechts außen"
-bekommt eine eigene, von den beiden Hälften unabhängige Trefferfläche, ohne
-dass sich ihr Zielrahmen ändert. Das JSON-Feld steht in
-[konfiguration.md](konfiguration.md), Abschnitt `activationArea`.
+`activationArea` solves this by separating target from trigger: „Rechts
+außen" gets its own activation area, independent of the two halves,
+without its target frame changing. The JSON field is documented in
+[konfiguration.md](konfiguration.md), section `activationArea`.
 
-Zwei Warnungen gehören zur Prüfung (`ZoneReachabilityCheck`), beide Warnungen,
-keine Fehler — die Konfiguration bleibt ladbar:
+Two warnings belong to the check (`ZoneReachabilityCheck`), both warnings,
+not errors — the configuration stays loadable:
 
-- **Zone unerreichbar** — wenn die **Vereinigung** der bevorzugten
-  Trefferflächen (kleinere Fläche, bei Gleichstand frühere Zonen-ID) eine Zone
-  vollständig überdeckt. Der Fall des Autors ist genau deshalb ein Test dieser
-  Prüfung: keine einzelne Hälfte überdeckt „Rechts außen", erst beide
-  zusammen — eine Prüfung, die nur paarweise vergleicht, fände ihn nicht.
-- **Trefferfläche losgelöst** — wenn eine deklarierte `activationArea` den
-  eigenen Zielrahmen gar nicht berührt. Erlaubt (siehe unten), aber häufiger
-  ein Tippfehler als Absicht.
+- **Zone unreachable** — when the **union** of the preferred activation
+  areas (smaller area wins, earlier zone ID on a tie) fully covers a zone.
+  The maintainer's own case is exactly why this check exists as a test: no
+  single half covers „Rechts außen", only both together — a check that
+  only compared pairs would never have found it.
+- **Activation area detached** — when a declared `activationArea` doesn't
+  touch its own target frame at all. Allowed (see below), but more often a
+  typo than intent.
 
-Die Trefferfläche muss nicht im Zielrahmen liegen — sie ist bildschirmbezogen,
-nicht zonenbezogen. Das macht **Randauslösung möglich**: am Bildschirmrand
-loslassen, Fenster landet in einer entfernten Zone. Ausdrücklich *möglich*,
-nicht *erprobt*: bisher hat niemand am Bildschirmrand losgelassen und
-beobachtet, ob sich das im Gebrauch bewährt oder trifft, was gemeint war. Die
-Tabelle „Was gemessen ist und was nicht" weiter unten führt dazu keine Zeile —
-es gibt nichts zu berichten, nur die Möglichkeit.
+The activation area doesn't have to lie inside the target frame — it's
+screen-relative, not zone-relative. That makes **edge triggering
+possible**: release at the screen edge, and the window lands in a distant
+zone. Explicitly *possible*, not *tried*: so far nobody has released at
+the screen edge and observed whether that holds up in use or hits what was
+intended. The table "What is measured and what isn't" further below
+carries no row for this — there's nothing to report yet, only the
+possibility.
 
-Das Overlay zeichnet seither zweigeteilt: die Trefferflächen aller Zonen der
-Ebene als dünne Kontur, damit sichtbar ist, wohin man zielen kann, und der
-Zielrahmen der getroffenen Zone gefüllt, damit sichtbar ist, wo das Fenster
-landet. Die Anheft-Marke sitzt seither ebenfalls auf der Trefferfläche statt
-auf dem Zielrahmen — folgerichtig, denn sie ist das zweite Ziel derselben
-Mausbewegung; bei Randauslösung läge sie sonst am anderen Ende des
-Bildschirms. Eine Konsequenz daraus, die man von Hand nicht sofort sieht:
-eine Trefferfläche unter `4·2 + 8·2 + 24 + 24 = 72` Punkten in der kürzeren
-Kante trägt keine Marke mehr (siehe oben, „Die Anheft-Marke"). Platzieren
-funktioniert dort weiter, die Regel muss dann über das Rechtsklickmenü
-entstehen.
+Since then the overlay draws in two parts: the activation areas of every
+zone on the layout as a thin outline, so it's visible where you can aim,
+and the target frame of the zone under the pointer filled in, so it's
+visible where the window lands. The pin badge has likewise moved onto the
+activation area instead of the target frame — consistent, since it's the
+second target of the same mouse movement; with edge triggering it would
+otherwise sit at the opposite end of the screen. One consequence that
+isn't obvious by hand: an activation area whose shorter edge is under
+`4·2 + 8·2 + 24 + 24 = 72` points no longer carries a badge (see above,
+"The pin badge"). Placement still works there; the rule then has to be
+created through the right-click menu.
 
-## Rechtsklick am grünen Knopf — Menü statt Ziehen (Issue #27)
+## Right-click on the green button — menu instead of dragging (issue #27)
 
-Manche Züge kann sich der Nutzer sparen. Ein Rechtsklick auf den grünen
-Fensterknopf öffnet ein eigenes Menü mit den Zonen des Bildschirms, auf dem
-das Fenster mehrheitlich liegt, beim Namen. Ein Klick platziert das Fenster
-einmalig; ⌥ + Klick macht daraus die Regel — durch **denselben `QuickPin`**
-wie Menüleisten-Eintrag und Anheft-Marke. Keine zweite Buchhaltung.
+Some drags the user can skip entirely. A right-click on the green window
+button opens its own menu naming the zones of the screen the window mostly
+sits on. A click places the window once; ⌥ + click turns that into a rule
+— through **the same `QuickPin`** as the menu-bar entry and the pin badge.
+No second bookkeeping.
 
-Der Weg dorthin:
+How it gets there:
 
-- Der bestehende `EventTapDragTracker` hört zusätzlich auf `rightMouseDown`.
-  Ein separater Rückruf (`onRightClick`) reicht das Ereignis am Zug vorbei.
-  Der Tap ist derselbe, weil zwei Taps dieselbe Berechtigung zweimal
-  verlangten — reine Verdoppelung.
-- **Wichtig für die Fehlerklasse aus #26/#29:** die AX-Abfrage steht *nicht*
-  im Tap-Rückruf. `scheduleZoomButtonLookup` stößt sie in `Task.detached`
-  an; erst mit fertigem Ergebnis springt der Pfad auf den MainActor zurück
-  und ruft `onRightClick` auf. Sonst blockierten AX-Abfrage (Spitzen bis
-  970 ms) *und* das modale `NSMenu.popUp` genau den Thread, der den Tap
-  bedient — mit denselben Folgen, die #29 gerade geschlossen hat.
-- `ZoomButtonLookup.read(atAccessibilityPoint:primaryTopY:)` in `OpenZonrMac`
-  ermittelt Fenster und Zoom-Knopf-Rahmen. `nonisolated`, damit sie im
-  Hintergrund-Task laufen darf. Drei Ausgänge: `found`,
-  `zoomButtonUnavailable`, `noWindow` — jede Trennung ist mit Vorsatz.
-- `zoomButtonHitTest(point:zoomButtonFrame:)` in `OpenZonrCore` prüft die
-  Geometrie. Reine Funktion, headless testbar — die Trefferprüfung ohne
-  Bedienungshilfen-Freigabe war die Vorgabe aus dem Issue.
-- `ZoomButtonMenu` in `OpenZonrApp` baut das `NSMenu` an der Knopfposition
-  und routet den Klick durch `WatchEngine.place(dropped:application:into:)`
-  (einmalige Platzierung) und optional durch `AppModel.apply(_:to:)`
-  (`QuickPin` schreibt die Regel).
+- The existing `EventTapDragTracker` now also listens for
+  `rightMouseDown`. A separate callback (`onRightClick`) passes the event
+  through independently of the drag. It's the same tap, because two taps
+  would require the same permission twice — pure duplication.
+- **Important for the error class from #26/#29:** the AX query does *not*
+  sit in the tap callback. `scheduleZoomButtonLookup` kicks it off in a
+  `Task.detached`; only once the result is ready does the path jump back
+  to the MainActor and call `onRightClick`. Otherwise both the AX query
+  (spikes up to 970 ms) *and* the modal `NSMenu.popUp` would block exactly
+  the thread that services the tap — with the same consequences that #29
+  just closed.
+- `ZoomButtonLookup.read(atAccessibilityPoint:primaryTopY:)` in
+  `OpenZonrMac` determines the window and zoom-button frames.
+  `nonisolated`, so it's allowed to run in the background task. Three
+  outcomes: `found`, `zoomButtonUnavailable`, `noWindow` — each
+  distinction is deliberate.
+- `zoomButtonHitTest(point:zoomButtonFrame:)` in `OpenZonrCore` checks the
+  geometry. A pure function, testable headless — a hit test that doesn't
+  need the Accessibility permission was the requirement from the issue.
+- `ZoomButtonMenu` in `OpenZonrApp` builds the `NSMenu` at the button
+  position and routes the click through
+  `WatchEngine.place(dropped:application:into:)` (one-off placement) and
+  optionally through `AppModel.apply(_:to:)` (`QuickPin` writes the rule).
 
-**Zwei Fallen, ehrlich benannt (aus dem Issue):**
+**Two pitfalls, named honestly (from the issue):**
 
-- **`.listenOnly` kann nichts schlucken.** Zeigt eine App doch ein Menü auf
-  Rechtsklick am Zoom-Knopf, erscheinen zwei. Gemessen sind zwei Apps
-  (TextEdit, Safari) ohne eigenes Menü, **nicht alle**. Ein Ausweichweg
-  (nur reagieren, wenn kurz kein fremdes Menüfenster erscheint) ist erst
-  fällig, wenn ein Gegenbeispiel gemessen ist — nicht auf Verdacht.
-- **`kAXZoomButtonAttribute` fehlt bei manchen Fenstern.** Beim Messen zu
-  Issue #27 lieferte ein Finder-Fenster keinen. `ZoomButtonMenu` bleibt in
-  dem Fall **still**: das Attribut fehlt für das ganze Fenster, nicht für
-  einen Ort in ihm — der Klick war praktisch mit Sicherheit gar nicht am
-  Knopf gemeint. Eine sichtbare Meldung hier würde bei Apps wie dem Finder
-  auf *jeden* Rechtsklick sprechen und wäre nur Lärm. Der Code hält den
-  Fall trotzdem als eigenen Zweig (`ZoomButtonLookup.Result.zoomButtonUnavailable`),
-  damit man ihn später ohne Umbau melden kann, wenn ein Weg gefunden ist,
-  ihn nur bei plausibler Knopfnähe zu zeigen.
+- **`.listenOnly` can't swallow anything.** If an app does show its own
+  menu on right-click at the zoom button, two appear. Measured are two
+  apps (TextEdit, Safari) with no menu of their own, **not all of them**.
+  A workaround (only react if briefly no foreign menu window appears) is
+  only due once a counterexample is measured — not on suspicion.
+- **`kAXZoomButtonAttribute` is missing on some windows.** While measuring
+  for issue #27, a Finder window returned none. `ZoomButtonMenu` stays
+  **silent** in that case: the attribute is missing for the whole window,
+  not for one spot in it — the click was, for all practical purposes,
+  almost certainly not meant for the button at all. A visible message here
+  would speak up on *every* right-click for apps like Finder and would
+  just be noise. The code still keeps the case as its own branch
+  (`ZoomButtonLookup.Result.zoomButtonUnavailable`), so it can be reported
+  later without restructuring, once a way is found to show it only when
+  the click is plausibly near the button.
 
-## Was ausdrücklich nicht gebaut wird — und warum
+## What is deliberately not built — and why
 
-Drei naheliegende Wege, die Regel *im Zug* zu setzen, sind gemessen ausgeschieden.
-Ohne diese Liste baut sie jemand erneut.
+Three obvious ways to set the rule *during the drag* were measured and
+ruled out. Without this list, someone will build them again.
 
-**Rechtsklick auf die Titelleiste — kollidiert.** Instrument: Klick und
-Erkennung in *einem* Programm (ein Kontextmenü kann zwischen zwei Aufrufen
-zugehen), Menüfenster über `CGWindowList` an Ebene 101. Positivkontrolle
-bestanden, 3/3.
+**Right-click on the title bar — collides.** Instrument: click and
+detection in *one* program (a context menu can close between two
+invocations), menu window detected via `CGWindowList` at layer 101.
+Positive control passed, 3/3.
 
-| Wohin geklickt | App-Menü? | Läufe |
+| Clicked where | App menu? | Runs |
 |---|---|---|
-| TextEdit — Textbereich *(Positivkontrolle)* | **ja**, 290×543 | 3/3 |
-| TextEdit — leere Titelleiste | nein | 3/3 |
-| TextEdit — Titeltext / Proxy-Symbol | **ja**, 197×82 | 1/1 |
-| TextEdit — grüner Knopf, Rechtsklick | nein | 1/1 |
-| **Safari — vereinheitlichte Symbolleiste, leere Stelle** | **ja**, 206×34 | 3/3 |
-| Safari — dieselbe Stelle mit ⌥ / ⌘ / ⇧ | **ja, jedes Mal** | je 1 |
+| TextEdit — text area *(positive control)* | **yes**, 290×543 | 3/3 |
+| TextEdit — empty title bar | no | 3/3 |
+| TextEdit — title text / proxy icon | **yes**, 197×82 | 1/1 |
+| TextEdit — green button, right-click | no | 1/1 |
+| **Safari — unified toolbar, empty spot** | **yes**, 206×34 | 3/3 |
+| Safari — same spot with ⌥ / ⌘ / ⇧ | **yes, every time** | 1 each |
 
-In modernen Apps *ist* die Titelleiste die Symbolleiste — Safari, Finder, Mail.
-TextEdit war die Ausnahme, nicht die Regel. Modifier unterdrücken das App-Menü
-nicht.
+In modern apps the title bar *is* the toolbar — Safari, Finder, Mail.
+TextEdit was the exception, not the rule. Modifier keys don't suppress the
+app menu.
 
-**Aktiver Event-Tap, um den Rechtsklick zu schlucken — zu teuer.**
-`EventTapDragTracker.swift:74` erstellt den Tap mit `options: .listenOnly`; er
-kann nichts verschlucken. Mit `.defaultTap` ginge es, aber dann liefe **jeder
-Rechtsklick der Maschine** durch unseren Rückruf, bevor irgendeine App ihn
-sieht. Ist er zu langsam, schaltet macOS den Tap ab — und dann hört auch die
-Drag-Erkennung auf, ohne dass es auffällt. Genau die Fehlerklasse, die dieses
-Projekt sonst jagt.
+**An active event tap to swallow the right-click — too expensive.**
+`EventTapDragTracker.swift:74` creates the tap with `options: .listenOnly`;
+it can't swallow anything. With `.defaultTap` it would work, but then
+**every right-click on the machine** would run through our callback before
+any app saw it. If it's too slow, macOS disables the tap — and drag
+detection stops too, without it being noticed. Exactly the error class
+this project otherwise hunts down.
 
-**Panel unter dem grünen Knopf — fremdes Revier.** Der Knopf ist auffindbar
-(gemessen: `AXButton … AXZoomWindow` bei `3894,39 16×16`), und ein Rechtsklick
-darauf zeigt kein App-Menü. Aber macOS blendet dort beim *Schweben* sein
-eigenes Menü ein. Zwei Menüs am selben Pixel.
+**A panel under the green button — someone else's territory.** The button
+can be located (measured: `AXButton … AXZoomWindow` at `3894,39 16×16`),
+and a right-click on it shows no app menu. But macOS shows its own menu
+there on *hover*. Two menus at the same pixel.
 
-**Erst nach mehrfacher Wiederholung fragen** („du hast das jetzt dreimal so
-gemacht") — streckt das Ärgernis, statt es zu beheben, und braucht Zustand über
-Sitzungen hinweg.
+**Asking only after repeated occurrences** ("you've done this three times
+now") — stretches out the annoyance instead of fixing it, and needs state
+across sessions.
 
-Die tatsächliche Antwort ist stattdessen die Anheft-Marke: kein neuer Eingriff
-ins System, keine Kollision mit fremden Apps, kein aktiver Event-Tap.
+The actual answer instead is the pin badge: no new intervention in the
+system, no collision with other apps, no active event tap.
 
 ---
 
-## Die zwei gemessenen Fragen
+## The two measured questions
 
-### 1. `kAXMovedNotification` oder `CGEventTap`?
+### 1. `kAXMovedNotification` or `CGEventTap`?
 
-Beide Wege sind gebaut (`AXMovedDragTracker`, `EventTapDragTracker`) und werden
-von `openzonr dragprobe` nebeneinander gemessen. Drei Läufe à 3 s auf dem
-Rechner des Nutzers, Ereignisse synthetisch erzeugt (siehe unten, warum):
+Both paths are built (`AXMovedDragTracker`, `EventTapDragTracker`) and are
+measured side by side by `openzonr dragprobe`. Three 3 s runs on the
+user's machine, events generated synthetically (see below for why):
 
-| Größe | `CGEventTap` | `kAXMovedNotification` |
+| Metric | `CGEventTap` | `kAXMovedNotification` |
 |---|---|---|
-| Einrichtung | gelingt | gelingt |
-| Berechtigung | Bedienungshilfen | Bedienungshilfen — **dieselbe**, keine zusätzliche |
-| Empfangen von 40 gesendeten | 40 (+ Down + Up = 42) | 40 |
-| Verlust | 0 von 40, in 3 von 3 Läufen | 0 von 40, in 3 von 3 Läufen |
-| Rate | 44,3 / 50,3 / 53,7 pro s | 52,6 / 52,5 / 50,8 pro s |
-| Größte Lücke | 55,7 / 38,1 / 39,2 ms | 39,9 / 37,1 / 38,5 ms |
-| Loslassen | **1 Ereignis pro Zug**, exakt | **0** — nur per Abfrage feststellbar |
-| Latenz | nicht messbar (Begründung unten) | grundsätzlich nicht messbar |
+| Setup | succeeds | succeeds |
+| Permission | Accessibility | Accessibility — **the same one**, no extra permission |
+| Received out of 40 sent | 40 (+ Down + Up = 42) | 40 |
+| Loss | 0 of 40, in 3 of 3 runs | 0 of 40, in 3 of 3 runs |
+| Rate | 44.3 / 50.3 / 53.7 per s | 52.6 / 52.5 / 50.8 per s |
+| Largest gap | 55.7 / 38.1 / 39.2 ms | 39.9 / 37.1 / 38.5 ms |
+| Release | **1 event per drag**, exact | **0** — detectable only by polling |
+| Latency | not measurable (reasoning below) | fundamentally not measurable |
 
-**Die Rate ist die Rate des Erzeugers, nicht die Obergrenze des Weges.** Der
-Messtreiber gibt pro Run-Loop-Durchlauf ein Ereignis ab (Timer, 8 ms). Dass
-beide Wege bei rund 50 Ereignissen pro Sekunde exakt das ankommen lassen, was
-gesendet wurde, ist die Aussage — nicht, dass 50 das Maximum wäre.
+**The rate is the rate of the generator, not the upper bound of the
+path.** The measurement driver emits one event per run-loop pass (timer,
+8 ms). That both paths deliver, at around 50 events per second, exactly
+what was sent, is the claim — not that 50 would be the maximum.
 
-**Die erste Version dieser Messung war falsch, und das gehört hierher.** Sie
-schickte die 40 Ereignisse in einer `usleep`-Schleife und meldete daraufhin
-753 Ereignisse pro Sekunde bei 51,5 ms größter Lücke. Beides waren Artefakte
-einer Warteschlange, die sich nach dem Blockieren auf einmal leerte. Wer den
-Hauptthread blockiert, während er den Hauptthread misst, misst das Blockieren.
-Deshalb läuft die Erzeugung jetzt über den Run Loop (`SyntheticDriver`).
+**The first version of this measurement was wrong, and that belongs
+here.** It sent the 40 events in a `usleep` loop and then reported 753
+events per second with a largest gap of 51.5 ms. Both were artifacts of a
+queue that drained all at once after being blocked. Whoever blocks the
+main thread while measuring the main thread is measuring the blocking.
+That's why generation now runs through the run loop (`SyntheticDriver`).
 
-**Entschieden wurde für den `CGEventTap`, und zwar wegen einer einzigen Zeile
-der Tabelle: dem Loslassen.** Der Tap meldet es als Ereignis. Accessibility
-meldet es überhaupt nicht — dort muss der Mausknopf abgefragt werden, 60 mal pro
-Sekunde, solange der Zug dauert (`AXMovedDragTracker.startPolling`). Für eine
-Funktion, deren ganzer Sinn der Moment des Ablegens ist, ist das der Unterschied
-zwischen messen und schätzen. Dazu kommt, dass Accessibility auch Bewegungen
-meldet, die keine Züge sind — fremde Werkzeuge, die App selbst, OpenZonrs eigene
-Platzierung —, sodass dieselbe Abfrage nicht nur für das Ende, sondern für die
-Korrektheit gebraucht wird.
+**The decision was for `CGEventTap`, and specifically because of a single
+row in the table: the release.** The tap reports it as an event.
+Accessibility doesn't report it at all — there, the mouse button has to be
+polled, 60 times per second, for as long as the drag lasts
+(`AXMovedDragTracker.startPolling`). For a feature whose whole point is
+the moment of release, that's the difference between measuring and
+guessing. On top of that, Accessibility also reports movements that
+aren't drags at all — other tools, the app itself, OpenZonr's own
+placement — so the same polling is needed not just for the end but for
+correctness.
 
-Der zweite Weg bleibt im Code. Nicht als Reserve für den Fall, dass der Tap
-nicht funktioniert, sondern als Vergleichsmaßstab: Wenn jemand die Entscheidung
-später anzweifelt, kann er sie nachmessen statt nachlesen.
+The second path stays in the code. Not as a fallback in case the tap
+stops working, but as a benchmark: if someone questions the decision
+later, they can re-measure it instead of just reading about it.
 
 ### 2. Magnet
 
-`com.crowdcafe.windowmagnet` läuft auf diesem Rechner. In
-[`tracer-bullet.md`](tracer-bullet.md) war Magnet eine Messstörung; hier ist es
-ein Entwurfsproblem, weil beide Programme beim Ziehen ein Overlay einblenden und
-auf dieselben Ereignisse hören.
+`com.crowdcafe.windowmagnet` runs on this machine. In
+[`tracer-bullet.md`](tracer-bullet.md), Magnet was a measurement
+disturbance; here it's a design problem, because both programs show an
+overlay while dragging and listen to the same events.
 
-**OpenZonr erkennt es und sagt es. Mehr nicht.** `CompetingWindowManagers` kennt
-15 Bundle-Kennungen, meldet Treffer im Menü und unterscheidet dabei, ob das
-andere Programm ebenfalls beim Ziehen ein Overlay zeigt (Magnet, Rectangle,
-BetterSnapTool …) oder nur dieselbe API benutzt (AltTab, Bartender …). Das Erste
-ist ein Konflikt um dieselbe Geste, das Zweite bloß Nachbarschaft.
+**OpenZonr detects it and says so. Nothing more.**
+`CompetingWindowManagers` knows 15 bundle identifiers, reports a match in
+the menu, and distinguishes whether the other program also shows an
+overlay while dragging (Magnet, Rectangle, BetterSnapTool …) or merely
+uses the same API (AltTab, Bartender …). The former is a conflict over the
+same gesture, the latter is just proximity.
 
-Verworfen wurden:
+Rejected were:
 
-- **Um die Vorherrschaft kämpfen** — beim Loslassen ein zweites Mal setzen,
-  später als der andere. Das ist ein Wettrennen ohne Ziellinie: wer zuletzt
-  schreibt, gewinnt, und beide Programme können jederzeit schneller werden. Der
-  Nutzer sähe ein Fenster, das nach dem Loslassen springt.
-- **Magnet beenden** — nicht die Aufgabe eines Fenstermanagers, fremde Programme
-  zu schließen.
-- **Stillschweigend abschalten** — dann täte OpenZonr beim Ziehen nichts, ohne
-  zu sagen, warum. Genau die Klasse Fehler, an der dieses Projekt schon dreimal
-  bezahlt hat.
+- **Fighting for supremacy** — setting the placement a second time on
+  release, later than the other program. That's a race with no finish
+  line: whoever writes last wins, and both programs can always get
+  faster. The user would see a window that jumps after release.
+- **Quitting Magnet** — not a window manager's job to close other
+  programs.
+- **Silently disabling itself** — then OpenZonr would do nothing while
+  dragging, without saying why. Exactly the class of bug this project has
+  already paid for three times.
 
-Die Warnung lässt sich über `defaults.dropzones.warnAboutCompetingManagers`
-abstellen; sie schaltet das Ziehen nicht ab. Damit ist Punkt 11 aus
-[`offene-fragen.md`](offene-fragen.md) für den Zieh-Fall beantwortet.
+The warning can be turned off via
+`defaults.dropzones.warnAboutCompetingManagers`; it doesn't disable
+dragging. That answers point 11 from
+[`offene-fragen.md`](offene-fragen.md) for the drag case.
 
 ---
 
-## Was gemessen ist und was nicht
+## What is measured and what isn't
 
-| Gegenstand | Stand | Begründung |
+| Item | Status | Reasoning |
 |---|---|---|
-| Zuordnung Zeiger → Display → Zone | **Bewiesen**, headless | 10 Tests in `DropzoneMapTests`, inklusive der echten Anordnung 5120×1440 mit 1920×1080 darüber |
-| Überlappende Zonen: kleinere gewinnt | **Bewiesen**, headless | ohne diese Regel wären die Hälften unter einer Fokuszone per Maus unerreichbar |
-| Geteilte Kante gehört genau einer Zone | **Bewiesen**, headless | links/unten inklusiv, rechts/oben exklusiv |
-| Gleiche Fläche → deterministische Wahl | **Bewiesen**, headless | nach Display- und Zonenkennung, nie nach Array-Reihenfolge |
-| Zonen bleiben in einer Lücke sichtbar | **Bewiesen**, headless | das Display entscheidet, nicht die getroffene Zone |
-| Overlay-Entscheidung (zeigen/verstecken) | **Bewiesen**, headless | `DropzoneOverlayPlanTests` |
-| Unterdrückung per ⌥ (`showsUnless`-Form) | **Bewiesen**, headless | `DropzoneActivationTests`, inklusive „⌘ unterdrückt bei `showsUnless(.option)` nicht" |
-| Einschalter per ⌘ (`showsWhile`-Form, neue Vorgabe) | **Bewiesen**, headless | `DropzoneActivationTests`; ohne ⌘ liefert die Aktivierung `awaitingModifier(.command)` mit deutschem Grund |
-| Migration alter Konfigurationen (`suppressionModifier` → `showsUnless`) | **Bewiesen**, headless | `DropzoneSettingsDecodingTests`, mit Vorrangregel für gleichzeitig vorhandene alte und neue Schlüssel |
-| Trefferprüfung auf der Anheft-Marke | **Bewiesen**, headless | `DropzonePinBadgeTests`, samt Invariante „Marke schluckt nie die ganze Zone" über Zonengrößen von 60 bis 4000 Punkten |
-| Trefferprüfung auf dem Zoom-Knopf | **Bewiesen**, headless | `ZoomButtonHitTests`; drei-wertig (`hit`/`missed`/`buttonUnavailable`), damit fehlendes `AXZoomButton` nicht mit „daneben" verwechselt wird |
-| Marken-Pfad umgeht den `offerRule`-Schalter | **Bewiesen**, headless | `DropRuleOfferPinTests`; sonst würde bei ausgeschaltetem Panel jede Marke stumm nichts tun |
-| Mindeststrecke vor dem Einblenden | **Bewiesen**, headless | verhindert Flackern beim bloßen Anklicken |
-| Fensterzug vs. Inhaltszug (#37): Klassifikator und Zustandsmaschine | **Bewiesen**, headless | `WindowMoveEvidenceTests` (Größe unverändert und Rahmen folgt dem Zeiger → `moved`; Inhaltszug, Zittern, Gegenrichtung, Quer-Verschiebung → `notMoved`; Kantenzug → `resized`; Grenzwerte von `minimumTravel` und Größentoleranz) und `EventTapDragTrackerTests` (`contentDragNeverBegins`, `evidenceArrivingLaterStillBegins`, `resizeAndUnreadableFrameDoNotBegin`, `stallWithinBudgetStillBegins`, `samplingStopsAfterBudget`, `budgetRestartsWithEachPress`, `samplerRunsOffMainThread`); geprüft wird mit eingespielten Rahmen, nicht mit echten Apps |
-| Drücke, die nie ein `.began` werden, melden ihren Grund | **Bewiesen**, headless | `EventTapDragOutcomeTests`; `onOutcome` liefert `noWindowFound`, `noMovementEvidence(.budgetExhausted/.resizedInstead)`, `releasedBeforeEvidence` — höchstens einmal je Druck, nie für einen gewöhnlichen Klick, und ohne AX-Aufruf im Tap-Rückruf (#26) |
-| Satz im Menü für das Ergebnis eines Zugs | **Bewiesen**, headless | `DragOutcomeWordingTests`; jede Formulierung steht einzeln, weil ein falscher Satz die Fehlersuche in die falsche Richtung schickt |
-| **Ob die Zonen auf der Maschine des Betreuers mit ⌘ erscheinen** | **Nicht gemessen** | Der offene Fehler. Die Zeile „Letzter Zug" im Menü ist der Apparat, der die Antwort einsammeln soll — sie sagt, an welcher der vier Stellen es hängt. Bis jemand mit der Hand an der Maus einen Zug macht und den Satz abliest, ist nichts gemessen. |
-| Ableitung Ablegen → Regel | **Bewiesen**, headless | `DropRuleOfferTests`; zweimal Ablegen verdoppelt die Regel nicht |
-| Alte Konfiguration ohne `dropzones` lädt | **Bewiesen**, headless | sonst wäre nicht der Schlüssel kaputt, sondern die ganze Datei |
-| Pause schaltet auch das Ziehen ab | **Bewiesen**, headless | `DropzoneActivator.suspension`; die Entscheidung liegt an einer Stelle, nicht in Controller und Menütext getrennt |
-| Kein Angebot, wenn die Regel schon dorthin zeigt | **Bewiesen**, headless | `DropRuleOffer` fragt `QuickPin`, ob ein Ja etwas änderte; ein Test hält auch das Gegenstück fest (andere Zone → es wird gefragt) |
-| Zonengeometrie identisch mit dem Regelweg | **Bewiesen**, headless | `ZoneGeometry` ist die einzige Umrechnung, ein Test vergleicht beide Ergebnisse |
-| Ereignisrate und Verlust beider Wege | **Gemessen**, synthetisch | drei Läufe, Tabelle oben; 0 von 40 verloren |
-| Loslassen als Ereignis vs. Abfrage | **Gemessen** | der Grund für die Entscheidung |
-| Einrichtbarkeit beider Wege | **Gemessen** | beide gelingen, beide mit derselben Berechtigung |
-| **Latenz eines Ereignisses** | **Nicht gemessen** | Selbst gepostete `CGEvent`s werden erst bei der Zustellung gestempelt; die Differenz zu `mach_absolute_time()` ist nicht positiv und wird deshalb als „nicht messbar" gemeldet statt als 0,0 ms. Accessibility-Benachrichtigungen tragen überhaupt keinen Zeitstempel — dort ist Latenz auch bei echten Zügen prinzipiell nicht messbar. |
-| **Ein echter Zug mit der Hand** | **Nicht gemessen** | Die Bedienungshilfen-Freigabe für `~/Applications/OpenZonr.app` liegt seit dem 29.08.2026 vor — daran liegt es also **nicht mehr**. Was fehlt, ist eine Hand an der Maus: ein Zug ist nicht automatisierbar, und synthetische Ereignisse belegen nur den Empfang, nicht die Bedienung. |
-| **Overlay auf dem Bildschirm** | **Nicht gemessen** | Zeichnen braucht ein sichtbares Fenster während eines echten Zugs — also dieselbe Hand, nicht dieselbe Freigabe. Die *Entscheidung*, was gezeichnet wird, ist getestet; das Zeichnen selbst ist absichtlich dünn gehalten. |
-| **Verhalten mit laufendem Magnet im Zug** | **Nicht gemessen** | Setzt einen echten Zug voraus. Die Erkennung ist getestet, das Verhalten bei Konflikt ist entworfen und begründet, nicht beobachtet. |
-| **Ruhe der Hervorhebung auf einer Zonenkante** | **Nicht gemessen** | Die Zuordnung ist eindeutig, aber zustandslos: auf einer Kante kippt die Hervorhebung bei einem Punkt Zittern. Ob das im Gebrauch stört und welche Totzone richtig wäre, ist ohne echten Zug nicht zu beurteilen — deshalb ist keine Hysterese gebaut, sondern Punkt 13 in [`offene-fragen.md`](offene-fragen.md) eröffnet, samt der Falle, in die ein erster Versuch dazu bereits gelaufen ist. |
-| **Platzierung nach dem Ablegen** | **Nicht gemessen für das Ablegen**, aber für denselben Code | Der Drop ruft `WatchEngine.place(dropped:application:into:)` auf, das die private `place(…)` mit `rule: nil` benutzt — dieselbe Funktion, deren Platzierung in [`tracer-bullet.md`](tracer-bullet.md) inzwischen auch bei laufender App gemessen ist, samt eines Falls, in dem Outlook sich beim ersten Schreiben wehrt und ein zweiter Versuch nötig ist. |
-| **Angebotspanel im Betrieb** | **Nicht gemessen** | Erscheint nur nach einem echten Ablegen. Dass es den Fokus nicht stiehlt, folgt aus `.nonactivatingPanel`; belegt ist es nicht. Seit Issue #23 ist die Vorgabe ohnehin *aus* — der Weg bleibt nur, weil er ohne zusätzlichen Zustand verlässlich ist. |
-| **Auffindbarkeit der Anheft-Marke** | **Nicht gemessen** | Ob eine 24-Punkt-Marke oben rechts einer Zone im Gebrauch als *hier festhalten* verstanden wird — oder ob sie zwischen Titel­leisten und Fenster­rand unauffällig verschwindet — braucht eine Hand an der Maus und mehrere Nutzer. Was headless prüfbar ist (sitzt sie in der Ecke, deckt sie nie die ganze Zone ab), ist geprüft. |
-| **Verhalten von ⌘-Ziehen mit der Hand** | **Nicht gemessen** | Ob es angenehm ist, ⌘ über die Dauer eines Zugs zu halten, und ob die Umkehrung „nichts drücken heißt: keine Zonen" für den Nutzer stimmig ist, ist ohne echten Zug nicht zu beurteilen. Was gemessen ist, ist der Preis: ⌘-Ziehen bringt heute schon Hintergrundfenster nicht nach vorn, und diese Nebenwirkung wandert mit. |
-| **Doppelte Menüs am grünen Knopf** | **Nicht gemessen für alle Apps** | Gemessen sind TextEdit und Safari (kein App-Menü auf Rechtsklick am Zoom-Knopf, Positivkontrolle bestanden). Für **alle anderen Apps** ist es nicht gemessen. Der Tap ist `.listenOnly` und kann nichts schlucken — zeigt eine App dort doch selbst ein Menü, erscheinen zwei. Ein Ausweichweg wird erst gebaut, wenn ein Gegenbeispiel gemessen ist. |
-| **Erscheinen und Bedienbarkeit des Menüs am Bildschirm** | **Nicht gemessen** | Ob das `NSMenu` an der berechneten Position aufgeht, ob es die richtigen Zonen zeigt und ob der ⌥-Zusatz beim *Klick* korrekt gelesen wird, braucht eine Hand an der Maus — headless nicht prüfbar. Zonenermittlung und Trefferprüfung sind headless getestet, die AppKit-Anzeige nicht. |
-| **Verhalten auf Fenstern ohne `kAXZoomButton`** | **Gemessen für ein Finder-Fenster** | Ein Finder-Fenster lieferte kein `AXZoomButton`. Der Code trennt den Fall (`ZoomButtonLookup.Result.zoomButtonUnavailable`) und behandelt ihn **still**: das Attribut fehlt für das ganze Fenster, jeder beiläufige Rechtsklick würde sonst eine Meldung erzeugen. Ob **jedes** Finder-Fenster (und andere AXScrollArea-artige Fenster) es genauso hält, ist nicht gemessen. |
-| **Systemmenü beim Schweben mit eingeschalteter macOS-Fensteranordnung** | **Nicht gemessen** | Auf dieser Maschine ist `EnableTilingByEdgeDrag = 0`. Ob das Schweben-Menü der macOS-Fensteranordnung mit dem Rechtsklick-Menü kollidiert (verschiedene Gesten, aber am selben Pixel), braucht eine Maschine mit eingeschalteter Fensteranordnung und eine Positivkontrolle für das Schweben-Menü — beides fehlt. |
-| **Fensterzug vs. Inhaltszug (#37) in echten Apps** | **Gemessen für TextEdit, Finder, Chrome, VS Code, Safari (synthetische Ereignisse), sonst Nicht gemessen** | In TextEdit lösen Titelleistenzüge `began` nach 143 bis 175 ms aus, Textzüge, Zug am Fensterrand und Größenänderung an Kante oder Ecke lösen nichts aus (Tabelle unter „Manuelle Prüfung #37“). Titelleistenzüge mit und ohne ⌘ lösen in allen fünf `began` nach 123 bis 175 ms aus, Inhaltszüge (auch ein Datei-Zug im Finder) lösen nichts aus. Nicht gemessen: Terminal (nur der Titelleistenzug vom 19.09.), Xcode, Textmarkierung in echtem Text, Ctrl+Cmd-Zug im Fensterinhalt, Bildschirmrand und zwei Displays, das Overlay selbst und jede Bedienung mit der Hand. Apps, die nicht probiert wurden, werden nie als bewiesen geführt. |
+| Pointer → display → zone mapping | **Proven**, headless | 10 tests in `DropzoneMapTests`, including the real 5120×1440 arrangement with a 1920×1080 display stacked above it |
+| Overlapping zones: smaller wins | **Proven**, headless | without this rule, the halves under a focus zone would be unreachable by mouse |
+| A shared edge belongs to exactly one zone | **Proven**, headless | left/bottom inclusive, right/top exclusive |
+| Equal area → deterministic choice | **Proven**, headless | by display and zone identifier, never by array order |
+| Zones stay visible in a gap | **Proven**, headless | the display decides, not the hit zone |
+| Overlay decision (show/hide) | **Proven**, headless | `DropzoneOverlayPlanTests` |
+| Suppression via ⌥ (`showsUnless` form) | **Proven**, headless | `DropzoneActivationTests`, including "⌘ does not suppress under `showsUnless(.option)`" |
+| Enabling via ⌘ (`showsWhile` form, new default) | **Proven**, headless | `DropzoneActivationTests`; without ⌘, activation returns `awaitingModifier(.command)` with a German-language reason |
+| Migration of old configurations (`suppressionModifier` → `showsUnless`) | **Proven**, headless | `DropzoneSettingsDecodingTests`, with a precedence rule for old and new keys present at once |
+| Hit test on the pin badge | **Proven**, headless | `DropzonePinBadgeTests`, including the invariant "the badge never swallows the whole zone" across zone sizes from 60 to 4000 points |
+| Hit test on the zoom button | **Proven**, headless | `ZoomButtonHitTests`; three-valued (`hit`/`missed`/`buttonUnavailable`), so a missing `AXZoomButton` isn't confused with "missed" |
+| The badge path bypasses the `offerRule` switch | **Proven**, headless | `DropRuleOfferPinTests`; otherwise, with the panel switched off, every badge would silently do nothing |
+| Minimum travel distance before showing | **Proven**, headless | prevents flicker on a mere click |
+| Window drag vs. content drag (#37): classifier and state machine | **Proven**, headless | `WindowMoveEvidenceTests` (unchanged size and frame follows the pointer → `moved`; content drag, jitter, opposite direction, cross-axis shift → `notMoved`; edge drag → `resized`; boundary values of `minimumTravel` and size tolerance) and `EventTapDragTrackerTests` (`contentDragNeverBegins`, `evidenceArrivingLaterStillBegins`, `resizeAndUnreadableFrameDoNotBegin`, `stallWithinBudgetStillBegins`, `samplingStopsAfterBudget`, `budgetRestartsWithEachPress`, `samplerRunsOffMainThread`); tested with replayed frames, not with real apps |
+| Presses that never become a `.began` report their reason | **Proven**, headless | `EventTapDragOutcomeTests`; `onOutcome` delivers `noWindowFound`, `noMovementEvidence(.budgetExhausted/.resizedInstead)`, `releasedBeforeEvidence` — at most once per press, never for an ordinary click, and without an AX call in the tap callback (#26) |
+| Menu sentence for the outcome of a drag | **Proven**, headless | `DragOutcomeWordingTests`; every wording is tested individually, because a wrong sentence sends troubleshooting in the wrong direction |
+| **Whether the zones appear with ⌘ on the maintainer's machine** | **Not measured** | The open bug. The "Last drag" line in the menu is the apparatus meant to collect the answer — it says which of the four spots it's stuck at. Until someone makes a drag with a hand on the mouse and reads off the sentence, nothing is measured. |
+| Deriving drop → rule | **Proven**, headless | `DropRuleOfferTests`; dropping twice doesn't duplicate the rule |
+| An old configuration without `dropzones` loads | **Proven**, headless | otherwise it wouldn't just be the key that's broken, but the whole file |
+| Pausing also disables dragging | **Proven**, headless | `DropzoneActivator.suspension`; the decision lives in one place, not split between the controller and the menu text |
+| No offer when the rule already points there | **Proven**, headless | `DropRuleOffer` asks `QuickPin` whether a yes would change anything; a test also covers the converse (different zone → it does ask) |
+| Zone geometry identical to the rule path | **Proven**, headless | `ZoneGeometry` is the only conversion, a test compares both results |
+| Event rate and loss of both paths | **Measured**, synthetic | three runs, table above; 0 of 40 lost |
+| Release as an event vs. polling | **Measured** | the reason for the decision |
+| Whether both paths can be set up | **Measured** | both succeed, both with the same permission |
+| **Latency of an event** | **Not measured** | Even self-posted `CGEvent`s are only timestamped on delivery; the difference against `mach_absolute_time()` is not positive and is therefore reported as "not measurable" rather than as 0.0 ms. Accessibility notifications carry no timestamp at all — there, latency is fundamentally not measurable even with real drags. |
+| **A real, hand-driven drag** | **Not measured** | The Accessibility permission for `~/Applications/OpenZonr.app` has been granted since 2026-08-29 — so that's **no longer** the reason. What's missing is a hand on the mouse: a drag can't be automated, and synthetic events only establish receipt, not usability. |
+| **Overlay on screen** | **Not measured** | Drawing needs a visible window during a real drag — so the same hand, not the same permission. The *decision* of what gets drawn is tested; the drawing itself is deliberately kept thin. |
+| **Behavior with Magnet running during a drag** | **Not measured** | Requires a real drag. Detection is tested; the behavior under conflict is designed and justified, not observed. |
+| **Stability of the highlight on a zone edge** | **Not measured** | The mapping is unambiguous but stateless: right on an edge, the highlight flips with a single point of jitter. Whether that's disruptive in use and what dead zone would be right can't be judged without a real drag — so no hysteresis was built; instead point 13 in [`offene-fragen.md`](offene-fragen.md) was opened, along with the pitfall a first attempt at this has already run into. |
+| **Placement after the drop** | **Not measured for the drop itself**, but for the same code | The drop calls `WatchEngine.place(dropped:application:into:)`, which uses the private `place(…)` with `rule: nil` — the same function whose placement is by now also measured against a running app in [`tracer-bullet.md`](tracer-bullet.md), including a case where Outlook resists the first write and a second attempt is needed. |
+| **The offer panel in actual use** | **Not measured** | Appears only after a real drop. That it doesn't steal focus follows from `.nonactivatingPanel`; it isn't established by observation. Since issue #23 the default is *off* anyway — the path only remains because it's reliable without extra state. |
+| **Discoverability of the pin badge** | **Not measured** | Whether a 24-point badge in a zone's top-right corner is understood in use as *hold here* — or whether it disappears unnoticed between title bars and window edges — needs a hand on the mouse and several users. What's checkable headless (does it sit in the corner, does it never cover the whole zone) is checked. |
+| **Behavior of ⌘-dragging by hand** | **Not measured** | Whether it's comfortable to hold ⌘ for the duration of a drag, and whether the reversal "pressing nothing means no zones" feels right to the user, can't be judged without a real drag. What is measured is the cost: ⌘-dragging already doesn't bring background windows to the front today, and that side effect carries over. |
+| **Duplicate menus at the green button** | **Not measured for all apps** | Measured are TextEdit and Safari (no app menu on right-click at the zoom button, positive control passed). For **all other apps** it is not measured. The tap is `.listenOnly` and can't swallow anything — if an app does show its own menu there, two appear. A workaround is only built once a counterexample is measured. |
+| **Appearance and usability of the on-screen menu** | **Not measured** | Whether the `NSMenu` opens at the computed position, whether it shows the right zones, and whether the ⌥ modifier is read correctly at the moment of *click* needs a hand on the mouse — not checkable headless. Zone lookup and hit testing are tested headless; the AppKit display is not. |
+| **Behavior on windows without `kAXZoomButton`** | **Measured for one Finder window** | A Finder window returned no `AXZoomButton`. The code separates the case (`ZoomButtonLookup.Result.zoomButtonUnavailable`) and handles it **silently**: the attribute is missing for the whole window, and every incidental right-click would otherwise produce a message. Whether **every** Finder window (and other AXScrollArea-like windows) behaves the same way is not measured. |
+| **System hover menu with macOS window tiling enabled** | **Not measured** | On this machine `EnableTilingByEdgeDrag = 0`. Whether macOS window tiling's hover menu collides with the right-click menu (different gestures, but at the same pixel) needs a machine with tiling enabled and a positive control for the hover menu — both are missing. |
+| **Window drag vs. content drag (#37) in real apps** | **Measured for TextEdit, Finder, Chrome, VS Code, Safari (synthetic events), otherwise Not measured** | In TextEdit, title-bar drags trigger `began` after 143 to 175 ms; text drags, drags at the window edge, and resizing at an edge or corner trigger nothing (table under "Manual check #37"). Title-bar drags with and without ⌘ trigger `began` in all five apps after 123 to 175 ms; content drags (including a file drag in Finder) trigger nothing. Not measured: Terminal (only the title-bar drag from 09-19), Xcode, text selection in real text, Ctrl+Cmd drag on window content, the screen edge and two displays, the overlay itself, and any hand-driven use. Apps that weren't tried are never carried as proven. |
 
-Kurz: Alles, was ohne einen echten Zug beweisbar ist, ist bewiesen. Alles, was
-einen braucht, ist als ungemessen ausgewiesen. Der Schnitt zwischen beidem war
-die eigentliche Entwurfsarbeit.
+In short: everything provable without a real drag is proven. Everything
+that needs one is marked as unmeasured. The line between the two was the
+actual design work.
 
-> **Stand 29.08.2026:** Die Bedienungshilfen-Freigabe ist erteilt, und die
-> Platzierung ist bei laufender App gemessen ([`tracer-bullet.md`](tracer-bullet.md)).
-> Der verbleibende Rest dieser Tabelle hängt damit **nicht mehr an einer
-> Berechtigung, sondern an einer Hand an der Maus**. Wer die Zeilen anders liest
-> und in den Systemeinstellungen nach einem fehlenden Haken sucht, sucht
-> vergeblich.
+> **As of 2026-08-29:** The Accessibility permission has been granted, and
+> placement against a running app is measured
+> ([`tracer-bullet.md`](tracer-bullet.md)). The remaining rows in this
+> table now depend **no longer on a permission, but on a hand on the
+> mouse**. Anyone who reads the rows otherwise and goes looking in System
+> Settings for a missing checkbox will search in vain.
 
-### Manuelle Prüfung #37
+### Manual check #37
 
-Unit-Tests belegen den Klassifikator und die Zustandsmaschine mit eingespielten
-Rahmen. Sie belegen nicht, wie echte Apps den AX-Rahmen während eines Zugs
-melden, und nicht, dass Inhaltsgesten den Rahmen wirklich in Ruhe lassen. Das
-ist bis auf die TextEdit-Zeilen unten **Nicht gemessen** und von Hand
-abzuarbeiten.
+Unit tests establish the classifier and the state machine with replayed
+frames. They don't establish how real apps report the AX frame during a
+drag, nor that content gestures really leave the frame alone. Except for
+the TextEdit rows below, this is **Not measured** and has to be worked
+through by hand.
 
-**Vorbereitung.** `swift build`, App starten, Bedienungshilfen erteilt,
-Dropzones an. `openzonr dragprobe` bestätigt, dass der Tap existiert.
-Aktivierung in beiden Formen prüfen: Vorgabe `showsWhile(.command)` und Altform
+**Setup.** `swift build`, launch the app, Accessibility granted, dropzones
+on. `openzonr dragprobe` confirms that the tap exists. Check activation in
+both forms: the default `showsWhile(.command)` and the old form
 `showsUnless(.option)`.
 
-**Stellgrößen, falls ein Positivfall scheitert.**
+**Tunable parameters, in case a positive case fails.**
 `WindowMoveEvidence.minimumTravel` (6 pt), `WindowMoveEvidence.minimumAlignment`
-(0,5, Kosinus zwischen Fensterverschiebung und Zeigerweg) und
-`EventTapDragTracker.frameSampleBudget` (2500 ms Wanduhr ab der ersten
-Rahmenabfrage eines Drucks, Uhr injizierbar). Eine gescheiterte Positivprobe
-wird als Folge-Issue geführt, die Negativfälle werden dafür nicht aufgeweicht.
+(0.5, cosine between window displacement and pointer travel), and
+`EventTapDragTracker.frameSampleBudget` (2500 ms wall-clock from the first
+frame query of a press, clock injectable). A failed positive probe is
+tracked as a follow-up issue; the negative cases are not loosened in
+exchange.
 
-**Negativfälle.** Jeweils: kein Overlay, kein Platzieren und kein Anheften beim
-Loslassen über einer Zone oder Marke.
+**Negative cases.** In each: no overlay, no placement, and no pinning on
+release over a zone or badge.
 
-1. Finder: Datei aus einem Fenster auf Zone/Marke ziehen; Gummiband in der
-   Symbolansicht; Scrollbalken des Fensters.
-2. TextEdit: Text über mehr als 3 pt markieren und über einer Zone loslassen;
-   bereits markierten Text ziehen; vertikaler Scrollbalken.
-3. Safari: Seitentext markieren; Link ziehen; Bild ziehen; Scrollbalken der
-   Seite, auch auf einer langen Seite.
-4. Terminal: Text markieren; Scroller ziehen.
-5. Chrome: Seitentext markieren; Link ziehen; Scrollbalken.
-6. Preview oder Xcode / VS Code (Electron, eigene Titelleiste): Text im Editor
-   markieren; Minimap oder Scrollbalken ziehen.
-7. Kanten- und Eckenzug zur Größenänderung in TextEdit und Safari
-   (Klassifikator: `resized`).
+1. Finder: drag a file out of a window onto a zone/badge; rubber-band
+   select in icon view; the window's scroll bar.
+2. TextEdit: select text over more than 3 pt and release over a zone; drag
+   already-selected text; the vertical scroll bar.
+3. Safari: select page text; drag a link; drag an image; the page's
+   scroll bar, including on a long page.
+4. Terminal: select text; drag the scroller.
+5. Chrome: select page text; drag a link; scroll bar.
+6. Preview or Xcode / VS Code (Electron, custom title bar): select text in
+   the editor; drag the minimap or scroll bar.
+7. Edge and corner drags to resize, in TextEdit and Safari (classifier:
+   `resized`).
 
-**Positivfälle.** Jeweils: Overlay in den ersten Momenten des Zugs, Platzieren
-beim Ablegen, Anheften beim Ablegen auf der Marke.
+**Positive cases.** In each: overlay in the first moments of the drag,
+placement on drop, pinning on drop over the badge.
 
-1. Titelleistenzug in TextEdit, Finder, Safari (native Leiste), Terminal.
-2. Leerer Bereich der Chrome-/Safari-Werkzeugleiste, der das Fenster bewegt;
-   Chrome-Tab-Zug bei Fenster mit einem Tab.
-3. VS Code und Xcode, eigene Titelleiste. Electron-Apps melden den Rahmen
-   womöglich spät: die Verzögerung bis zum Overlay notieren.
-4. Fensterzug per Hilfstaste: Ctrl+Cmd + Zug im Fensterinhalt (Systemgeste)
-   sowie die eingestellte Aktivierungstaste bei einem Titelleistenzug (beide
-   Formen, siehe Vorbereitung).
-5. Fenster bis ganz nach oben (Menüleisten-Klemme) und über zwei Displays
-   ziehen: Overlay bleibt, Ablegen platziert.
-6. **Am Bildschirmrand geklemmt:** Fenster überwiegend senkrecht nach oben in
-   die Menüleiste ziehen, bei kaum waagerechter Bewegung. **Bekannte Grenze,
-   zu messen:** Der Klassifikator verlangt einen Kosinus von mindestens 0,5
-   zwischen Fensterverschiebung und Zeigerweg. Bleibt das Fenster oben
-   stehen, während der Zeiger weiterläuft, kann der Wert darunter fallen und
-   der Beleg schlägt fehl. Der Ausgang ist dann **kein Overlay; das Fenster
-   bewegt sich normal**. Ob und bei welchen Apps das vorkommt, ist offen.
-7. Langsame App (Beachball oder träges AX): Das Overlay darf später kommen,
-   aber weder Maus noch Tap einfrieren. Im Protokoll (`Log.detail`) darf die
-   Zeile „Ereignis-Tap wegen Timeout kurz abgeschaltet; Zug wird fortgesetzt.“
-   nicht häufiger erscheinen als vorher.
+1. Title-bar drag in TextEdit, Finder, Safari (native bar), Terminal.
+2. An empty area of the Chrome/Safari toolbar that moves the window;
+   Chrome tab drag on a window with a single tab.
+3. VS Code and Xcode, custom title bar. Electron apps may report the frame
+   late: note the delay until the overlay appears.
+4. Window drag via modifier key: Ctrl+Cmd + drag on window content (system
+   gesture), as well as the configured activation key on a title-bar drag
+   (both forms, see setup).
+5. Drag a window all the way to the top (menu-bar clamp) and across two
+   displays: overlay stays, drop places.
+6. **Clamped at the screen edge:** drag a window mostly straight up into
+   the menu bar, with barely any horizontal movement. **Known limit, to be
+   measured:** the classifier requires a cosine of at least 0.5 between
+   window displacement and pointer travel. If the window stays put at the
+   top while the pointer keeps moving, the value can drop below that and
+   the evidence check fails. The outcome then is **no overlay; the window
+   moves normally**. Whether and for which apps this happens is open.
+7. Slow app (spinning beachball or sluggish AX): the overlay is allowed to
+   come later, but neither the mouse nor the tap may freeze. In the log
+   (`Log.detail`), the line „Ereignis-Tap wegen Timeout kurz abgeschaltet;
+   Zug wird fortgesetzt." ("Event tap briefly disabled due to timeout;
+   drag continues.") must not appear more often than before.
 
-**Ergebnisse.** Gemessen sind TextEdit (19.09.2026) sowie Finder, Chrome, VS Code
-und Safari (22.09.2026); alle anderen Apps und Fälle sind offen. Die Messungen
-liefen mit dem echten `EventTapDragTracker` gegen echte Fenster, aber mit
-**synthetischen** Mausereignissen
-(`CGEvent`, kein Mensch an der Maus), ohne die App und ohne Overlay. Gemessen
-sind also die Tracker-Ereignisse (`began`/`moved`/`ended`) und der AX-Rahmen
-des Fensters vor und nach dem Zug, nicht das Zeichnen des Overlays. Die
-„Verzögerung“ ist die Zeit von der ersten Mausbewegung bis `began`.
+**Results.** Measured are TextEdit (2026-09-19), as well as Finder,
+Chrome, VS Code, and Safari (2026-09-22); all other apps and cases remain
+open. The measurements ran the real `EventTapDragTracker` against real
+windows, but with **synthetic** mouse events (`CGEvent`, no human on the
+mouse), without the app and without the overlay. So what's measured is the
+tracker's events (`began`/`moved`/`ended`) and the window's AX frame
+before and after the drag, not the drawing of the overlay. The "delay" is
+the time from the first mouse movement to `began`.
 
-Rechner: macOS 26.6.2, Bildschirm C49RG9x (5120×1440).
+Machine: macOS 26.6.2, display C49RG9x (5120×1440).
 
-Messung vom 22.09.2026 (jeweils ein neues, leeres Fenster; Zug 300 pt nach rechts
-und 60 pt nach unten, 40 Schritte; je ohne und mit ⌘ in den Ereignissen; die
-ziehbare Stelle der Titelleiste wurde pro App zuerst ohne ⌘ gesucht):
+Measurement from 2026-09-22 (each with a new, empty window; a drag of
+300 pt right and 60 pt down, 40 steps; each without and with ⌘ in the
+events; the draggable spot on the title bar was located per app first
+without ⌘):
 
-| Fall | App | Version | Ergebnis | Verzögerung bis `began` |
+| Case | App | Version | Result | Delay until `began` |
 |---|---|---|---|---|
-| Titelleiste ohne / mit ⌘ | Finder | 26.4 | bestanden, beide Male `began`, `moved`, `ended`, Fenster bewegt | 128 / 128 ms |
-| Datei „Testdatei.txt“ im Symbolfenster ziehen, ohne / mit ⌘ | Finder | 26.4 | bestanden, keine Ereignisse, Fenster unverändert | – |
-| Titelleiste ohne / mit ⌘ | Chrome | 153.0.8010.53 | bestanden | 125 / 135 ms |
-| Fenstermitte ziehen (leere Seite), ohne / mit ⌘ | Chrome | 153.0.8010.53 | bestanden, keine Ereignisse | – |
-| Titelleiste ohne / mit ⌘ (eigene Titelleiste, Electron) | VS Code | 1.138.0 | bestanden | 136 / 139 ms |
-| Fenstermitte ziehen (Willkommensseite), ohne / mit ⌘ | VS Code | 1.138.0 | bestanden, keine Ereignisse | – |
-| Titelleiste ohne / mit ⌘ (ziehbare Stelle bei 15 % der Breite) | Safari | 26.6.2 | bestanden | 129 / 123 ms |
-| Fenstermitte ziehen (Startseite), ohne / mit ⌘ | Safari | 26.6.2 | bestanden, keine Ereignisse | – |
+| Title bar without / with ⌘ | Finder | 26.4 | passed, `began`, `moved`, `ended` both times, window moved | 128 / 128 ms |
+| Dragging file „Testdatei.txt" in the icon window, without / with ⌘ | Finder | 26.4 | passed, no events, window unchanged | – |
+| Title bar without / with ⌘ | Chrome | 153.0.8010.53 | passed | 125 / 135 ms |
+| Dragging the window center (blank page), without / with ⌘ | Chrome | 153.0.8010.53 | passed, no events | – |
+| Title bar without / with ⌘ (custom title bar, Electron) | VS Code | 1.138.0 | passed | 136 / 139 ms |
+| Dragging the window center (welcome page), without / with ⌘ | VS Code | 1.138.0 | passed, no events | – |
+| Title bar without / with ⌘ (draggable spot at 15 % of width) | Safari | 26.6.2 | passed | 129 / 123 ms |
+| Dragging the window center (start page), without / with ⌘ | Safari | 26.6.2 | passed, no events | – |
 
-Das Ziehen von Inhalt in Chrome, VS Code und Safari geschah auf leeren Seiten, nicht
-auf markierbarem Text; belegt ist damit, dass ein Zug im Inhalt, bei dem sich das
-Fenster nicht bewegt, nie `began` auslöst, nicht die Textmarkierung selbst. Der
-Terminal-Zug (19.09.) wurde nicht wiederholt.
+Dragging content in Chrome, VS Code, and Safari happened on blank pages,
+not on selectable text; what's established is that a content drag in
+which the window doesn't move never triggers `began`, not text selection
+itself. The Terminal drag (09-19) was not repeated.
 
-| Fall (Nr.) | App | Version | Bestanden / nicht bestanden | Gemessene Verzögerung bis `began` |
+| Case (no.) | App | Version | Passed / not passed | Measured delay until `began` |
 |---|---|---|---|---|
-| Positiv 1, Titelleiste schnell, 300 pt | TextEdit | 1.20 | bestanden (`began`, `moved`, `ended`, Fenster bewegt) | 175 ms |
-| Positiv 1, Titelleiste langsam, 200 pt (30 ms je Schritt) | TextEdit | 1.20 | bestanden | 153 ms |
-| Positiv 1, Titelleiste rein senkrecht, 120 pt | TextEdit | 1.20 | bestanden | 143 ms |
-| Positiv 1, Titelleiste kurz, 20 pt in etwa 80 ms | TextEdit | 1.20 | **nicht erkannt**: Fenster bewegt, aber kein `began` | endet vor der ersten Rahmenantwort |
-| Negativ 2, Text markieren, 300 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Fenster unverändert) | – |
-| Negativ 2, senkrecht im Text ziehen, 250 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Fenster unverändert) | – |
-| Negativ 2, Zug am rechten Fensterrand (7 pt vom Rand), 200 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Fenster unverändert); **ob dort ein Scrollbalken getroffen wurde, ist nicht geprüft** | – |
-| Negativ 7, Eckenzug unten rechts, 80 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Größe geändert) | – |
-| Negativ 7, Kantenzug rechts, 80 pt | TextEdit | 1.20 | bestanden (keine Ereignisse, Größe geändert) | – |
+| Positive 1, title bar fast, 300 pt | TextEdit | 1.20 | passed (`began`, `moved`, `ended`, window moved) | 175 ms |
+| Positive 1, title bar slow, 200 pt (30 ms per step) | TextEdit | 1.20 | passed | 153 ms |
+| Positive 1, title bar purely vertical, 120 pt | TextEdit | 1.20 | passed | 143 ms |
+| Positive 1, title bar short, 20 pt in about 80 ms | TextEdit | 1.20 | **not detected**: window moved, but no `began` | ends before the first frame response |
+| Negative 2, select text, 300 pt | TextEdit | 1.20 | passed (no events, window unchanged) | – |
+| Negative 2, drag vertically in text, 250 pt | TextEdit | 1.20 | passed (no events, window unchanged) | – |
+| Negative 2, drag at the right window edge (7 pt from the edge), 200 pt | TextEdit | 1.20 | passed (no events, window unchanged); **whether a scroll bar was hit there is not checked** | – |
+| Negative 7, corner drag bottom right, 80 pt | TextEdit | 1.20 | passed (no events, size changed) | – |
+| Negative 7, edge drag right, 80 pt | TextEdit | 1.20 | passed (no events, size changed) | – |
 
-Der kurze, schnelle Zug zeigt die Kehrseite des Belegs: Er braucht eine
-AX-Rahmenantwort, und die dauert hier etwa 140 bis 175 ms. Eine
-Titelleistenbewegung, die vorher endet, bietet keine Zonen an. Für einen
-Zonenzug ist das unkritisch, es ist aber eine Folge der Entscheidung
-„geschlossen statt offen“.
+The short, fast drag shows the flip side of the evidence check: it needs
+an AX frame response, and here that takes about 140 to 175 ms. A
+title-bar movement that ends before that offers no zones. For a dropzone
+drag that's not critical, but it is a consequence of the "closed instead
+of open" decision.
 
-**Bekannte Grenzen.**
+**Known limits.**
 
-- Ist der AX-Rahmen nicht lesbar, schlägt der Beleg geschlossen fehl: kein
-  Overlay, kein Ablegen (Entscheidung „geschlossen statt offen“).
-- Kanten- und Eckenzüge zählen als Größenänderung und bieten nie Zonen an.
-- Apps, deren Fenster sich erst nach dem Zeitbudget (2,5 s) zu bewegen beginnt,
-  werden übersehen.
-- Fenster am Rand, die nur auf einer Achse folgen, können unter die
-  Richtungsschwelle fallen (Positivfall 6).
-- Alle Schwellen sind Faustwerte, bis die Liste abgearbeitet ist.
+- If the AX frame isn't readable, the evidence check fails closed: no
+  overlay, no drop (the "closed instead of open" decision).
+- Edge and corner drags count as resizing and never offer zones.
+- Apps whose windows only start moving after the time budget (2.5 s) are
+  missed.
+- Windows at the edge that only follow on one axis can fall below the
+  direction threshold (positive case 6).
+- All thresholds are rule-of-thumb values until the list has been worked
+  through.
 
 ---
 
-## Aufbau
+## Structure
 
 ```
 Sources/OpenZonrCore/
-  Placement/ZoneGeometry.swift        Zone → Punkte. Die einzige Umrechnung.
-  Dropzone/DropzoneMap.swift          Zonen des Profils, Zone unter dem Zeiger.
-  Dropzone/DropzoneSettings.swift     Einstellungen, Modifikator, Aktivierung.
-  Dropzone/DropzoneOverlayPlan.swift  Was das Overlay zeigen soll.
-  Dropzone/DropRuleOffer.swift        Ablegen → QuickPin.Request.
-  Dropzone/ZoomButtonHit.swift        Trefferprüfung am grünen Knopf (Issue #27).
+  Placement/ZoneGeometry.swift        Zone → points. The only conversion.
+  Dropzone/DropzoneMap.swift          Zones of the profile, zone under the pointer.
+  Dropzone/DropzoneSettings.swift     Settings, modifier, activation.
+  Dropzone/DropzoneOverlayPlan.swift  What the overlay should show.
+  Dropzone/DropRuleOffer.swift        Drop → QuickPin.Request.
+  Dropzone/ZoomButtonHit.swift        Hit test at the green button (issue #27).
   Dropzone/CompetingWindowManagers.swift
-  Dropzone/WindowMoveEvidence.swift   Fensterzug oder Inhaltszug? Reiner Klassifikator (#37).
+  Dropzone/WindowMoveEvidence.swift   Window drag or content drag? Pure classifier (#37).
 
 Sources/OpenZonrMac/
-  Dropzone/WindowDragTracker.swift    Gemeinsame Typen beider Wege.
-  Dropzone/EventTapDragTracker.swift  Der gewählte Weg. Seit #27 auch rightMouseDown.
-  Dropzone/AXMovedDragTracker.swift   Der Vergleichsmaßstab.
-  Dropzone/DragMeasurement.swift      Die Statistik der Messung.
-  Dropzone/ZoomButtonLookup.swift     AX-Abfrage nach Fenster und Zoom-Knopf.
+  Dropzone/WindowDragTracker.swift    Shared types of both paths.
+  Dropzone/EventTapDragTracker.swift  The chosen path. Since #27 also rightMouseDown.
+  Dropzone/AXMovedDragTracker.swift   The comparison baseline.
+  Dropzone/DragMeasurement.swift      The statistics of the measurement.
+  Dropzone/ZoomButtonLookup.swift     AX query for window and zoom button.
   CommandLine/DragProbeCommand.swift  openzonr dragprobe.
 
 Sources/OpenZonrApp/
-  Dropzone/DropzoneController.swift   Verdrahtung, sonst nichts.
-  Dropzone/DropzoneOverlay.swift      Ein durchlässiges Fenster je Display.
-  Dropzone/DropOfferPanel.swift       „Immer hier öffnen?"
-  Dropzone/ZoomButtonMenu.swift       Rechtsklickmenü am grünen Knopf.
+  Dropzone/DropzoneController.swift   Wiring, nothing else.
+  Dropzone/DropzoneOverlay.swift      A transparent window per display.
+  Dropzone/DropOfferPanel.swift       „Immer hier öffnen?" ("Always open this app here?")
+  Dropzone/ZoomButtonMenu.swift       Right-click menu at the green button.
 ```
 
-Die Trennung ist die Antwort auf die fehlende Berechtigung: In `OpenZonrCore`
-steht nichts, was ein Ereignis braucht, und deshalb ist dort alles prüfbar.
+This separation is the answer to the missing permission: nothing in
+`OpenZonrCore` needs an event, and that's why everything there is
+testable.
 
 ---
 
-## Entscheidungen, die nicht offensichtlich sind
+## Decisions that aren't obvious
 
-**Die Pause hält auch das Ziehen an.** Der Menüpunkt heißt „Fenster automatisch
-platzieren" (bis zum Menü-Umbau: „Platzierung pausieren"), das Protokoll sagt
-im ausgeschalteten Zustand „es wird nichts mehr platziert" — ein Ablegen,
-das trotzdem platziert, macht beides zur Lüge. Dass eine ausdrückliche
-Mausgeste weiterläuft, während die Automatik ruht, wäre für sich genommen
-vertretbar; beides gleichzeitig zu behaupten nicht. Für die strengere Variante
-spricht der übliche Anlass zu pausieren: ein zweiter Fenstermanager, der
-gegenhält — genau die Lage, in der ein zweites Overlay beim Ziehen am meisten
-stört. Während der Pause steht im Menü „Ziehen ist nicht aktiv: Die Platzierung
-ist pausiert", und `WatchEngine.place(dropped:)` verweigert zusätzlich von sich
-aus. Zwei Schlösser, weil das Versprechen der Engine gehört, die es gibt, und
-nicht einem Aufrufer, der daran denken muss. Entschieden wurde das erst in der
-Durchsicht zu PR #15; die erste Fassung hörte während der Pause weiter zu und
-sagte das Gegenteil.
+**Pausing also stops dragging.** The menu item is called „Fenster
+automatisch platzieren" ("Place windows automatically") (before the menu
+rework: „Platzierung pausieren", "Pause placement"), and the log says, in
+the off state, „es wird nichts mehr platziert" ("nothing is placed
+anymore") — a drop that still places would make both statements a lie.
+That an explicit mouse gesture keeps working while the automatic mode
+rests would be defensible on its own; claiming both at once is not. The
+usual reason to pause argues for the stricter variant: a second window
+manager fighting back — exactly the situation in which a second overlay
+while dragging is most disruptive. During the pause, the menu shows
+„Ziehen ist nicht aktiv: Die Platzierung ist pausiert" ("Dragging is not
+active: placement is paused"), and `WatchEngine.place(dropped:)`
+additionally refuses on its own. Two locks, because the promise belongs to
+the engine that makes it, not to a caller who has to remember it. This was
+only decided during the review of PR #15; the first version kept
+listening during the pause and said the opposite.
 
-**Gefragt wird nur, wenn eine Antwort etwas ändert.** Ob eine Regel schon auf
-diese Zone zeigt, entscheidet nicht das Angebot, sondern `QuickPin` selbst:
-`DropRuleOffer.request` lässt es die Konfiguration ableiten, die ein Ja erzeugen
-würde, und schweigt, wenn das die Konfiguration ist, die schon da ist. Ein
-eigener Vergleich wäre eine zweite Meinung über Regeln, und zwei Meinungen
-laufen auseinander. Ohne diese Prüfung führte das Ziehen einer bereits
-festgehaltenen App in ihre eigene Zone zur Frage, ein Ja in den Retarget-Zweig,
-zum Speichern einer unveränderten Datei und zu `Log.success` — eine
-Erfolgsmeldung ohne Wirkung. Derselbe Aufruf fängt außerdem den Fall ab, dass
-sich aus dem Ablegen überhaupt keine Regel schreiben ließe; dann wird gar nicht
-erst gefragt.
+**It only asks when an answer would change something.** Whether a rule
+already points at this zone is not decided by the offer itself but by
+`QuickPin`: `DropRuleOffer.request` has it derive the configuration a yes
+would produce, and stays silent when that's the configuration already
+there. A separate comparison would be a second opinion about rules, and
+two opinions drift apart. Without this check, dragging an already-pinned
+app into its own zone would lead to the prompt, a yes into the retarget
+branch, saving an unchanged file, and `Log.success` — a success message
+with no effect. The same call also catches the case where the drop
+couldn't produce a rule at all; then it never asks in the first place.
 
-**Ein unlesbarer Fensterrahmen wird nicht erfunden.** `place(dropped:)` ersetzte
-ihn zunächst durch `0×0 bei 0,0`, und dieser Wert wanderte unverändert in die
-Ablehnungsmeldung als „Ist:" — ein Messwert, der nie gemessen wurde. Jetzt wird
-nichts gesetzt und gesagt, dass der Rahmen nicht lesbar war.
+**An unreadable window frame is not invented.** `place(dropped:)`
+originally substituted it with `0×0 at 0,0`, and that value traveled
+unchanged into the rejection message as „Ist:" ("Current:") — a
+measurement that was never actually measured. Now nothing is set, and the
+message states that the frame wasn't readable.
 
-**⌘ als Einschalter, seit Issue #23.** Die frühere Vorgabe hatte ⌥ als
-*Silence*-Taste; Zonen erschienen bei jedem Zug, ⌥ unterdrückte sie. Die neue
-Vorgabe ist die Umkehrung: nichts drücken → keine Zonen, ⌘ drücken → Zonen. Der
-Tausch ist bewusst — der Preis ist im Kopfabschnitt gemessen — und die alte
-Polarität lebt in `activation: {"showsUnless": "option"}` weiter. Wer will,
-schaltet zurück. Die Migration bestehender Konfigurationen bildet den alten
-`suppressionModifier` automatisch auf `showsUnless` ab; ohne sie fänden Nutzer
-ihre Zonen nach dem Update ohne Grund still verschwunden.
+**⌘ as the enabler, since issue #23.** The earlier default had ⌥ as the
+*silence* key; zones appeared on every drag, and ⌥ suppressed them. The
+new default is the reversal: press nothing → no zones, press ⌘ → zones.
+The swap is deliberate — the cost is measured in the opening section —
+and the old polarity lives on in `activation: {"showsUnless": "option"}`.
+Anyone who wants can switch back. Migrating existing configurations
+automatically maps the old `suppressionModifier` onto `showsUnless`;
+without it, users would find their zones silently gone after the update,
+for no apparent reason.
 
-**Anheft-Marke statt Rückfrage.** Das Panel „Diese App immer hier öffnen?"
-unterbricht eine gerade beendete Geste; die Anheft-Marke verlegt die
-Entscheidung nach *vor* das Loslassen. Der Panel-Weg bleibt (über den Menü­eintrag
-und einen ausschaltbaren Vorgabeschalter), damit nichts an Fähigkeit verloren
-geht, was sich Nutzer vielleicht anders zurechtlegen wollen. Die Marken-Fabrik
-`DropRuleOffer.pin(...)` und der Panel-Weg `DropRuleOffer.request(...)` bauen
-dieselbe `QuickPin.Request` — zwei Eingänge, ein Rechnen, keine zweite Regel­art.
+**Pin badge instead of a prompt.** The panel „Diese App immer hier
+öffnen?" ("Always open this app here?") interrupts a gesture that has
+just finished; the pin badge moves the decision to *before* the release.
+The panel path remains (via the menu entry and a switch that can be
+turned on), so no capability is lost that users might want to arrange
+differently. The badge factory `DropRuleOffer.pin(...)` and the panel
+path `DropRuleOffer.request(...)` build the same `QuickPin.Request` — two
+entry points, one computation, no second kind of rule.
 
-**Der Modifikator zählt jetzt, nicht beim Zugbeginn.** Wer mitten im Ziehen ⌘
-drückt, meint es. (Bei `showsWhile` erscheint der Overlay dann, bei `showsUnless`
-verschwindet er.)
+**The modifier is checked continuously, not just at the start of the
+drag.** Anyone who presses ⌘ mid-drag means it. (With `showsWhile` the
+overlay then appears; with `showsUnless` it disappears.)
 
-**Nur das Display unter dem Zeiger.** Auf diesem Schreibtisch ist der
-Hauptmonitor 5120 Punkte breit. Alle Displays gleichzeitig zu beleuchten macht
-aus einem Zug eine Lichtorgel und verdeckt das Fenster, um das es geht.
+**Only the display under the pointer.** On this desk, the main monitor is
+5120 points wide. Lighting up all displays at once turns a drag into a
+light show and obscures the very window it's about.
 
-**Die kleinste enthaltende Zone gewinnt.** Das Konzept erlaubt überlappende
-Zonen. Gewänne die große, wären die kleinen per Maus unerreichbar — die Funktion
-wäre kaputt für genau die Layouts, für die es sie gibt.
+**The smallest containing zone wins.** The concept allows overlapping
+zones. If the larger one won, the smaller ones would be unreachable by
+mouse — the feature would be broken for exactly the layouts it exists
+for.
 
-**Das Angebot nennt die Zone beim Namen.** „Diese App immer hier öffnen?" lässt
-offen, was „hier" bei überlappenden Zonen geworden ist. Eine Regel aus einem
-Missverständnis ist schlechter als keine Regel.
+**The offer names the zone.** „Diese App immer hier öffnen?" leaves open
+what "here" has become with overlapping zones. A rule born from a
+misunderstanding is worse than no rule.
 
-**Das Angebot ist ein `.nonactivatingPanel`, kein `NSAlert`.** Ein Alert
-aktiviert die App und nimmt damit dem gerade platzierten Fenster den Fokus —
-eine Geste, nachdem der Nutzer es bewusst irgendwohin gelegt hat.
+**The offer is a `.nonactivatingPanel`, not an `NSAlert`.** An alert
+activates the app and thereby takes focus away from the window that was
+just placed — right after the user deliberately put it somewhere.
 
-**Ein Fehler, den die Tests gefunden haben, gehört auch hierher.** `ModifierState`
-hatte eine Überladung `contains(_ modifier: DropzoneModifier)`, die intern
-`contains(.shift)` aufrief. Der Compiler löste das auf die neue Überladung auf
-statt auf `OptionSet.contains`: unendliche Rekursion, SIGBUS in jedem Test, der
-die Einstellungen anfasste — und ein Absturz, der über die Ursache nichts sagt.
-Die Methode heißt jetzt `holds(_:)`, damit der Fehler nicht wieder möglich ist.
+**A bug the tests found belongs here too.** `ModifierState` had an
+overload `contains(_ modifier: DropzoneModifier)` that internally called
+`contains(.shift)`. The compiler resolved that to the new overload instead
+of `OptionSet.contains`: infinite recursion, a SIGBUS in every test that
+touched the settings — and a crash that says nothing about the cause. The
+method is now called `holds(_:)`, so the mistake can't happen again.
 
-**Keine AX-Abfrage im Tap-Rückruf, seit Issue #26.** Der erste Fehlerbericht aus
-echter Benutzung: das Overlay erschien und war sofort wieder weg, obwohl ⌘
-gehalten wurde. Ursache war eine `AXUIElementCopyElementAtPosition`-Kette
-**innerhalb** des `CGEventTap`-Rückrufs — Median 0,3 – 76,7 ms, Maximum 970 ms
-(Messung 30.08.2026, vier Punkte, je fünf Wiederholungen, vier Läufe). macOS
-schaltete den zu langsamen Tap mit `kCGEventTapDisabledByTimeout` ab, der
-Handler schaltete ihn wieder ein — und meldete `.cancelled`, was das Overlay
-verbarg. Der Fix zerlegt das in drei Zusicherungen:
+**No AX query in the tap callback, since issue #26.** The first bug
+report from real use: the overlay appeared and was immediately gone
+again, even though ⌘ was held. The cause was an
+`AXUIElementCopyElementAtPosition` chain **inside** the `CGEventTap`
+callback — median 0.3 – 76.7 ms, maximum 970 ms (measured 2026-08-30, four
+points, five repeats each, four runs). macOS disabled the too-slow tap
+with `kCGEventTapDisabledByTimeout`, the handler re-enabled it — and
+reported `.cancelled`, which hid the overlay. The fix breaks this down
+into three guarantees:
 
-1. **Die Abfrage läuft außerhalb des Rückrufs — und außerhalb des Hauptthreads.**
-   Beim `leftMouseDown` wird der Fenster-Lookup als `Task.detached` angestoßen;
-   der Rückruf ist längst zurückgekehrt, wenn sie läuft, und die Spitze
-   belegt einen Hintergrund-Thread statt der Runloop, die den Tap bedient.
-   Der Nutzer hat nachgemessen, dass die AX-Abfrage auf einem Hintergrund-Thread
-   dasselbe Ergebnis liefert wie auf dem Hauptthread (identische PIDs, drei von
-   drei Läufen; aufgewärmt gleich schnell). Wichtig ist nicht die
-   Geschwindigkeit, sondern wen die Spitze trifft. Bis die Mindeststrecke
-   zurückgelegt ist, vergeht ohnehin Zeit — das Ergebnis liegt dann meist schon
-   vor. Ist es noch nicht da, wartet der Tracker still; wird es fertig, reicht
-   er `.began` selbst nach.
-2. **Ein Timeout beendet den Zug nicht.** Der Tap wird wieder eingeschaltet,
-   `dragging` und der Druckpunkt bleiben. Das nächste `leftMouseDragged`
-   liefert weiter `.moved`. Nur `kCGEventTapDisabledByUserInput` — das echte
-   Ende der Beobachtung — beendet den Zug. Und wenn der `mouseUp` selbst im
-   Aussetzer verlorenging, wird das beim nächsten `mouseDown` sauber gemeldet,
-   statt bis in alle Ewigkeit im Zug festzuhängen.
-3. **Ein Abbruch ist nicht mehr stumm.** Der Controller schickt den Grund
-   durch `AppModel.reportPinFailure(…)` — denselben Kanal wie die Menüwege —
-   statt ihn nur in `Log.detail` zu verstecken. Wenn das Overlay verschwindet,
-   erfährt der Nutzer, warum.
+1. **The query runs outside the callback — and outside the main thread.**
+   On `leftMouseDown`, the window lookup is kicked off as a
+   `Task.detached`; the callback has long since returned by the time it
+   runs, and the spike lands on a background thread instead of the run
+   loop that services the tap. The maintainer re-measured that the AX
+   query delivers the same result on a background thread as on the main
+   thread (identical PIDs, three of three runs; equally fast once warmed
+   up). What matters isn't the speed, but who the spike hits. Time passes
+   anyway until the minimum travel distance is covered — by then the
+   result is usually already in. If it isn't there yet, the tracker
+   waits quietly; once it completes, it delivers `.began` after the fact.
+2. **A timeout doesn't end the drag.** The tap is re-enabled, `dragging`
+   and the press point are retained. The next `leftMouseDragged` keeps
+   delivering `.moved`. Only `kCGEventTapDisabledByUserInput` — the real
+   end of observation — ends the drag. And if the `mouseUp` itself was
+   lost during the outage, that's reported cleanly on the next
+   `mouseDown`, instead of getting stuck in the drag forever.
+3. **An abort is no longer silent.** The controller sends the reason
+   through `AppModel.reportPinFailure(…)` — the same channel as the menu
+   paths — instead of hiding it only in `Log.detail`. If the overlay
+   disappears, the user learns why.
 
-Prüfbar ist die Zustandsmaschine headless, weil sie hinter einer Enum `Input`
-sitzt und der Lookup als Closure injizierbar ist. Der Test, der belegt, dass
-ein Timeout einen laufenden Zug **nicht** beendet, steht in
+The state machine is testable headless, because it sits behind an `Input`
+enum and the lookup is injectable as a closure. The test that establishes
+that a timeout does **not** end a running drag is
 `EventTapDragTrackerTests.timeoutDoesNotCancelDrag`.
 
 ---
 
-## Bedienung
+## Usage
 
-Menüleiste → „Zonen beim Ziehen", drei Zeilen: „Bei jedem Ziehen", „Nur mit
-gehaltener ⌘-Taste", „Aus". Die Wahl schreibt `defaults.dropzones.enabled` und
-`defaults.dropzones.activation` über dasselbe `ConfigurationDocument` wie jede
-andere Änderung, überlebt also den Neustart und steht in der Datei, die der
-Nutzer bearbeitet. Der Haken steht am **wirksamen** Zustand aus der geladenen
-Konfiguration; eine von Hand eingetragene Regel, die keine der drei ist, bekommt
-eine eigene, angehakte Zeile.
+Menu bar → „Zonen beim Ziehen" ("Zones while dragging"), three lines:
+„Bei jedem Ziehen" ("On every drag"), „Nur mit gehaltener ⌘-Taste" ("Only
+with ⌘ held"), „Aus" ("Off"). The choice writes
+`defaults.dropzones.enabled` and `defaults.dropzones.activation` through
+the same `ConfigurationDocument` as any other change, so it survives a
+restart and shows up in the file the user edits. The checkmark reflects
+the **effective** state from the loaded configuration; a hand-entered rule
+that matches none of the three gets its own, checked line.
 
-„Fenster automatisch platzieren" ausschalten schaltet das Ziehen mit ab — unter
-den Zeilen steht dann „Ziehen ist nicht aktiv: Die Platzierung ist pausiert",
-damit niemand gegen ein Overlay drückt, das nicht kommt.
+Turning off „Fenster automatisch platzieren" ("Place windows
+automatically") switches off dragging with it — below the lines it then
+reads „Ziehen ist nicht aktiv: Die Platzierung ist pausiert" ("Dragging is
+not active: placement is paused"), so nobody presses expecting an overlay
+that won't come.
 
-Darunter steht ein grauer Satz zum zuletzt beobachteten Zug („Letzter Zug: keine
-Zonen — ⌘ war nicht gedrückt."). Er ist Diagnose für den Fall, dass die Zonen
-nicht kommen, und nennt die Stelle, an der es hakt.
+Below that is a gray line about the most recently observed drag
+(„Letzter Zug: keine Zonen — ⌘ war nicht gedrückt." — "Last drag: no
+zones — ⌘ wasn't held."). It's a diagnostic for when the zones don't show
+up, naming the point where things are stuck.
 
-Konfiguration siehe [`konfiguration.md`](konfiguration.md), Abschnitt
+For configuration, see [`konfiguration.md`](konfiguration.md), section
 `defaults.dropzones`.
 
-Messen:
+Measuring:
 
 ```
 openzonr dragprobe --seconds 5 --synthesize --out /tmp/dragprobe.txt
 ```
 
-Ohne `--synthesize` erwartet der Befehl, dass in den Messsekunden von Hand ein
-Fenster gezogen wird. Stehen dann bei beiden Wegen null Ereignisse, ist nichts
-gemessen worden — dann fehlt die Freigabe oder es wurde nicht gezogen, und keine
-Zahl im Bericht trägt eine Aussage. Der Bericht sagt das selbst.
+Without `--synthesize`, the command expects a window to be dragged by
+hand during the measurement window. If both paths then show zero events,
+nothing was measured — either the permission is missing or nothing was
+dragged, and no number in the report carries any meaning. The report says
+so itself.
