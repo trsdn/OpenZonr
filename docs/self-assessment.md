@@ -135,7 +135,7 @@ are decided from source and the app was not operated.
 | `L02` | pass | Sampled `MenuContent`, `StatusWindow`, `ActivityWindow`, the editor views and the command line help: user-facing strings are German, the declared primary language. |
 | `L03` | pass | The README states German only and that there is no further localization. |
 | `L04` | na | One locale and no string catalog. |
-| `L05` | partial | The log window's timestamps use a fixed `HH:mm:ss.SSS` pattern in `Log.swift`, not the user's locale. Nothing else formats a displayed date, number or currency by hand. |
+| `L05` | partial | `Log.swift`'s fixed `HH:mm:ss.SSS` pattern is machine-readable log output (the standard's own carve-out), not display formatting — the app's own date display (`ActivityWindow`, via `Text(_:style:)`) already goes through a locale-aware API. The real finding is in the zone editor: `OverviewEditor.swift` and `ZoneEditor.swift` build displayed pixel measurements and aspect ratios by hand (`String(format: "%.0f × %.0f pt")`, `"%.2f:1"`, `"%.3f"`) instead of through `NumberFormatter`/`Measurement`. |
 | `L06` | na | No translations shipped. |
 | `L07` | fail | README, `docs/`, code comments, identifiers in part, the last commit messages and the release notes are German. `AGENTS.md`, the workflows and `.github/` files are English. |
 | `X01` | pass | Read from source: standard SwiftUI controls and menu items; the drag gesture for zones has a keyboard-reachable equivalent in the menu ("Aktuelles Fenster festhalten") and the rule editor. The app was not operated. |
