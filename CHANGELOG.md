@@ -12,6 +12,94 @@ existiert; dessen Text wird zu den Release-Notes.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-24
+
+### Hinzugefügt
+
+- **Eine Zone hat jetzt zwei Rechtecke: einen Zielrahmen und eine
+  Trefferfläche.** Bisher war beides dasselbe Rechteck — wohin das Fenster
+  kommt und wo man loslassen muss. Damit ist ein Stapel überlappender Zonen
+  nicht auflösbar: der Treffertest nimmt die kleinste enthaltende Zone, also
+  wird eine grosse Zone, die von kleineren lückenlos überdeckt ist,
+  **unerreichbar**. Nicht schwer zu treffen — unerreichbar, und keine
+  Trefferregel kann das ändern, weil immer eine Ebene verliert.
+
+  Das neue Feld `activationArea` ist optional und bildschirmbezogen wie
+  `frame`; fehlt es, ist es der Zielrahmen. Es darf ausserhalb des Zielrahmens
+  liegen, womit eine Zone am Bildschirmrand ausgelöst werden kann, während das
+  Fenster woanders landet — *möglich*, aber **nicht erprobt**. Bestehende
+  Konfigurationen verhalten sich unverändert; es gibt keinen Schemawechsel und
+  keinen Migrationsschritt
+  ([#74](https://github.com/trsdn/OpenZonr/pull/74)).
+
+- **Zwei neue Prüfbefunde, beide Warnungen.** `zoneUnreachable` meldet eine
+  Zone, deren Trefferfläche von der **Vereinigung** der Trefferflächen
+  bevorzugter Zonen überdeckt wird — der Fall oben, der bisher stumm blieb.
+  `activationAreaDetached` meldet eine Trefferfläche ohne Überschneidung mit
+  ihrem eigenen Zielrahmen: erlaubt, aber häufiger ein Versehen. Keiner der
+  beiden macht eine Konfiguration unbenutzbar.
+
+- **Der Zoneneditor kennt Trefferflächen und lässt Zonen über Zellen
+  aufziehen.** Ein Umschalter `Zielrahmen | Trefferfläche` auf derselben
+  Leinwand; die jeweils andere Ebene bleibt als blasse gestrichelte Kontur
+  sichtbar, weil der Abstand zwischen beiden bei Randauslösung das Einzige ist,
+  worauf es ankommt. Streichen über Zellen legt eine Zone an oder bestimmt die
+  gewählte neu; ein Klick ohne Bewegung ergibt eine Zelle. Während einer Geste
+  stehen die Masse, auf die gerastet wird, an der Zone — als Bruchteil und in
+  Zwölfteln ([#75](https://github.com/trsdn/OpenZonr/pull/75)).
+
+### Behoben
+
+- **Abstürze beim Klick auf das Menüleisten-Symbol.** Vier Berichte, ein
+  Fehler, und er lag im eigenen Code, nicht bei Apple:
+  `AXUIElementCopyElementAtPosition` auf dem **systemweiten** Element lief in
+  `Task.detached`. Trifft der Punkt ein eigenes Element — das eigene
+  Menüleisten-Symbol —, bedient AppKit die Abfrage nicht per IPC, sondern im
+  eigenen Prozess auf dem **aufrufenden** Thread. Sein
+  Bedienungshilfen-Code ist hauptthread-gebunden; zusammen mit dem Hauptthread,
+  der beim Klick dasselbe Statuselement durchläuft, veränderten zwei Threads
+  dieselben Objekte.
+
+  Jetzt beantwortet der Fenster-Server die Besitzfrage vor jedem AX-Aufruf
+  (reines CoreGraphics), und die Abfrage wird auf
+  `AXUIElementCreateApplication(pid)` eingegrenzt — ein garantiert fremder
+  Prozess. Die frühere geometrische Absicherung griff nur für die Menüleiste
+  des **Haupt**bildschirms und ging auf jedem weiteren vorbei
+  ([#72](https://github.com/trsdn/OpenZonr/pull/72),
+  [#69](https://github.com/trsdn/OpenZonr/issues/69)).
+
+  *Nicht behauptet:* dass der Absturz damit weg ist. Die Ursachenkette ist aus
+  vier Berichten belegt und der fragliche Code wird nachweislich nicht mehr
+  betreten; bestätigt ist das erst nach längerem Gebrauch. #69 bleibt offen.
+
+- **Safari nahm keine Grössenänderung an** — das Fenster sprang bei jedem
+  Versuch an eine andere Stelle und behielt seine Grösse. Der Rahmen wurde als
+  Position, Grösse, Position geschrieben; Safari leitet seine Grösse neu ab,
+  sobald danach eine Position folgt, und verwirft die eben gesetzte. Jeder
+  Wiederholungsversuch schrieb dieselbe selbstzerstörende Folge — die
+  sichtbaren Sprünge *waren* die Versuche.
+
+  Die nachgestellte Positionsschreibung ist weg. Zusätzlich wird
+  `AXEnhancedUserInterface` um die Schreibung herum kurz abgeschaltet und
+  danach wiederhergestellt: diese Kennung lässt Safari jede Rahmenänderung
+  animieren, und die Grössenschreibung landete mitten in der Animation.
+  Gemessen: mit Kennung 0 von 4 Treffern im ersten Versuch, ohne 4 von 4 bei
+  Abweichung 0. Läuft VoiceOver oder die Schaltersteuerung, unterbleibt der
+  Eingriff ganz ([#73](https://github.com/trsdn/OpenZonr/pull/73)).
+
+- **Der Grössengriff im Zoneneditor folgte dem Zeiger nicht und schwang hin und
+  her.** Die Geste mass im eigenen View, dessen Grösse aus der laufenden Geste
+  berechnet wird — der Griff wanderte unter dem Zeiger weg. Beide Gesten messen
+  jetzt im festen Koordinatenraum der Leinwand, und der Zug am Griff löst nicht
+  mehr zusätzlich das Verschieben aus
+  ([#77](https://github.com/trsdn/OpenZonr/pull/77)).
+
+- **Kleinigkeiten im Editor:** doppelte Feldbeschriftungen („Breite Breite"),
+  überlagerte Zonennamen bei gestapelten Zonen, ein Griff je Zone statt nur an
+  der gewählten, und die Herkunftsbeschriftung, die auf den Zonen lag
+  ([#76](https://github.com/trsdn/OpenZonr/pull/76),
+  [#78](https://github.com/trsdn/OpenZonr/pull/78)).
+
 ## [0.1.2] - 2026-09-21
 
 ### Hinzugefügt
