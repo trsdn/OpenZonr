@@ -14,7 +14,7 @@ public struct PolicyCheck: ConfigurationCheck {
             findings.append(ValidationFinding(
                 code: .retryAttemptsTooLow,
                 path: defaultsPath.field("retry").field("attempts"),
-                message: "Die Anzahl der Platzierungsversuche muss mindestens 1 sein."
+                message: L.string("policy.retryAttemptsTooLow", "The number of placement attempts must be at least 1.")
             ))
         }
         appendNegativeDurationFinding(configuration.defaults.retry.initialDelay, at: defaultsPath.field("retry").field("initialDelay"), to: &findings)
@@ -34,21 +34,21 @@ public struct PolicyCheck: ConfigurationCheck {
                     findings.append(ValidationFinding(
                         code: .aspectRatioNonPositive,
                         path: aspectRatioPath.field("minimum"),
-                        message: "Das minimale Seitenverhältnis muss größer als 0 sein."
+                        message: L.string("policy.aspectRatioNonPositive.minimum", "The minimum aspect ratio must be greater than 0.")
                     ))
                 }
                 if aspectRatio.maximum <= 0 {
                     findings.append(ValidationFinding(
                         code: .aspectRatioNonPositive,
                         path: aspectRatioPath.field("maximum"),
-                        message: "Das maximale Seitenverhältnis muss größer als 0 sein."
+                        message: L.string("policy.aspectRatioNonPositive.maximum", "The maximum aspect ratio must be greater than 0.")
                     ))
                 }
                 if aspectRatio.minimum > aspectRatio.maximum {
                     findings.append(ValidationFinding(
                         code: .aspectRatioInverted,
                         path: aspectRatioPath,
-                        message: "Das minimale Seitenverhältnis ist größer als das maximale."
+                        message: L.string("policy.aspectRatioInverted", "The minimum aspect ratio is greater than the maximum.")
                     ))
                 }
             }
@@ -69,7 +69,7 @@ public struct PolicyCheck: ConfigurationCheck {
         findings.append(ValidationFinding(
             code: .negativeDuration,
             path: path,
-            message: "Die Dauer darf nicht negativ sein."
+            message: L.string("policy.negativeDuration", "A duration must not be negative.")
         ))
     }
 
@@ -78,14 +78,14 @@ public struct PolicyCheck: ConfigurationCheck {
             findings.append(ValidationFinding(
                 code: .nonPositiveWindowSize,
                 path: path.field("width"),
-                message: "Die Fensterbreite muss größer als 0 sein."
+                message: L.string("policy.nonPositiveWindowSize.width", "The window width must be greater than 0.")
             ))
         }
         if size.height <= 0 {
             findings.append(ValidationFinding(
                 code: .nonPositiveWindowSize,
                 path: path.field("height"),
-                message: "Die Fensterhöhe muss größer als 0 sein."
+                message: L.string("policy.nonPositiveWindowSize.height", "The window height must be greater than 0.")
             ))
         }
     }

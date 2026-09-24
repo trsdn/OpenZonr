@@ -13,7 +13,7 @@ struct DryRunPreviewFormatterTests {
             subject: "Dieses Fenster",
             configuration: TestConfigurations.minimal()
         )
-        #expect(line.headline.contains("keine Regel greift"))
+        #expect(line.headline.contains("no rule applies"))
         #expect(line.caveats.isEmpty)
         #expect(!line.isConditional)
     }
@@ -39,7 +39,7 @@ struct DryRunPreviewFormatterTests {
         #expect(line.headline.contains("Links"))
         #expect(line.headline.contains("Hauptbildschirm"))
         #expect(line.headline.contains("Editor"))
-        #expect(line.headline.contains("Priorität 10"))
+        #expect(line.headline.contains("priority 10"))
         #expect(line.headline.contains("pt"))
         #expect(!line.isConditional)
         #expect(line.caveats.isEmpty)
@@ -72,7 +72,7 @@ struct DryRunPreviewFormatterTests {
             configuration: configuration
         )
         #expect(line.isConditional)
-        #expect(line.caveats.contains(where: { $0.contains("Fenstertitel") }))
+        #expect(line.caveats.contains(where: { $0.contains("window title") }))
     }
 
     @Test("Fall B ohne Snapshot: die Zeile bleibt ehrlich — nur Rolle und Regel, kein Punktmaß")

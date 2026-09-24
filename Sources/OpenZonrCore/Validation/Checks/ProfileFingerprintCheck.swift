@@ -15,7 +15,7 @@ public struct ProfileFingerprintCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .emptyProfileFingerprint,
                     path: profilePath.field("fingerprint").field("displays"),
-                    message: "Der Profil-Fingerprint muss mindestens ein Display enthalten."
+                    message: L.string("profileFingerprint.empty", "A profile fingerprint must contain at least one display.")
                 ))
             }
 
@@ -23,7 +23,11 @@ public struct ProfileFingerprintCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .unknownDisplayInFingerprint,
                     path: profilePath.field("fingerprint").element("displays", at: index),
-                    message: "Der Profil-Fingerprint verweist auf das unbekannte Display \(alias)."
+                    message: L.string(
+                        "profileFingerprint.unknownDisplay",
+                        "The profile fingerprint refers to the unknown display %@.",
+                        "\(alias)"
+                    )
                 ))
             }
 
@@ -32,7 +36,11 @@ public struct ProfileFingerprintCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .duplicateProfileFingerprint,
                     path: profilePath.field("fingerprint"),
-                    message: "Der Profil-Fingerprint kollidiert mit Profil \(firstProfile)."
+                    message: L.string(
+                        "profileFingerprint.duplicate",
+                        "This fingerprint collides with profile %@.",
+                        "\(firstProfile)"
+                    )
                 ))
             } else {
                 firstProfileByFingerprint[normalized] = profile.id

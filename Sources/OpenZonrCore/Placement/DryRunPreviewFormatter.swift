@@ -1,22 +1,20 @@
 import Foundation
 
-/// Baut die Dry-Run-Zeile für den Regel-Editor als Text.
+/// Builds the dry-run line for the rule editor, as text.
 ///
-/// Absichtlich pure Rechnung in Core, damit die Zeichensetzung, die Reihenfolge
-/// der Angaben und die Beschriftung „Nicht geprüft: …" ohne
-/// SwiftUI-Vorschauliste testbar sind. Der Editor bindet den Text an ein
-/// Label und mehr nicht.
+/// Deliberately pure computation in Core, so the punctuation, the order of the
+/// details, and the "Not checked: …" caption are testable without a SwiftUI
+/// preview list. The editor just binds the text to a label, nothing more.
 public enum DryRunPreviewFormatter {
 
-    /// Der zusammengesetzte Text plus Metadaten, die die Oberfläche für die
-    /// Beschriftung („bedingt", „ungeprüft") braucht.
+    /// The assembled text plus the metadata the surface needs for the
+    /// "conditional"/"unverified" caption.
     public struct Line: Hashable, Sendable {
-        /// Die Zeile selbst, wie sie im Editor steht.
+        /// The line itself, as it appears in the editor.
         public var headline: String
-        /// Nicht geprüfte Kriterien, benannt. Leer heißt: Messung, nicht
-        /// Vermutung.
+        /// Unverified criteria, named. Empty means measurement, not guesswork.
         public var caveats: [String]
-        /// `true`, wenn ohne echtes Fenster gerechnet wurde.
+        /// `true` when this was computed without a real window.
         public var isConditional: Bool
 
         public init(headline: String, caveats: [String], isConditional: Bool) {
@@ -26,16 +24,15 @@ public enum DryRunPreviewFormatter {
         }
     }
 
-    /// Erzeugt die Zeile für ein Ergebnis von ``DryRunPreview/evaluate(window:configuration:snapshots:)``
-    /// bzw. ``DryRunPreview/evaluate(bundleIdentifier:configuration:snapshots:)``.
+    /// Builds the line for a result from ``DryRunPreview/evaluate(window:configuration:snapshots:)``
+    /// or ``DryRunPreview/evaluate(bundleIdentifier:configuration:snapshots:)``.
     ///
-    /// - Parameter subject: menschenfreundliche Bezeichnung des Fensters oder
-    ///   der App („Dieses Fenster", „Outlook"). Nur für die einleitende
-    ///   Formulierung; keine Bedeutung für die Auswertung.
-    /// - Parameter configuration: wird für die Auflösung von Bildschirm- und
-    ///   Zonenamen aus Aliasen und IDs herangezogen. Wenn ein Alias unbekannt
-    ///   ist, steht der Rohwert in der Zeile — das ist immer noch die
-    ///   Wahrheit, nur weniger schön.
+    /// - Parameter subject: human-friendly name of the window or app ("This
+    ///   window", "Outlook"). Only for the introductory phrasing; no meaning
+    ///   for the evaluation itself.
+    /// - Parameter configuration: used to resolve display and zone names from
+    ///   aliases and IDs. When an alias is unknown, the raw value appears in
+    ///   the line instead — still the truth, just less pretty.
     public static func line(
         for result: DryRunPreview.Result,
         subject: String,
@@ -44,7 +41,7 @@ public enum DryRunPreviewFormatter {
         switch result {
         case .noMatch:
             return Line(
-                headline: "\(subject) — keine Regel greift.",
+                headline: L.string("dryRunPreview.noMatch", "%@ — no rule applies.", subject),
                 caveats: [],
                 isConditional: false
             )
@@ -53,11 +50,11 @@ public enum DryRunPreviewFormatter {
             return line(for: match, subject: subject, configuration: configuration, note: nil)
 
         case let .unresolvable(match, failure):
-            // Die Regel steht, die Auflösung scheitert. Das ist eine ehrliche
-            // Auskunft und keine Vermutung: die Zeile nennt die Regel und
-            // sagt, warum sie diesmal keinen Rahmen ergibt.
-            let grund = grundText(from: failure)
-            return line(for: match, subject: subject, configuration: configuration, note: grund)
+            // The rule stands, the resolution fails. That is an honest
+            // report, not a guess: the line names the rule and says why it
+            // does not yield a frame this time.
+            let reason = reasonText(from: failure)
+            return line(for: match, subject: subject, configuration: configuration, note: reason)
         }
     }
 
@@ -67,8 +64,8 @@ public enum DryRunPreviewFormatter {
         configuration: Configuration,
         note: String?
     ) -> Line {
-        var teile: [String] = []
-        teile.append(subject)
+        var parts: [String] = []
+        parts.append(subject)
 
         if let placement = match.placement {
             let zoneName = zoneName(for: placement, configuration: configuration)
@@ -78,20 +75,32 @@ public enum DryRunPreviewFormatter {
                 placement.frame.width,
                 placement.frame.height
             )
-            teile.append("ginge nach \(zoneName) auf \(displayName)")
-            teile.append("Regel „\(match.rule.name)\" (Priorität \(match.rule.priority))")
-            teile.append(size)
+            parts.append(L.string("dryRunPreview.wouldGoTo", "would go to %@ on %@", zoneName, displayName))
+            parts.append(
+                L.string(
+                    "dryRunPreview.rulePriority",
+                    "rule \u{201c}%@\u{201d} (priority %lld)",
+                    match.rule.name, match.rule.priority
+                )
+            )
+            parts.append(size)
         } else {
-            // Kein Rahmen: nur Regel und Rolle nennen — nichts weiter erfinden.
-            let rolle = roleName(for: match.role, configuration: configuration)
-            teile.append("ginge in Rolle „\(rolle)\"")
-            teile.append("Regel „\(match.rule.name)\" (Priorität \(match.rule.priority))")
+            // No frame: name only the rule and the role — invent nothing further.
+            let roleText = roleName(for: match.role, configuration: configuration)
+            parts.append(L.string("dryRunPreview.wouldGoToRole", "would go into role \u{201c}%@\u{201d}", roleText))
+            parts.append(
+                L.string(
+                    "dryRunPreview.rulePriority",
+                    "rule \u{201c}%@\u{201d} (priority %lld)",
+                    match.rule.name, match.rule.priority
+                )
+            )
             if let note {
-                teile.append(note)
+                parts.append(note)
             }
         }
 
-        let headline = teile.joined(separator: " · ")
+        let headline = parts.joined(separator: " · ")
 
         let caveats: [String]
         if match.isConditional {
@@ -107,7 +116,7 @@ public enum DryRunPreviewFormatter {
         )
     }
 
-    // MARK: - Namen aus der Konfiguration ziehen
+    // MARK: - Pulling names from the configuration
 
     private static func zoneName(for placement: ResolvedPlacement, configuration: Configuration) -> String {
         for descriptor in configuration.displays where descriptor.alias == placement.display {
@@ -128,43 +137,75 @@ public enum DryRunPreviewFormatter {
         configuration.roles.first { $0.id == id }?.name ?? id.rawValue
     }
 
-    private static func grundText(from failure: ZoneResolutionFailure) -> String {
+    private static func reasonText(from failure: ZoneResolutionFailure) -> String {
         switch failure {
         case let .unknownDisplay(alias):
-            return "unbekannter Bildschirm \(alias.rawValue)"
+            return L.string("dryRunPreview.reason.unknownDisplay", "unknown display %@", alias.rawValue)
         case let .unknownLayout(layoutID, display):
-            return "unbekanntes Layout \(layoutID.rawValue) für \(display.rawValue)"
+            return L.string(
+                "dryRunPreview.reason.unknownLayout",
+                "unknown layout %@ for %@",
+                layoutID.rawValue, display.rawValue
+            )
         case let .unknownZone(zoneID, layout, display):
-            return "unbekannte Zone \(zoneID.rawValue) in \(layout.rawValue) auf \(display.rawValue)"
+            return L.string(
+                "dryRunPreview.reason.unknownZone",
+                "unknown zone %@ in %@ on %@",
+                zoneID.rawValue, layout.rawValue, display.rawValue
+            )
         case let .missingVisibleFrame(alias) where alias.rawValue.isEmpty:
-            return "kein aktives Profil für die angeschlossenen Bildschirme"
+            return L.string(
+                "dryRunPreview.reason.noActiveProfile",
+                "no active profile for the connected screens"
+            )
         case let .missingVisibleFrame(alias):
-            return "Bildschirm \(alias.rawValue) ist gerade nicht angeschlossen"
+            return L.string(
+                "dryRunPreview.reason.displayNotConnected",
+                "display %@ is not currently connected",
+                alias.rawValue
+            )
         case let .invalidShare(share):
-            return "ungültige Zonenteilung (\(share.slots) Slots, Index \(share.slotIndex))"
+            return L.string(
+                "dryRunPreview.reason.invalidShare",
+                "invalid zone share (%lld slots, index %lld)",
+                share.slots, share.slotIndex
+            )
         }
     }
 
     private static func caveatText(for criterion: RuleCriteria.Criterion) -> String {
         switch criterion {
         case let .bundleIdentifier(value):
-            return "Bundle-Kennung (\(value))"
+            return L.string("dryRunPreview.caveat.bundleIdentifier", "bundle identifier (%@)", value)
         case let .title(pattern):
-            return "Fenstertitel (Muster \(pattern))"
+            return L.string("dryRunPreview.caveat.title", "window title (pattern %@)", pattern)
         case let .roles(list):
-            return "Rolle (AX): \(list.joined(separator: ", "))"
+            return L.string(
+                "dryRunPreview.caveat.roles", "role (AX): %@", list.joined(separator: ", ")
+            )
         case let .subroles(list):
-            return "Subrolle (AX): \(list.joined(separator: ", "))"
+            return L.string(
+                "dryRunPreview.caveat.subroles", "subrole (AX): %@", list.joined(separator: ", ")
+            )
         case let .minimumSize(size):
-            return String(format: "Mindestgröße %.0f × %.0f pt", size.width, size.height)
+            let sizeText = String(format: "%.0f × %.0f pt", size.width, size.height)
+            return L.string("dryRunPreview.caveat.minimumSize", "minimum size %@", sizeText)
         case let .maximumSize(size):
-            return String(format: "Höchstgröße %.0f × %.0f pt", size.width, size.height)
+            let sizeText = String(format: "%.0f × %.0f pt", size.width, size.height)
+            return L.string("dryRunPreview.caveat.maximumSize", "maximum size %@", sizeText)
         case let .aspectRatio(range):
-            return String(format: "Seitenverhältnis %.2f – %.2f", range.minimum, range.maximum)
+            let rangeText = String(format: "%.2f – %.2f", range.minimum, range.maximum)
+            return L.string("dryRunPreview.caveat.aspectRatio", "aspect ratio %@", rangeText)
         case let .onlyFirstWindowAfterLaunch(value):
             return value
-                ? "nur das erste Fenster nach dem Start der App"
-                : "jedes Fenster (nicht nur das erste)"
+                ? L.string(
+                    "dryRunPreview.caveat.onlyFirstWindow",
+                    "only the first window after the app launches"
+                )
+                : L.string(
+                    "dryRunPreview.caveat.everyWindow",
+                    "every window (not only the first)"
+                )
         }
     }
 }

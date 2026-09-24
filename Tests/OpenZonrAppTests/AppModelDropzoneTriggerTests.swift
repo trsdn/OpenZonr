@@ -134,7 +134,7 @@ struct AppModelDropzoneTriggerTests {
         #expect(loaded.model.lastDragOutcome == .zonesHidden(.awaitingModifier(.command)))
         #expect(
             DragOutcomeWording.sentence(for: loaded.model.lastDragOutcome)
-                == "Letzter Zug: keine Zonen — ⌘ war nicht gedrückt."
+                == "Last drag: no zones — ⌘ was not held down."
         )
     }
 

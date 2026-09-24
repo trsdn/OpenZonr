@@ -12,20 +12,21 @@ public enum DropzoneModifier: String, Codable, Hashable, Sendable, CaseIterable 
     case option
     case command
 
-    /// German label for the menu and for log lines.
+    /// Label for the menu and for log lines.
     public var label: String {
         switch self {
-        case .none: return "keine"
-        case .shift: return "Umschalt (⇧)"
-        case .control: return "Control (⌃)"
-        case .option: return "Option (⌥)"
-        case .command: return "Befehl (⌘)"
+        case .none: return L.string("dropzoneModifier.label.none", "none")
+        case .shift: return L.string("dropzoneModifier.label.shift", "Shift (⇧)")
+        case .control: return L.string("dropzoneModifier.label.control", "Control (⌃)")
+        case .option: return L.string("dropzoneModifier.label.option", "Option (⌥)")
+        case .command: return L.string("dropzoneModifier.label.command", "Command (⌘)")
         }
     }
 
-    /// Nur das Tastensymbol — für Sätze im Menü, die ohne Klammerzusatz
-    /// auskommen sollen („⌘ war nicht gedrückt“). `nil` für ``none``, weil ein
-    /// leeres Symbol einen Satz mit einer Lücke ergäbe statt einer Aussage.
+    /// Only the key's symbol — for sentences in the menu that need to read
+    /// without a parenthetical ("⌘ was not held down"). `nil` for ``none``,
+    /// because an empty symbol would leave a gap in the sentence instead of
+    /// making a statement.
     public var symbol: String? {
         switch self {
         case .none: return nil
@@ -239,7 +240,12 @@ extension DropzoneActivationRule: Codable {
             DecodingError.Context(
                 codingPath: decoder.codingPath,
                 debugDescription:
-                    "Ein Aktivierungs-Feld ohne showsWhile oder showsUnless ist kein Angebot: es lässt offen, wann die Zonen kommen. Erlaubte Formen: {\"showsWhile\": \"command\"} oder {\"showsUnless\": \"option\"}."
+                    L.string(
+                        "dropzoneActivationRule.decodingError.missingField",
+                        "An activation field with neither showsWhile nor showsUnless is not an offer: "
+                            + "it leaves open when the zones appear. Allowed forms: "
+                            + "{\"showsWhile\": \"command\"} or {\"showsUnless\": \"option\"}."
+                    )
             )
         )
     }
@@ -278,19 +284,34 @@ public enum DropzoneActivation: Hashable, Sendable {
 
     public var showsZones: Bool { self == .show }
 
-    /// One German sentence, for the log and for the diagnostics window.
+    /// One sentence, for the log and for the diagnostics window.
     public var explanation: String {
         switch self {
         case .show:
-            return "Zonen werden eingeblendet."
+            return L.string("dropzoneActivation.explanation.show", "Zones are shown.")
         case .disabled:
-            return "Dropzones sind in der Konfiguration abgeschaltet."
+            return L.string(
+                "dropzoneActivation.explanation.disabled",
+                "Dropzones are switched off in the configuration."
+            )
         case let .suppressed(modifier):
-            return "\(modifier.label) gedrückt — es wird frei gezogen."
+            return L.string(
+                "dropzoneActivation.explanation.suppressed",
+                "%@ held down — dragging freely.",
+                modifier.label
+            )
         case let .awaitingModifier(modifier):
-            return "\(modifier.label) drücken, damit die Zonen erscheinen."
+            return L.string(
+                "dropzoneActivation.explanation.awaitingModifier",
+                "Hold %@ for the zones to appear.",
+                modifier.label
+            )
         case let .belowThreshold(travelled, required):
-            return "Erst \(Int(travelled.rounded())) von \(Int(required.rounded())) Punkten gezogen."
+            return L.string(
+                "dropzoneActivation.explanation.belowThreshold",
+                "Only %lld of %lld points dragged so far.",
+                Int(travelled.rounded()), Int(required.rounded())
+            )
         }
     }
 }
@@ -354,13 +375,16 @@ public enum DropzoneSuspension: Hashable, Sendable {
     case switchedOff
     case paused
 
-    /// One German sentence, shown in the menu under the toggle.
+    /// One sentence, shown in the menu under the toggle.
     public var explanation: String {
         switch self {
         case .switchedOff:
-            return "Dropzones sind in der Konfiguration abgeschaltet."
+            return L.string(
+                "dropzoneSuspension.explanation.switchedOff",
+                "Dropzones are switched off in the configuration."
+            )
         case .paused:
-            return "Die Platzierung ist pausiert."
+            return L.string("dropzoneSuspension.explanation.paused", "Placement is paused.")
         }
     }
 }

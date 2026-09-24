@@ -32,14 +32,21 @@ public struct GeometryCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .zoneShareTooFewSlots,
                     path: sharePath.field("slots"),
-                    message: "Eine Zonenteilung braucht mindestens zwei Slots."
+                    message: L.string(
+                        "geometry.zoneShare.tooFewSlots",
+                        "A zone share needs at least two slots."
+                    )
                 ))
             }
             if share.slotIndex < 0 || share.slotIndex >= share.slots {
                 findings.append(ValidationFinding(
                     code: .zoneShareSlotIndexOutOfRange,
                     path: sharePath.field("slotIndex"),
-                    message: "Der Slot-Index \(share.slotIndex) liegt außerhalb der \(share.slots) Slots."
+                    message: L.string(
+                        "geometry.zoneShare.slotIndexOutOfRange",
+                        "Slot index %lld is outside the %lld slots.",
+                        share.slotIndex, share.slots
+                    )
                 ))
             }
         }
@@ -58,28 +65,28 @@ public struct GeometryCheck: ConfigurationCheck {
             findings.append(ValidationFinding(
                 code: .relativeRectNonPositiveSize,
                 path: path.field("width"),
-                message: "Die Breite der Zone muss größer als 0 sein."
+                message: L.string("geometry.rect.nonPositiveWidth", "The zone's width must be greater than 0.")
             ))
         }
         if rect.height <= 0, !heightOutOfRange {
             findings.append(ValidationFinding(
                 code: .relativeRectNonPositiveSize,
                 path: path.field("height"),
-                message: "Die Höhe der Zone muss größer als 0 sein."
+                message: L.string("geometry.rect.nonPositiveHeight", "The zone's height must be greater than 0.")
             ))
         }
         if !widthOutOfRange, rect.x + rect.width > 1 + overflowSlack {
             findings.append(ValidationFinding(
                 code: .relativeRectOverflow,
                 path: path.field("width"),
-                message: "Die Zone ragt horizontal über den sichtbaren Bereich hinaus."
+                message: L.string("geometry.rect.overflowHorizontal", "The zone extends past the visible area horizontally.")
             ))
         }
         if !heightOutOfRange, rect.y + rect.height > 1 + overflowSlack {
             findings.append(ValidationFinding(
                 code: .relativeRectOverflow,
                 path: path.field("height"),
-                message: "Die Zone ragt vertikal über den sichtbaren Bereich hinaus."
+                message: L.string("geometry.rect.overflowVertical", "The zone extends past the visible area vertically.")
             ))
         }
 
@@ -97,7 +104,11 @@ public struct GeometryCheck: ConfigurationCheck {
         findings.append(ValidationFinding(
             code: .relativeRectOutOfRange,
             path: path.field(field),
-            message: "Der Wert \(value) liegt außerhalb des erlaubten Bereichs 0 bis 1."
+            message: L.string(
+                "geometry.rect.valueOutOfRange",
+                "Value %g is outside the allowed range 0 to 1.",
+                value
+            )
         ))
         return true
     }

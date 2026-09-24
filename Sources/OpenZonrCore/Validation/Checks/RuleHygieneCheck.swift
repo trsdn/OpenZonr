@@ -14,7 +14,11 @@ public struct RuleHygieneCheck: ConfigurationCheck {
             findings.append(ValidationFinding(
                 code: .unusedRole,
                 path: ConfigurationPath().element("roles", role.id),
-                message: "Die Rolle \(role.id) wird von keiner Regel verwendet."
+                message: L.string(
+                    "ruleHygiene.unusedRole",
+                    "No rule uses role %@.",
+                    "\(role.id)"
+                )
             ))
         }
 
@@ -29,7 +33,11 @@ public struct RuleHygieneCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .shadowedRule,
                     path: ConfigurationPath().element("rules", candidate.element.id),
-                    message: "Die Regel \(candidate.element.id) wird vollständig von Regel \(earlier.element.id) überdeckt."
+                    message: L.string(
+                        "ruleHygiene.shadowedRule",
+                        "Rule %@ is fully shadowed by rule %@.",
+                        "\(candidate.element.id)", "\(earlier.element.id)"
+                    )
                 ))
                 break
             }

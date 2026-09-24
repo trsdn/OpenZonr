@@ -123,7 +123,7 @@ struct DropzoneActivationTests {
         // to read *press ⌘ so the zones appear* somewhere. If the sentence did
         // not name the key, the menu could not explain the new default.
         let sentence = DropzoneActivation.awaitingModifier(.command).explanation
-        #expect(sentence.contains("Befehl"))
+        #expect(sentence.contains("Command"))
     }
 }
 

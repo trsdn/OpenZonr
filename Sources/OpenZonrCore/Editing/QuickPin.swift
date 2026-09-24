@@ -62,15 +62,34 @@ public enum QuickPin {
         public var description: String {
             switch self {
             case .missingBundleIdentifier:
-                return "Die App meldet keine Bundle-Kennung; ohne sie lässt sich keine Regel schreiben."
+                return L.string(
+                    "quickPin.failure.missingBundleIdentifier",
+                    "The app reports no bundle identifier; without it, no rule can be written."
+                )
             case let .unknownProfile(id):
-                return "Das Profil \(id) steht nicht in der Konfiguration."
+                return L.string(
+                    "quickPin.failure.unknownProfile",
+                    "Profile %@ is not in the configuration.",
+                    "\(id)"
+                )
             case let .unknownDisplay(alias):
-                return "Das Display \(alias) steht nicht in der Konfiguration."
+                return L.string(
+                    "quickPin.failure.unknownDisplay",
+                    "Display %@ is not in the configuration.",
+                    "\(alias)"
+                )
             case let .unknownLayout(alias):
-                return "Für das Display \(alias) ist kein Layout auflösbar."
+                return L.string(
+                    "quickPin.failure.unknownLayout",
+                    "No layout can be resolved for display %@.",
+                    "\(alias)"
+                )
             case let .unknownZone(zone, display):
-                return "Das Layout von \(display) enthält keine Zone \(zone)."
+                return L.string(
+                    "quickPin.failure.unknownZone",
+                    "The layout of %@ has no zone %@.",
+                    "\(display)", "\(zone)"
+                )
             }
         }
     }
@@ -85,7 +104,7 @@ public enum QuickPin {
         public var createdRole: Bool
         /// `true` when an existing rule was retargeted instead of a new one added.
         public var reusedRule: Bool
-        /// One German sentence describing the change, ready for a log line.
+        /// One localized sentence describing the change, ready for a log line.
         public var summary: String
     }
 
@@ -123,7 +142,11 @@ public enum QuickPin {
                 .adding(role: ZoneRole(
                     id: role,
                     name: zone.name,
-                    summary: "Automatisch angelegt für „\(request.applicationName)“."
+                    summary: L.string(
+                        "quickPin.role.autoCreatedSummary",
+                        "Automatically created for “%@”.",
+                        request.applicationName
+                    )
                 ))
                 .setting(
                     binding: RoleBinding(role: role, display: request.target.display, zone: request.target.zone),
@@ -163,7 +186,11 @@ public enum QuickPin {
                 role: role,
                 createdRole: createdRole,
                 reusedRule: true,
-                summary: "Regel „\(existing.name)“ zeigt jetzt auf \(zone.name) (\(request.target.display))."
+                summary: L.string(
+                    "quickPin.rule.retargetedSummary",
+                    "Rule “%@” now points at %@ (%@).",
+                    existing.name, zone.name, "\(request.target.display)"
+                )
             )
         }
 
@@ -184,7 +211,11 @@ public enum QuickPin {
             role: role,
             createdRole: createdRole,
             reusedRule: false,
-            summary: "Regel „\(rule.name)“ angelegt, Priorität \(rule.priority)."
+            summary: L.string(
+                "quickPin.rule.createdSummary",
+                "Rule “%@” created, priority %lld.",
+                rule.name, rule.priority
+            )
         )
     }
 
@@ -262,14 +293,25 @@ extension QuickPin {
     ///   an unused role elsewhere would make the feature unusable.
     public static func objection(to outcome: Outcome, report: ValidationReport) -> String? {
         if let error = report.findings.first(where: { $0.severity == .error }) {
-            return "Die Konfiguration hätte danach einen Fehler: \(error.message)"
+            return L.string(
+                "quickPin.objection.wouldError",
+                "The configuration would then have an error: %@",
+                error.message
+            )
         }
 
         let rulePath = ConfigurationPath.rule(outcome.rule)
         if let shadowed = report.findings.first(where: {
             $0.code == .shadowedRule && $0.path == rulePath
         }) {
-            return shadowed.message + " Das Fenster ginge weiter woanders auf."
+            // `shadowed.message` is itself already localized (it comes from
+            // `RuleHygieneCheck`, through the same `L.string(...)`), so it is
+            // passed through as an argument rather than re-keyed here.
+            return L.string(
+                "quickPin.objection.shadowedRuleSuffix",
+                "%@ The window would keep opening somewhere else.",
+                shadowed.message
+            )
         }
 
         return nil

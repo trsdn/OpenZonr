@@ -1,26 +1,26 @@
 import Foundation
 
-/// Welche Kriterien einer Regel lassen sich ohne ein tatsächlich beobachtetes
-/// Fenster überhaupt beantworten — und welche nicht?
+/// Which of a rule's criteria can be answered at all without an actually
+/// observed window — and which cannot?
 ///
-/// Dieser Typ ist der eigentliche Wert der Dry-Run-Zeile für Fall B: für ein
-/// Bundle, dessen App gerade nicht läuft, gibt es kein `WindowSnapshot`. Wer
-/// die Rege trotzdem „ausrechnet", indem er Titel, Rolle, Subrolle,
-/// Größe, Seitenverhältnis und „nur das erste Fenster" implizit ignoriert oder
-/// erfindet, gibt eine Vermutung im Gewand einer Rechnung aus. Dieselbe
-/// Fehlerklasse, die dieses Projekt sonst bekämpft.
+/// This type is the real value of the dry-run line for Case B: for a bundle
+/// whose app is not currently running, there is no `WindowSnapshot`. Anyone
+/// who "computes" the rule anyway, implicitly ignoring or inventing title,
+/// role, subrole, size, aspect ratio and "only the first window", is handing
+/// out a guess dressed up as a computation — the same class of failure this
+/// project fights elsewhere.
 ///
-/// Der Auslöser für diesen Typ steht ausführlich in Issue #19: in der real
-/// existierenden Konfiguration prüfen alle drei Regeln ausschließlich das
-/// Bundle. Ein naiver Dry-Run wäre dort zufällig exakt und würde still falsch
-/// in dem Moment, in dem die erste Titel- oder Größenregel hinzukäme.
+/// The trigger for this type is spelled out in Issue #19: in the
+/// real-existing configuration, all three rules check the bundle
+/// exclusively. A naive dry run would there be accidentally exact, and would
+/// go silently wrong the moment the first title or size rule was added.
 ///
-/// Die Fassung als reine Funktion ist Absicht: keine Abhängigkeit auf
-/// `NSScreen`, keine auf AppKit, keine auf das Fenstersystem — der Test läuft
-/// auf jeder Kiste, auch in CI.
+/// The pure-function shape is deliberate: no dependency on `NSScreen`, none
+/// on AppKit, none on the window system — the test runs on any machine,
+/// including CI.
 public enum RuleCriteria {
 
-    /// Ein einzelnes Kriterium, das eine Regel prüft.
+    /// A single criterion that a rule checks.
     public enum Criterion: Hashable, Sendable, CustomStringConvertible {
         case bundleIdentifier(String)
         case title(pattern: String)
@@ -31,31 +31,34 @@ public enum RuleCriteria {
         case aspectRatio(AspectRatioRange)
         case onlyFirstWindowAfterLaunch(Bool)
 
-        /// Beschriftung für die Oberfläche. Bewusst kurz — die Dry-Run-Zeile
-        /// ist eine Zeile, keine Liste.
+        /// Caption for the UI. Deliberately short — the dry-run line is one
+        /// line, not a list.
         public var description: String {
             switch self {
-            case .bundleIdentifier: return "Bundle-Kennung"
-            case .title:            return "Fenstertitel"
-            case .roles:            return "Rolle (AX)"
-            case .subroles:         return "Subrolle (AX)"
-            case .minimumSize:      return "Mindestgröße"
-            case .maximumSize:      return "Höchstgröße"
-            case .aspectRatio:      return "Seitenverhältnis"
+            case .bundleIdentifier: return L.string("ruleCriteria.criterion.bundleIdentifier", "bundle identifier")
+            case .title:            return L.string("ruleCriteria.criterion.title", "window title")
+            case .roles:            return L.string("ruleCriteria.criterion.roles", "role (AX)")
+            case .subroles:         return L.string("ruleCriteria.criterion.subroles", "subrole (AX)")
+            case .minimumSize:      return L.string("ruleCriteria.criterion.minimumSize", "minimum size")
+            case .maximumSize:      return L.string("ruleCriteria.criterion.maximumSize", "maximum size")
+            case .aspectRatio:      return L.string("ruleCriteria.criterion.aspectRatio", "aspect ratio")
             case .onlyFirstWindowAfterLaunch:
-                                    return "erstes Fenster nach Start"
+                                    return L.string(
+                                        "ruleCriteria.criterion.onlyFirstWindowAfterLaunch",
+                                        "first window after launch"
+                                    )
             }
         }
     }
 
-    /// Auswertung eines `WindowMatch` samt globaler Voreinstellungen unter der
-    /// Annahme, dass nur die Bundle-Kennung bekannt ist.
+    /// Evaluation of a `WindowMatch` together with the global defaults,
+    /// under the assumption that only the bundle identifier is known.
     ///
-    /// - `decidable` sind Kriterien, deren Wahrheitswert allein aus der
-    ///   Bundle-Kennung und den Voreinstellungen folgt. Genau eines: die
-    ///   Bundle-Kennung selbst, wenn die Regel überhaupt eine setzt.
-    /// - `undecidable` sind alle Kriterien, die erst am realen Fenster
-    ///   messbar werden.
+    /// - `decidable` are criteria whose truth value follows purely from the
+    ///   bundle identifier and the defaults. Exactly one: the bundle
+    ///   identifier itself, when the rule sets one at all.
+    /// - `undecidable` are all criteria that only become measurable on the
+    ///   real window.
     public struct Report: Hashable, Sendable {
         public var decidable: [Criterion]
         public var undecidable: [Criterion]
@@ -65,17 +68,17 @@ public enum RuleCriteria {
             self.undecidable = undecidable
         }
 
-        /// `true`, wenn eine Auskunft „diese Regel greift" ohne Fenster nur eine
-        /// Teilauskunft sein kann.
+        /// `true` when saying "this rule applies" without a window can only
+        /// be a partial answer.
         public var requiresObservation: Bool { !undecidable.isEmpty }
     }
 
-    /// Zerlegt eine `WindowMatch` in die beiden Listen.
+    /// Splits a `WindowMatch` into the two lists.
     ///
-    /// Der Filter aus `DefaultWindowFilter` (Ebene 0, `allowedSubroles`,
-    /// `minimumWindowSize`) prüft ebenfalls Fensterdaten. Er ist nicht Teil des
-    /// `WindowMatch` und wird deshalb nicht hier gemeldet — dafür gibt es
-    /// ``report(for:defaults:)``.
+    /// The filter in `DefaultWindowFilter` (layer 0, `allowedSubroles`,
+    /// `minimumWindowSize`) also checks window data. It is not part of
+    /// `WindowMatch` and so is not reported here — ``report(for:defaults:)``
+    /// exists for that.
     public static func report(for match: WindowMatch) -> Report {
         var decidable: [Criterion] = []
         var undecidable: [Criterion] = []
@@ -108,16 +111,15 @@ public enum RuleCriteria {
         return Report(decidable: decidable, undecidable: undecidable)
     }
 
-    /// Zerlegt eine `WindowMatch` samt globalen Voreinstellungen.
+    /// Splits a `WindowMatch` together with the global defaults.
     ///
-    /// Zusätzlich zu ``report(for:)`` schlägt die per Voreinstellung geerbte
-    /// „nur das erste Fenster"-Regel unter ``Report/undecidable`` durch,
-    /// solange die Regel selbst keinen expliziten Wert setzt und die
-    /// Voreinstellung aktiv ist. Andere Filter des `DefaultWindowFilter`
-    /// (Ebene, `allowedSubroles`, `minimumWindowSize`) sind ebenfalls
-    /// beobachtungsabhängig, aber sie sind Systemfilter und keine
-    /// regelspezifischen Kriterien — sie stehen nicht in der Zeile für *diese*
-    /// Regel, weil sie für jede Regel gelten.
+    /// In addition to ``report(for:)``, the "only the first window" rule
+    /// inherited from the defaults shows through under ``Report/undecidable``
+    /// as long as the rule itself sets no explicit value and the default is
+    /// active. Other filters of `DefaultWindowFilter` (layer,
+    /// `allowedSubroles`, `minimumWindowSize`) are also observation-dependent,
+    /// but they are system filters, not rule-specific criteria — they do not
+    /// appear in the line for *this* rule, because they apply to every rule.
     public static func report(for match: WindowMatch, defaults: GlobalDefaults) -> Report {
         var report = self.report(for: match)
         if match.onlyFirstWindowAfterLaunch == nil, defaults.onlyFirstWindowAfterLaunch {
