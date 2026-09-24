@@ -405,12 +405,26 @@ AppUpdaters Attestierungsprüfung ohnehin in einem `fatalError`
 ### Ein Release herausgeben
 
 Das Bauen, Signieren, Notarisieren und Hochladen macht der
-[Notarisierungs-Broker](https://github.com/trsdn/macos-notarization-broker), von
-Hand angestossen — **aus dem Broker-Repository heraus, von einem Menschen**:
+[Notarisierungs-Broker](https://github.com/trsdn/macos-notarization-broker).
+Angestossen wird er **aus dem Broker-Repository heraus** mit dessen Skript — auf
+Anweisung des Betreibers, nicht zwingend von dessen Hand:
 
 ```bash
+cd ../macos-notarization-broker-release
 scripts/request.sh openzonr vX.Y.Z --publish
 ```
+
+Das Skript verlangt `gh` und `python3`, eine angemeldete `gh`-Sitzung und den
+Broker-Zweig `main` — aus einem anderen Zweig verweigert es den Dienst. Ohne
+`--publish` landen die geprüften Dateien nur lokal in `broker-artifacts`; mit
+`--publish` legt es die GitHub-Veröffentlichung zum Tag an, falls es sie noch
+nicht gibt, und hängt sie an. Es benutzt dafür die Anmeldung des Aufrufers; der
+Broker-Ablauf selbst schreibt nie in ein Quell-Repository.
+
+Zwei Kopien des Brokers liegen nebeneinander. Nur
+`macos-notarization-broker-release` kennt das Profil `openzonr`; die ältere
+`macos-notarization-broker` bricht mit einer Nutzungsmeldung ab, weil `openzonr`
+nicht in ihrer Freigabeliste steht.
 
 Das Broker-Profil heisst `openzonr`. Es baut aus diesem Repository, benutzt
 `Sources/OpenZonrApp/Info.plist`, prüft `Package.resolved` Byte für Byte gegen
