@@ -123,7 +123,21 @@ private struct Canvas: View {
         let spacing: CGFloat = 12
         let usableWidth = max(size.width - spacing * CGFloat(max(items.count - 1, 0)), 0)
         let heightByWidth = totalRatio > 0 ? usableWidth / totalRatio : 0
-        let displayHeight = max(min(heightByWidth, size.height * 0.85), 0)
+
+        // Ein Bildschirm mit gestapelten Zonen bekommt mehrere Karten
+        // untereinander (siehe ``DisplayCard``). Die Höhe muss sich auf sie
+        // aufteilen, sonst läuft die Ansicht über. Gerechnet wird mit der
+        // grössten Ebenenzahl über alle Bildschirme, damit alle Karten
+        // dieselbe Grösse behalten und das Grössenverhältnis zwischen den
+        // Bildschirmen — der eigentliche Zweck dieser Darstellung — erhalten
+        // bleibt. Die 18 Punkte sind die Zeile „Ebene n von m" samt Abstand.
+        let layerCount = max(
+            items.map { ZoneLayering.layers(of: $0.panel.zones.map(\.zone)).count }.max() ?? 1,
+            1
+        )
+        let captionHeight: CGFloat = layerCount > 1 ? 18 : 0
+        let perBoard = (size.height * 0.85) / CGFloat(layerCount) - captionHeight
+        let displayHeight = max(min(heightByWidth, perBoard), 0)
 
         return VStack(alignment: .leading, spacing: 8) {
             notMeasuredNote
@@ -148,7 +162,7 @@ private struct Canvas: View {
 
     @ViewBuilder
     private var notMeasuredNote: some View {
-        Text("Nicht gemessen: die räumliche Anordnung (links/rechts/oben/unten). Gezeigt ist das Größenverhältnis, so wie es der Zoneneditor seit #18 verwendet. Regel-zu-Zone-Zuordnung ist gerechnet, nicht geraten.")
+        Text("Nicht gemessen: die räumliche Anordnung (links/rechts/oben/unten). Gezeigt ist das Größenverhältnis, so wie es der Zoneneditor seit #18 verwendet. Regel-zu-Zone-Zuordnung ist gerechnet, nicht geraten. Überlappende Zonen stehen auf getrennten Ebenen untereinander — zwei Rechtecke am selben Ort könnten sonst nicht beide beschriftet werden.")
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -173,9 +187,40 @@ private struct DisplayCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             header
-            board
+            // Eine Karte je überlappungsfreier Ebene statt einer für alles.
+            //
+            // Die Beschriftung einer Zone steht in ihrem Rechteck. Bei
+            // gestapelten Zonen lagen dadurch mehrere Texte übereinander und
+            // keiner war lesbar — gemeldet am 24.09.2026. Das lässt sich nicht
+            // durch Anordnung der Etiketten beheben: zwei Rechtecke am selben
+            // Ort haben dieselbe freie Ecke. Also wird die Schichtung gezeigt
+            // statt gegen sie gezeichnet. Die Zerlegung liegt in
+            // ``ZoneLayering`` und ist headless geprüft.
+            ForEach(Array(layers.enumerated()), id: \.offset) { index, zones in
+                if layers.count > 1 {
+                    Text("Ebene \(index + 1) von \(layers.count)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, index == 0 ? 0 : 6)
+                }
+                board(zones: zones)
+            }
         }
         .frame(width: width)
+    }
+
+    /// Die Zonen dieses Bildschirms, in überlappungsfreie Ebenen zerlegt.
+    ///
+    /// Die Übersicht arbeitet mit ``PlacementOverview/ZoneOccupancy`` — Zone
+    /// plus die Regeln, die dort landen. Zerlegt wird über die Zonen; die
+    /// Belegung wird danach wieder zugeordnet, damit ``ZoneLayering`` nichts
+    /// über Regeln wissen muss.
+    private var layers: [[PlacementOverview.ZoneOccupancy]] {
+        let byID = Dictionary(
+            uniqueKeysWithValues: item.panel.zones.map { ($0.zone.id, $0) }
+        )
+        return ZoneLayering.layers(of: item.panel.zones.map(\.zone))
+            .map { group in group.compactMap { byID[$0.id] } }
     }
 
     private var header: some View {
@@ -202,13 +247,13 @@ private struct DisplayCard: View {
         }
     }
 
-    private var board: some View {
+    private func board(zones: [PlacementOverview.ZoneOccupancy]) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .strokeBorder(.secondary.opacity(0.6), lineWidth: 1)
 
             GeometryReader { geometry in
-                ForEach(item.panel.zones, id: \.zone.id) { zone in
+                ForEach(zones, id: \.zone.id) { zone in
                     ZoneCell(
                         zone: zone,
                         isFallback: zone.zone.id == item.panel.fallbackZone,
