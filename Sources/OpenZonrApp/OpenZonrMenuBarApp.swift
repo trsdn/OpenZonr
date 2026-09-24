@@ -22,6 +22,10 @@ struct OpenZonrMenuBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel.shared
 
+    /// Read once, at launch, like the activation policy beside it. A change
+    /// takes effect on the next start — see ``AppDelegate``.
+    private let presence = PresenceSettings().presence
+
     /// Dispatches to the command line before any scene exists.
     ///
     /// One binary, one signature, one Accessibility grant. The grant is bound to
@@ -41,7 +45,10 @@ struct OpenZonrMenuBarApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra {
+        // `isInserted` is a constant on purpose: the value is read once at
+        // launch. A binding that could flip at runtime would promise a live
+        // switch the activation policy beside it cannot honour.
+        MenuBarExtra(isInserted: .constant(presence.showsMenuBarIcon)) {
             MenuContent(model: model)
         } label: {
             // `accessibilityLabel` bewusst statisch, nicht mehr mit dem sich
@@ -68,10 +75,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var didPresentPermissionWindow = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Belt and braces: LSUIElement in Info.plist already does this, but a
-        // bundle built by hand or run from the build directory may not have it,
-        // and a Dock icon on a window manager is noise.
-        NSApp.setActivationPolicy(.accessory)
+        // The chosen presence decides the activation policy, and it is applied
+        // once, here. `LSUIElement` stays `true` in the plist in every case —
+        // both `Scripts/bundle.sh` and the notarization broker refuse a bundle
+        // without it — so a Dock icon can only come from `.regular`.
+        //
+        // Applied at launch and not when the setting changes: switching the
+        // activation policy of a running app is not known to leave the
+        // Accessibility grant intact, and that grant is the one thing in this
+        // app nobody can restore for the user. A restart is the cheap, honest
+        // price; the settings say so.
+        NSApp.setActivationPolicy(PresenceSettings().presence.activationPolicy)
 
         let model = AppModel.shared
         model.onStatusChange = { [weak self] status in
@@ -86,6 +100,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    /// Answers a re-launch by showing the status window.
+    ///
+    /// This is the way back out of ``AppPresence/background``. With no menu bar
+    /// icon and no Dock icon, opening the app again is the only gesture a user
+    /// has left — and without this it would do nothing at all, because the app
+    /// is already running. Choosing the invisible state would then hide the
+    /// setting that undoes it.
+    ///
+    /// It also answers a re-launch in the other two states, where it is merely
+    /// convenient rather than necessary.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        guard !hasVisibleWindows else { return true }
+        PanelPresenter.shared.show(
+            id: "status",
+            title: "OpenZonr — Status und Berechtigung",
+            size: NSSize(width: 620, height: 560)
+        ) {
+            StatusWindow(model: AppModel.shared)
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        return true
     }
 
     /// Shows the permission window at most once per launch.

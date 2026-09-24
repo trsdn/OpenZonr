@@ -15,6 +15,46 @@ struct StatusWindow: View {
 
     @Bindable var model: AppModel
 
+    /// Kept as state so the picker reflects the click immediately, even though
+    /// the change only takes effect on the next launch.
+    @State private var presence = PresenceSettings().presence
+
+    /// Where the app shows itself.
+    ///
+    /// This section lives in the status window and not only in the menu,
+    /// because in ``AppPresence/background`` there is no menu. Re-launching the
+    /// app opens this window (see `applicationShouldHandleReopen`), which makes
+    /// this the one place the setting can always be undone.
+    private var presenceSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Präsenz")
+                .font(.headline)
+
+            Picker("Präsenz", selection: $presence) {
+                ForEach(AppPresence.allCases, id: \.self) { value in
+                    Text(value.title).tag(value)
+                }
+            }
+            .pickerStyle(.radioGroup)
+            .labelsHidden()
+            .onChange(of: presence) { _, value in
+                PresenceSettings().presence = value
+            }
+
+            Text("Wirksam nach einem Neustart der App. Die Berechtigung für die Bedienungshilfen hängt am Bundle und seinem Pfad; sie zur Laufzeit umzuschalten ist ungemessen, und ein verlorener Haken wäre von hier aus nicht wiederherzustellen.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if presence == .background {
+                Text("Ohne Symbol und ohne Dock führt kein Klick mehr hierher. Die App noch einmal zu öffnen bringt dieses Fenster zurück — das ist der Weg zurück.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -25,6 +65,8 @@ struct StatusWindow: View {
                 signatureSection
                 Divider()
                 configurationSection
+                Divider()
+                presenceSection
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
