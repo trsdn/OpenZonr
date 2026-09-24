@@ -1,7 +1,14 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-
+    "localizationTests.probe" : {
+      "comment" : "Not user-facing. Exists only so LocalizationTests can prove the resource-bundle plumbing (Bundle.module -> OpenZonr_OpenZonrApp.bundle -> de.lproj) against a real compiled entry, without coupling to product wording that might change for unrelated reasons.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "de-Probe" }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }

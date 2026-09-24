@@ -31,6 +31,7 @@ let package = Package(
     targets: [
         .target(
             name: "OpenZonrCore",
+            resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // Everything that talks to macOS: Accessibility, CoreGraphics displays,
