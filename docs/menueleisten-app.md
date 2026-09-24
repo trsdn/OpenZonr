@@ -1,234 +1,242 @@
-# Die Menüleisten-App
+# The Menu Bar App
 
-Die Oberfläche zu [`openzonr watch`](../README.md#openzonr-watch--der-durchstich):
-ein Symbol in der Menüleiste, das den Watcher beherbergt, statt ihn im
-Vordergrund eines Terminals laufen zu lassen. Umgesetzt für
+The interface to [`openzonr watch`](../README.md#openzonr-watch--the-tracer-bullet):
+an icon in the menu bar that houses the watcher instead of running it in the
+foreground of a terminal. Implemented for
 [#8](https://github.com/trsdn/OpenZonr/issues/8).
 
-Dieses Dokument hält die Entscheidungen fest, die dabei zu treffen waren, und —
-getrennt davon — was von der App tatsächlich gemessen ist und was nicht.
+This document records the decisions that had to be made along the way and —
+separately — what has actually been measured about the app and what hasn't.
 
-## Was sie kann
+## What it can do
 
 | | |
 |---|---|
-| **Kopfzeile** | „OpenZonr" plus die Fassung aus dem Bundle, in **jedem** Zustand der erste Eintrag ([#56](https://github.com/trsdn/OpenZonr/issues/56)). |
-| **Zustand** | Das Symbol unterscheidet fünf Fälle: aktiv, pausiert, keine Berechtigung, keine Konfiguration, kein Profil passt. Im Menü steht dazu **eine** Zeile in Alltagssprache und höchstens ein Knopf. |
-| **Setup** | Das erkannte Setup (in der Konfiguration: Profil) steht in der Zustandszeile; jedes konfigurierte lässt sich unter „Mehr → Setup" von Hand wählen. |
-| **Automatik** | „Fenster automatisch platzieren" hält die Platzierung an und setzt sie fort, ohne die App zu beenden. Der Watcher läuft weiter und protokolliert, bewegt aber nichts. |
-| **Zonen beim Ziehen** | Drei Zeilen, die aussprechen, **wann** die Zonen erscheinen: „Bei jedem Ziehen", „Nur mit gehaltener ⌘-Taste", „Aus". Der gewählte Zustand steht in der Aufschrift der Elternzeile („Zonen beim Ziehen: nur mit ⌘"), damit er ohne Aufklappen zu sehen ist. Der Haken steht am wirksamen Zustand aus der geladenen Konfiguration; eine von Hand geschriebene Regel, die keine der drei ist, bekommt eine eigene Zeile — **auch während „Aus" gilt**, und dann ist die Zeile der Weg zurück: anklicken schaltet ein, ohne die Regel anzutasten. |
-| **Updates im Menü** | Die Zustandszeile ist die äussere Bedingung, die Knöpfe die innere: „wird geladen", „wird installiert" und ein im Hintergrund gescheiterter Versuch haben damit eine Oberfläche, auch ohne dass etwas zu installieren wäre. |
-| **Letzter Zug** | Ein grauer Satz, warum der zuletzt beobachtete Zug ausging, wie er ausging („keine Zonen — ⌘ war nicht gedrückt", „kein Fenster unter dem Zeiger erkannt"). Diagnose, siehe unten. |
-| **Autostart** | Über `SMAppService.mainApp`. Unter „Mehr". |
-| **Berechtigung** | Ein eigenes Fenster, das den konkreten Zustand erklärt und die drei Wege dorthin anbietet. Siehe unten. |
-| **Letzte Platzierungen** | Die letzten Entscheidungen als Liste, dazu der vollständige Protokollstrom. Unter „Mehr". |
-| **Festhalten** | „Aktuelles Fenster festhalten" schreibt Regel und Bindung für das vorderste Fenster. Siehe [docs/regel-editor.md](regel-editor.md). |
-| **Zonen und Regeln bearbeiten** | Ein eigenes Fenster für Regeln, Rollen & Profile und Zonen. Siehe [docs/regel-editor.md](regel-editor.md). |
-| **Updates** | „Nach Updates suchen …" und „Automatisch nach Updates suchen" (voreingestellt an) liegen unter „Mehr". Liegt etwas bereit, steht die Zeile samt „Installieren"/„Später" **oben** — sie verlangt eine Entscheidung. Vor dem Bundle-Tausch hält die App Fensterbeobachtung, ausstehende Platzierungen und den Ziehen-Tracker an. Ablauf und Voraussetzungen stehen im [README](../README.md#updates-und-veröffentlichen); **ein echter Durchlauf ist nicht gemessen**, solange es kein Release gibt. |
+| **Header** | "OpenZonr" plus the version from the bundle, the first entry in **every** state ([#56](https://github.com/trsdn/OpenZonr/issues/56)). |
+| **State** | The icon distinguishes five cases: active, paused, no permission, no configuration, no profile matches. The menu shows **one** line about it in plain language and at most one button. |
+| **Setup** | The detected setup (called a profile in the configuration) appears in the state line; any configured one can be picked by hand under „Mehr → Setup" (More → Setup). |
+| **Automation** | „Fenster automatisch platzieren" (place windows automatically) pauses and resumes placement without quitting the app. The watcher keeps running and logging, but moves nothing. |
+| **Zones while dragging** | Three lines spell out **when** the zones appear: „Bei jedem Ziehen" (on every drag), „Nur mit gehaltener ⌘-Taste" (only while holding ⌘), „Aus" (off). The chosen state shows in the parent line's label ("Zonen beim Ziehen: nur mit ⌘" — zones while dragging: only with ⌘), so it's visible without expanding the menu. The checkmark sits on the effective state from the loaded configuration; a hand-written rule that matches none of the three gets its own line — **even while "Aus" (off) applies** — and then that line is the way back: clicking it switches it on without touching the rule. |
+| **Updates in the menu** | The state line is the outer condition, the buttons the inner one: „wird geladen" (downloading), „wird installiert" (installing), and a background attempt that failed each get a visible state, even when there's nothing to install. |
+| **Last drag** | A grey sentence saying why the last observed drag ended the way it did („keine Zonen — ⌘ war nicht gedrückt" — no zones, ⌘ wasn't held; „kein Fenster unter dem Zeiger erkannt" — no window detected under the pointer). Diagnostic, see below. |
+| **Launch at login** | Via `SMAppService.mainApp`. Under „Mehr" (More). |
+| **Permission** | A dedicated window that explains the specific state and offers three ways to fix it. See below. |
+| **Recent placements** | The most recent decisions as a list, plus the full log stream. Under „Mehr" (More). |
+| **Pin** | „Aktuelles Fenster festhalten" (pin the current window) writes a rule and binding for the frontmost window. See [docs/regel-editor.md](regel-editor.md). |
+| **Edit zones and rules** | A dedicated window for rules, roles & profiles, and zones. See [docs/regel-editor.md](regel-editor.md). |
+| **Updates** | „Nach Updates suchen …" (check for updates) and „Automatisch nach Updates suchen" (check for updates automatically, on by default) live under „Mehr" (More). If something is ready, that line plus „Installieren"/„Später" (install/later) moves to the **top** — it demands a decision. Before swapping the bundle, the app stops window observation, pending placements and the drag tracker. The process and prerequisites are in the [README](../README.md#updates-and-publishing); **a real run has not been measured** while there is no release yet. |
 
-## Der Aufbau des Menüs
+## How the menu is built
 
-Von oben nach unten, in jedem Zustand:
+Top to bottom, in every state:
 
-1. **`OpenZonr <Fassung>`** — nicht anklickbar, immer zuerst.
-2. **Eine Zustandszeile** plus höchstens ein Knopf: „Zugriff fehlt — ohne ihn
-   kann OpenZonr keine Fenster bewegen" / „Zugriff freigeben …", „Kein Setup
-   passt zu den angeschlossenen Bildschirmen" / „Was ist zu tun? …", „Bereit —
-   Setup „Schreibtisch"", „Pausiert — es wird nichts automatisch platziert".
-3. **Was eine Entscheidung verlangt** — ein bereitliegendes Update, die Warnung
-   vor einem zweiten Fenstermanager.
-4. **Die zwei Schalter**: „Fenster automatisch platzieren" und „Zonen beim
-   Ziehen".
-5. **Der letzte Zug** als grauer Satz.
-6. **Zwei Handlungen**: „Aktuelles Fenster festhalten", „Zonen und Regeln
-   bearbeiten …".
-7. **„Mehr"** — Setup, Letzte Platzierungen, Konfiguration neu laden, Status und
-   Berechtigung, Bei Anmeldung starten, die Update-Einstellungen.
-8. **„OpenZonr beenden"**.
+1. **`OpenZonr <version>`** — not clickable, always first.
+2. **One state line** plus at most one button: „Zugriff fehlt — ohne ihn
+   kann OpenZonr keine Fenster bewegen" (access missing — without it OpenZonr
+   can't move windows) / „Zugriff freigeben …" (grant access…), „Kein Setup
+   passt zu den angeschlossenen Bildschirmen" (no setup matches the connected
+   screens) / „Was ist zu tun? …" (what's to be done?…), „Bereit — Setup
+   „Schreibtisch"" (ready — setup "Desk"), „Pausiert — es wird nichts
+   automatisch platziert" (paused — nothing is being placed automatically).
+3. **Whatever demands a decision** — an update that's ready, the warning
+   about a second window manager.
+4. **The two toggles**: „Fenster automatisch platzieren" (place windows
+   automatically) and „Zonen beim Ziehen" (zones while dragging).
+5. **The last drag**, as a grey sentence.
+6. **Two actions**: „Aktuelles Fenster festhalten" (pin the current window),
+   „Zonen und Regeln bearbeiten …" (edit zones and rules…).
+7. **„Mehr" (More)** — Setup, Letzte Platzierungen (recent placements),
+   Konfiguration neu laden (reload configuration), Status und Berechtigung
+   (status and permission), Bei Anmeldung starten (start at login), the
+   update settings.
+8. **„OpenZonr beenden"** (quit OpenZonr).
 
-Die Reihenfolge ist die Antwort auf „ich sehe da überhaupt nicht durch": vorher
-stand das Menü in der Reihenfolge des Programms und zeigte Zustandsnamen samt
-Zähler („Kein Profil passt — 2 Profile in der Konfiguration"), was beschreibt,
-aber nicht sagt, was los ist. Die Wortwahl liegt jetzt in `MenuPresentation.swift`
-als reine Funktionen — eine `MenuBarExtra` lässt sich nicht aufklappen und
-ablesen, eine Funktion schon.
+The ordering is the answer to "I can't tell what's going on here": previously
+the menu followed the program's own internal order and showed state names
+with counters („Kein Profil passt — 2 Profile in der Konfiguration" — no
+profile matches, 2 profiles in the configuration), which describes, but
+doesn't say, what's going on. The wording now lives in
+`MenuPresentation.swift` as pure functions — you can't open up a
+`MenuBarExtra` and read it off, but you can read a function.
 
-### Warum die Zeile „Letzter Zug"
+### Why the "Last drag" line
 
-Sie ist Diagnose, und zwar für einen Fehler, dessen Ursache offen ist: auf der
-Maschine des Betreuers erscheinen die Zonen nicht, wenn ⌘ gedrückt wird. Kein
-möglicher Grund ist von aussen zu sehen — kein Fenster unter dem Druckpunkt,
-kein Bewegungsbeleg ([#37](https://github.com/trsdn/OpenZonr/issues/37)), die
-Taste nicht gesehen, gar kein Zug erkannt. Alle vier sehen gleich aus: es
-passiert nichts.
+It exists for diagnosis — specifically for a bug whose cause is still open:
+on the maintainer's machine, the zones don't appear when ⌘ is pressed. No
+possible reason is visible from outside — no window under the press point, no
+movement evidence ([#37](https://github.com/trsdn/OpenZonr/issues/37)), the
+key not seen, no drag detected at all. All four look identical: nothing
+happens.
 
-`EventTapDragTracker` hat dafür einen zweiten Rückweg bekommen (`onOutcome`),
-der **genau die Drücke** meldet, die es nie bis zu einem `.began` schaffen —
-höchstens einen Satz je Druck, und keinen für einen gewöhnlichen Klick. Die
-Zusicherungen aus [#26](https://github.com/trsdn/OpenZonr/issues/26) bleiben
-unberührt: im Tap-Rückruf steht weiterhin kein AX-Aufruf, der Kanal reicht nur
-weiter, was die Zustandsmaschine ohnehin schon entschieden hat.
+`EventTapDragTracker` got a second return channel for this (`onOutcome`),
+which reports **exactly the presses** that never make it to a `.began` —
+at most one sentence per press, and none for an ordinary click. The
+guarantees from [#26](https://github.com/trsdn/OpenZonr/issues/26) remain
+untouched: the tap callback still contains no AX call, the channel only
+forwards what the state machine has already decided.
 
-## Entscheidungen
+## Decisions
 
-### Ein SwiftPM-Executable, kein Xcode-Target
+### A SwiftPM executable, not an Xcode target
 
-Das Issue ließ die Wahl offen. Es wurde ein `.executableTarget` mit `MenuBarExtra`
-daraus, aus vier Gründen:
+The issue left the choice open. It became an `.executableTarget` with
+`MenuBarExtra`, for four reasons:
 
-- `MenuBarExtra`, `@Observable` und `SMAppService` brauchen nichts, was ein
-  SwiftPM-Executable nicht kann.
-- Das signierte Bundle erzeugt `Scripts/bundle.sh` bereits — Xcode würde diesen
-  Schritt nicht abnehmen, sondern ersetzen, und zwar durch einen, der sich nicht
-  im Diff lesen lässt.
-- `swift build` und `swift test` bleiben die ganze Wahrheit. Zwei Buildsysteme
-  wären zwei Wahrheiten, von denen eine unbemerkt veraltet.
-- Keine `.pbxproj`-Merge-Konflikte.
+- `MenuBarExtra`, `@Observable` and `SMAppService` need nothing that a
+  SwiftPM executable can't do.
+- `Scripts/bundle.sh` already produces the signed bundle — Xcode wouldn't
+  take over that step, it would replace it, and with one that can't be read
+  in a diff.
+- `swift build` and `swift test` remain the whole truth. Two build systems
+  would be two truths, one of which drifts stale unnoticed.
+- No `.pbxproj` merge conflicts.
 
-Die frühere Ankündigung im README, die App-Hülle komme als Xcode-Target, ist
-damit revidiert. Zu revidieren wäre diese Entscheidung erst, wenn Entitlements
-nötig werden, die ein Provisioning-Profil verlangen — davon braucht die App
-heute keines.
+The earlier announcement in the README that the app shell would arrive as an
+Xcode target is thereby revised. This decision would only need revisiting
+once entitlements are needed that require a provisioning profile — the app
+needs none of those today.
 
-### Eine Binärdatei für App und Kommandozeile
+### One binary for both the app and the command line
 
-Im Bundle liegt genau ein Programm. Ohne Argumente startet es als Menüleisten-App,
-mit einem bekannten Unterbefehl als Kommandozeilenwerkzeug:
+The bundle contains exactly one program. Without arguments it starts as the
+menu bar app; with a recognized subcommand, as a command-line tool:
 
 ```bash
 ~/Applications/OpenZonr.app/Contents/MacOS/OpenZonrApp windows --bundle com.apple.Safari
 ```
 
-Das ist keine Spielerei, sondern folgt aus der Art, wie macOS die Berechtigung
-vergibt: **Die Freigabe gilt einem Programm an seinem Pfad.** Zwei Binärdateien
-im selben Bundle wären zwei Freigaben — und die Gegenprobe würde etwas anderes
-messen als das, was tatsächlich platziert. So misst sie genau das Programm, das
-auch die App ist.
+That's not a gimmick, it follows from how macOS grants permission: **the
+grant applies to a program at its path.** Two binaries in the same bundle
+would be two grants — and the cross-check would measure something different
+from what actually does the placing. This way, it measures exactly the
+program that is also the app.
 
-Die Unterscheidung geschieht in `OpenZonrMenuBarApp.init()`, bevor irgendeine
-Szene existiert, gegen eine **feste Liste** von Unterbefehlen. Nicht gegen „alles,
-was kein Flag ist": LaunchServices übergibt eigene Argumente, und eines davon für
-einen Unterbefehl zu halten hieße, dass das Menüleisten-Symbol nie erscheint —
-ein Fehler ohne Fehlermeldung. Die Liste ist deshalb getestet.
+The distinction happens in `OpenZonrMenuBarApp.init()`, before any scene
+exists, against a **fixed list** of subcommands. Not against "anything that
+isn't a flag": LaunchServices passes its own arguments, and mistaking one of
+those for a subcommand would mean the menu bar icon never appears — a
+failure with no error message. The list is therefore tested.
 
-`swift run openzonr` bleibt über ein eigenes, triviales Target erhalten; im Alltag
-ist es das Werkzeug für den Entwicklungsrechner, nicht das ausgelieferte.
+`swift run openzonr` remains available via its own, trivial target; day to
+day it's the tool for the development machine, not the shipped one.
 
-### Der Watcher wurde extrahiert, nicht neu geschrieben
+### The watcher was extracted, not rewritten
 
-Die Beobachtungs- und Platzierungslogik liegt jetzt in `WatchEngine`
-(`Sources/OpenZonrMac/Watch/`), das sich CLI und App teilen. Drei Eigenschaften
-dieser Logik sind auf echter Hardware gemessen und wurden wörtlich übernommen;
-jede einzelne stand für einen Fehler, der ein *leeres Protokoll* erzeugte statt
-einer Fehlermeldung ([`tracer-bullet.md`](tracer-bullet.md)):
+The observation and placement logic now lives in `WatchEngine`
+(`Sources/OpenZonrMac/Watch/`), shared between the CLI and the app. Three
+properties of this logic are measured on real hardware and were carried over
+verbatim; each one used to stand for a bug that produced an *empty log*
+instead of an error message ([`tracer-bullet.md`](tracer-bullet.md)):
 
-1. **Die `NSRunningApplication` wird stark gehalten**, solange die Retry-Schleife
-   für den Observer läuft. Sonst ist sie vor dem ersten Versuch nach 150 ms
-   freigegeben.
-2. **Bereits offene Fenster werden nachgeholt**, nachdem der Observer hängt. Das
-   Anhängen dauert 124 ms (TextEdit) bis 2,2 s (Outlook), und die API meldet nur
-   Fenster, die *danach* entstehen.
-3. **Der Frame wird geduldig gelesen** — sechs Versuche im Abstand von einer
-   Sekunde. Outlook antwortet beim Start rund sieben Sekunden nicht, und jeder
-   Lesezugriff blockiert dabei drei.
+1. **The `NSRunningApplication` is held strongly** for as long as the
+   observer's retry loop runs. Otherwise it gets deallocated before the
+   first attempt, after 150 ms.
+2. **Already-open windows are caught up on** after the observer attaches.
+   Attaching takes 124 ms (TextEdit) to 2.2 s (Outlook), and the API only
+   reports windows created *after* that.
+3. **The frame is read patiently** — six attempts, one second apart. Outlook
+   doesn't respond for roughly seven seconds at launch, and each read
+   blocks for three.
 
-Ein vierter, subtilerer Punkt ist ebenfalls erhalten: der Zähler der gesehenen
-Fenster läuft *hinter* der Strukturprüfung, weil Outlook ein Attrappenfenster der
-Rolle `AXUnknown` vor dem echten öffnet.
+A fourth, subtler point is also preserved: the counter of windows seen runs
+*behind* the structural check, because Outlook opens a dummy window with
+role `AXUnknown` before the real one.
 
-### Manuelles Profil gilt nur für diese Sitzung
+### A manually chosen profile only applies to this session
 
-`PinnedProfileResolver` schiebt eine Handauswahl vor die automatische Erkennung.
-Persistiert wird sie nicht — sie ist eine Korrektur für den Schreibtisch, an dem
-der Nutzer gerade sitzt, keine neue Regel. Eine Handauswahl, die einen Neustart
-in ein anderes Setup überlebte, würde still auf dem falschen Bildschirm
-platzieren; genau das soll der exakte Abgleich verhindern.
+`PinnedProfileResolver` puts a manual choice ahead of the automatic
+detection. It's not persisted — it's a correction for the desk the user
+happens to be sitting at right now, not a new rule. A manual choice that
+survived a restart into a different setup would silently place windows on
+the wrong screen; that's exactly what the exact match is meant to prevent.
 
-Fehlt das gewählte Profil in der Konfiguration, greift wieder die Erkennung. Auch
-das ist getestet, denn die Konfiguration kann sich ändern, während die App läuft.
+If the chosen profile is missing from the configuration, detection takes
+over again. That's tested too, since the configuration can change while the
+app is running.
 
-### Die Pause greift vor dem Fensterzähler
+### The pause takes effect before the window counter
 
-`isPaused` wird geprüft, sobald ein Fenster gemeldet wird — nicht erst dort, wo
-der Frame geschrieben würde. Der Unterschied ist nicht kosmetisch.
+`isPaused` is checked the moment a window is reported — not only at the
+point where the frame would be written. The difference isn't cosmetic.
 
-Der Zähler pro Prozess ist es, der `onlyFirstWindowAfterLaunch` überhaupt
-funktionieren lässt. Würde ein Fenster, das während einer Pause auftaucht,
-mitgezählt, verbrauchte es den Platz „erstes Fenster nach dem Start" — und nach
-dem Fortsetzen überspränge die Regel stillschweigend genau das Fenster, für das
-sie geschrieben wurde. Wieder ein Fehler ohne Fehlermeldung, also die Sorte, die
-dieses Projekt schon dreimal gekostet hat.
+It's the per-process counter that makes `onlyFirstWindowAfterLaunch` work at
+all. If a window that shows up during a pause were counted, it would use up
+the "first window after launch" slot — and after resuming, the rule would
+silently skip exactly the window it was written for. Another failure with no
+error message, the very kind this project has already paid for three times.
 
-Pausiert heißt deshalb: beobachten und berichten, nicht halb entscheiden. Die
-Zeile „pausiert" erscheint weiterhin in der Liste, nur ohne Regel und Ziel — die
-wurden bewusst nicht ermittelt.
+Paused therefore means: observe and report, not half-decide. The „pausiert"
+(paused) line still shows up in the list, just without a rule or target —
+those are deliberately not determined.
 
-### Beendete Apps werden vergessen
+### Quit apps are forgotten
 
-Der Watcher hängt pro beobachteter App einen Observer an und merkt sich, wie
-viele Fenster sie seit dem Start gezeigt hat. Beides wurde bislang erst beim
-Beenden des Watchers wieder abgeräumt. Der Speicherzuwachs wäre das kleinere
-Übel gewesen.
+The watcher attaches one observer per watched app and remembers how many
+windows it has shown since it launched. Until now, both were only cleaned up
+when the watcher itself quit. The memory growth would have been the lesser
+evil.
 
-Das ernste Problem ist die Wiederverwendung von Prozessnummern. Startet eine
-beobachtete App unter der Nummer einer längst beendeten, findet `attachObserver`
-dort einen Eintrag vor und steigt sofort aus. Der hinterlegte Observer gehört
-einem toten Prozess und feuert nie wieder; das Nachholen bereits offener Fenster
-steht unterhalb dieser Stelle und entfällt damit ebenfalls. Kurz zuvor hat der
-Watcher aber notiert, dass diese App ihr erstes Fenster noch schuldet — und
-erfährt nie davon. Kein Protokolleintrag, kein Fehler, nur Stille. Es trifft
-genau `onlyFirstWindowAfterLaunch`.
+The serious problem is PID reuse. If a watched app launches under the number
+of one that quit long ago, `attachObserver` finds an existing entry there
+and bails out immediately. The stored observer belongs to a dead process and
+never fires again; catching up on already-open windows sits below that
+point in the code and is skipped as a result. Yet shortly before, the
+watcher had noted that this app still owes its first window — and never
+finds out otherwise. No log entry, no error, just silence. It hits exactly
+`onlyFirstWindowAfterLaunch`.
 
-Der Watcher horcht deshalb auch auf das Beenden von Programmen und gleicht dabei
-gegen die tatsächlich laufenden Prozesse ab, statt der Nummer aus der Meldung zu
-glauben: `NSRunningApplication` liefert dort −1, sobald der Prozess wirklich weg
-ist. Der Abgleich heilt sich zudem selbst — eine verpasste Meldung wird bei der
-nächsten mit aufgeräumt. Vor dem Anhängen eines neuen Observers läuft er
-sicherheitshalber noch einmal.
+The watcher therefore also listens for programs quitting, and checks
+against the actually running processes rather than trusting the number in
+the notification: `NSRunningApplication` returns −1 there once the process
+is truly gone. The check is also self-healing — a missed notification gets
+cleaned up on the next one. It also runs once more, just in case, before
+attaching a new observer.
 
-Das ist ohne Bedienungshilfen-Freigabe messbar, und es wurde gemessen: ein
-Wegwerf-Programm gegen `OpenZonrMac`, mit der echten Konfiguration, zählte
-`observedApplicationCount` vor dem Start von TextEdit, währenddessen und danach.
-Mit der Behebung 1 → 2 → 1, mit dem Stand davor 1 → 2 → **2**.
+This is measurable without an Accessibility grant, and it was measured: a
+throwaway program run against `OpenZonrMac`, with the real configuration,
+counted `observedApplicationCount` before launching TextEdit, during, and
+after. With the fix: 1 → 2 → 1; before the fix: 1 → 2 → **2**.
 
-### Regeln werden vollständig beobachtet, nicht nur das aktive Profil
+### All rules are watched, not just the active profile's
 
-Ob eine App überhaupt beobachtet wird, entscheidet die Menge aller aktivierten
-Regeln der Konfiguration — nicht die des gerade aktiven Profils. Das sieht nach
-einer Unsauberkeit aus und ist keine: Regeln sind hardwareunabhängig, Profile
-übersetzen sie nur auf den vorliegenden Schreibtisch. Würde hier auf das aktive
-Profil eingeengt, liefe eine App nach einem Profilwechsel unbeobachtet weiter,
-gerade wenn sie wieder interessant wird. Im Code steht ein Kommentar dazu, damit
-es niemand später „aufräumt".
+Whether an app gets watched at all is decided by the set of all enabled
+rules in the configuration — not just the currently active profile's. That
+looks like sloppiness, and isn't: rules are hardware-independent, profiles
+merely translate them onto the desk at hand. Narrowing this to the active
+profile would leave an app unwatched after a profile switch, right when it
+becomes interesting again. There's a comment about this in the code, so
+nobody later "cleans it up".
 
-### Nicht jede Entscheidung wird zur Zeile
+### Not every decision becomes a line
 
-Im Menü landen nur Entscheidungen, die eine Regel erreicht haben. Jedes Fenster
-jeder beobachteten App durchläuft den Filter; würden die Hunderte, die nie
-Kandidat waren, mitgelistet, wäre die Handvoll echter Treffer nicht mehr zu
-finden. Der vollständige Strom steht weiterhin im Protokollfenster.
+Only decisions that reached a rule show up in the menu. Every window of
+every watched app passes through the filter; if the hundreds that were
+never candidates were listed too, the handful of real matches would get
+lost. The full stream is still available in the log window.
 
-## Der Weg zur Berechtigung
+## The path to permission
 
-Das Issue verlangt hierfür ausdrücklich Sorgfalt statt eines Fehlertexts, und der
-Grund dafür ist gemessen: **Über LaunchServices gestartet — also per Doppelklick
-oder als Anmeldeobjekt — ist die App für ihre Berechtigung selbst verantwortlich.**
-Aus einer Shell gestartet erbt der Prozess das Vertrauen des Terminals, und
-`AXIsProcessTrusted()` meldet dann irreführend `true`, während die Fensterzugriffe
-nichts erben. Die App prüft deshalb `Accessibility.probeWindowAccess()`, nicht
-`AXIsProcessTrusted()`.
+The issue explicitly calls for care here rather than an error message, and
+the reason is measured: **launched via LaunchServices — i.e. by
+double-click or as a login item — the app is solely responsible for its own
+permission.** Launched from a shell, the process inherits the terminal's
+trust, and `AXIsProcessTrusted()` then misleadingly reports `true` while
+window access inherits nothing. The app therefore checks
+`Accessibility.probeWindowAccess()`, not `AXIsProcessTrusted()`.
 
-Konkret:
+Specifically:
 
-- Beim ersten Start ohne Berechtigung öffnet sich das Statusfenster **einmal** von
-  selbst. Ein Symbol in der Menüleiste allein erklärt niemandem, was zu tun ist.
-- Das Fenster unterscheidet die Fälle. „Nicht freigegeben" und „freigegeben, aber
-  nur Stellvertreter" haben verschiedene Ursachen und verschiedene Abhilfen.
-- Es zeigt die eigene Signatur an. Ohne Developer-ID ist die Freigabe nach dem
-  nächsten Neubau wieder weg — das gehört gesagt, bevor jemand sucht.
-- Es zeigt den eigenen Pfad und öffnet ihn im Finder, weil in die Liste der
-  Bedienungshilfen genau dieses Bundle gehört.
-- Es verlinkt direkt in den richtigen Bereich der Systemeinstellungen.
+- On the first launch without permission, the status window opens **once**
+  on its own. A menu bar icon alone doesn't explain to anyone what to do.
+- The window distinguishes the cases. „Nicht freigegeben" (not granted) and
+  „freigegeben, aber nur Stellvertreter" (granted, but only proxies) have
+  different causes and different fixes.
+- It shows its own signature. Without a Developer ID, the grant is gone
+  again after the next rebuild — that needs saying before anyone goes
+  looking.
+- It shows its own path and opens it in Finder, because it's exactly this
+  bundle that belongs in the Accessibility list.
+- It links directly into the right section of System Settings.
 
 ### `openzonr selftest`
 
@@ -236,32 +244,33 @@ Konkret:
 open -n -a ~/Applications/OpenZonr.app --args selftest --out /tmp/openzonr.txt
 ```
 
-Meldet Signatur, Startweg und den *tatsächlichen* Fensterzugriff. `--out` gibt es,
-weil LaunchServices die Standardausgabe verwirft — und der über LaunchServices
-gestartete Fall ist der maßgebliche. Derselbe Aufruf aus einer Shell misst etwas
-anderes, und der Bericht sagt auch das:
+Reports the signature, the launch path and the *actual* window access.
+`--out` exists because LaunchServices discards standard output — and the
+LaunchServices-launched case is the one that matters. The same call from a
+shell measures something different, and the report says so too:
 
 ```
 Start:       aus einer Shell (Elternprozess PID 31134) — erbt fremdes Vertrauen
 ```
 
-## Stand der Messung
+## Measurement status
 
-Was am 28.08.2026 auf der Zielmaschine (macOS 26.6.2, Mac16,11) belegt ist:
+What is confirmed as of 28.08.2026 on the target machine (macOS 26.6.2,
+Mac16,11):
 
-| Behauptung | Stand |
+| Claim | Status |
 |---|---|
-| `swift build` und `swift test` sind grün | **gemessen** — 156 Tests in 17 Suites, headless |
-| Das Bundle wird signiert und trägt die erwartete Designated Requirement | **gemessen** — `identifier "com.trsdn.openzonr" and … subject.OU = G69Z5BNY97` |
-| Die App startet über LaunchServices und läuft ohne Dock-Symbol | **gemessen** — Prozess stabil, `lsappinfo` meldet `ApplicationType = UIElement` |
-| Das Statusfenster öffnet sich beim Start ohne Berechtigung von selbst | **gemessen** — Fenster „OpenZonr — Status und Berechtigung", 505×462 pt |
-| Die Kommandozeile funktioniert aus derselben Binärdatei | **gemessen** — `selftest` und `windows` liefern ihre Berichte |
-| Der Unterschied zwischen Shell- und LaunchServices-Start | **gemessen** — siehe unten |
-| Beendete Apps geben ihren Observer wieder frei | **gemessen** — `observedApplicationCount` 1 → 2 → 1; vor der Behebung 1 → 2 → 2 |
-| Der Autostart als Anmeldeobjekt überlebt eine Neuanmeldung | **nicht gemessen** — `SMAppService.register()` meldet Erfolg, ein echter Ab- und Anmeldevorgang stand nicht an |
-| **Ob TextEdit beim Start in seiner Zone landet, während die App läuft** | **gemessen am 29.08.2026** — `3840,31 1280x1343` mit laufender App, `1920,32 1280x1343` ohne sie. Nachtrag unten |
+| `swift build` and `swift test` are green | **measured** — 156 tests in 17 suites, headless |
+| The bundle is signed and carries the expected designated requirement | **measured** — `identifier "com.trsdn.openzonr" and … subject.OU = G69Z5BNY97` |
+| The app launches via LaunchServices and runs without a Dock icon | **measured** — process stable, `lsappinfo` reports `ApplicationType = UIElement` |
+| The status window opens on its own when launching without permission | **measured** — window „OpenZonr — Status und Berechtigung" (OpenZonr — status and permission), 505×462 pt |
+| The command line works from the same binary | **measured** — `selftest` and `windows` deliver their reports |
+| The difference between a shell launch and a LaunchServices launch | **measured** — see below |
+| Quit apps release their observer again | **measured** — `observedApplicationCount` 1 → 2 → 1; before the fix, 1 → 2 → 2 |
+| Launch-at-login as a login item survives a re-login | **not measured** — `SMAppService.register()` reports success, but an actual log-out/log-in cycle was not performed |
+| **Whether TextEdit lands in its zone at launch while the app is running** | **measured on 29.08.2026** — `3840,31 1280x1343` with the app running, `1920,32 1280x1343` without it. Addendum below |
 
-Der Startweg-Unterschied, wörtlich aus zwei Läufen derselben Binärdatei:
+The launch-path difference, verbatim from two runs of the same binary:
 
 ```
 # open -n -a … --args selftest
@@ -275,56 +284,58 @@ Der Startweg-Unterschied, wörtlich aus zwei Läufen derselben Binärdatei:
   probeWindowAccess():    degraded — Vertrauen gemeldet, aber nur Stellvertreter
 ```
 
-Das bestätigt den Nachtrag in [`tracer-bullet.md`](tracer-bullet.md) unabhängig
-und macht ihn in einem Befehl reproduzierbar.
+This independently confirms the addendum in
+[`tracer-bullet.md`](tracer-bullet.md) and makes it reproducible in a single
+command.
 
-### Warum die Platzierung lange nicht nachgemessen wurde
+### Why placement went unverified for so long
 
-> **Erledigt am 29.08.2026.** Der Nutzer hat die Freigabe von Hand erteilt; die
-> Platzierung bei laufender App ist seitdem gemessen, mit Gegenprobe und gegen
-> die Positionserinnerung der Ziel-App. Die Zahlen stehen in
-> [`tracer-bullet.md`](tracer-bullet.md) unter „Verifiziert: die Platzierung bei
-> laufender App". Der folgende Abschnitt bleibt stehen, weil die Begründung, warum
-> es kein Code-Problem war, und die Handgriffe zur Einrichtung unverändert gelten.
+> **Done on 29.08.2026.** The user granted the permission by hand; placement
+> while the app is running has been measured since, with a cross-check and
+> against the target app's remembered position. The numbers are in
+> [`tracer-bullet.md`](tracer-bullet.md) under „Verifiziert: die Platzierung
+> bei laufender App" (verified: placement while the app is running). The
+> section below stays, because the reasoning for why this wasn't a code
+> problem, and the setup steps, still hold unchanged.
 
-Das neu gebaute Bundle unter `~/Applications/OpenZonr.app` war in den
-Bedienungshilfen **nicht freigegeben**. Ohne diese Freigabe sieht der Prozess
-keine Fenster, und ohne Fenster ist keine Platzierung messbar.
+The freshly built bundle at `~/Applications/OpenZonr.app` was **not
+granted** in Accessibility. Without that grant the process sees no windows,
+and without windows no placement can be measured.
 
-Die Freigabe zu erteilen war nicht automatisierbar, und zwar aus einem Grund, der
-selbst geprüft ist: macOS schirmt genau diese Oberflächen gegen Automatisierung
-ab. Sowohl der Systemdialog „Zugriff auf Bedienungshilfen" als auch die
-Systemeinstellungen liefern auf dem Bedienungshilfen-Bereich **keinen
-Accessibility-Baum und ein schwarzes Bildschirmfoto**. Das ist die beabsichtigte
-Härtung — ein Werkzeug, das sich seine eigene Fensterberechtigung erteilen könnte,
-wäre der Sinn der Sperre.
+Granting it could not be automated, for a reason that was itself checked:
+macOS specifically shields these surfaces against automation. Both the
+system dialog „Zugriff auf Bedienungshilfen" (Accessibility access) and
+System Settings return **no accessibility tree and a black screenshot** on
+the Accessibility pane. That's the intended hardening — a tool that could
+grant itself its own window permission would defeat the point of the lock.
 
-Es fehlt also ein Handgriff, kein Code:
+So what's missing is a manual step, not code:
 
 1. Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen
-2. `~/Applications/OpenZonr.app` hinzufügen und aktivieren
-   (ein vorhandener Eintrag aus einem unsignierten Lauf: entfernen und neu
-   hinzufügen — den Haken nur neu zu setzen genügt nicht)
-3. Gegenprobe, die ohne weitere Annahmen auskommt:
+   (System Settings → Privacy & Security → Accessibility)
+2. Add `~/Applications/OpenZonr.app` and enable it (an existing entry from
+   an unsigned run: remove it and add it again — just re-checking the box
+   is not enough)
+3. A cross-check that needs no further assumptions:
 
 ```bash
 open -n -a ~/Applications/OpenZonr.app --args selftest --out /tmp/openzonr.txt
-cat /tmp/openzonr.txt      # muss "granted" melden
+cat /tmp/openzonr.txt      # must report "granted"
 ```
 
-Danach ist die eigentliche Messung ein Neustart von TextEdit bei laufender App.
-**Vorher Magnet beenden** (`com.crowdcafe.windowmagnet`) — es arbeitet auf
-derselben API und verfälscht das Ergebnis.
+After that, the actual measurement is restarting TextEdit while the app is
+running. **Quit Magnet first** (`com.crowdcafe.windowmagnet`) — it operates
+on the same API and would skew the result.
 
-Die Platzierungslogik selbst ist gegenüber der gemessenen Fassung unverändert:
-`WatchEngine` ist aus `WatchCommand` extrahiert, nicht neu geschrieben, und das
-CLI ruft heute denselben Code auf, mit dem die Messung in
-[`tracer-bullet.md`](tracer-bullet.md) entstanden ist. Das ist ein Argument, keine
-Messung — und wird hier bewusst nicht als eine ausgegeben.
+The placement logic itself is unchanged from the version that was measured:
+`WatchEngine` was extracted from `WatchCommand`, not rewritten, and the CLI
+today calls the very same code that produced the measurement in
+[`tracer-bullet.md`](tracer-bullet.md). That's an argument, not a
+measurement — and it's deliberately not presented as one here.
 
-**Nachtrag:** Das Argument hat gehalten, aber es hätte nichts genützt, wenn es
-falsch gewesen wäre — und die Messung hat gezeigt, warum man es nicht hätte
-stehenlassen dürfen. Sie hat nämlich etwas zutage gefördert, das aus der Logik
-allein nicht folgte: Outlook wehrt sich beim ersten Schreiben und braucht einen
-zweiten Versuch. Ein Argument über unveränderten Code hätte diesen Fall nie
-gefunden, weil er nicht am Code liegt, sondern an der Ziel-App.
+**Addendum:** the argument held up, but it would have been worthless if it
+had been wrong — and the measurement showed why it shouldn't have been left
+at that. It brought to light something the logic alone would never have
+implied: Outlook resists the first write and needs a second attempt. An
+argument based on unchanged code would never have found this case, because
+it isn't a property of the code but of the target app.

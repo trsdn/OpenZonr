@@ -1,564 +1,565 @@
-# Offene Fragen
+# Open Questions
 
-Entscheidungen, die für den Konzeptstand bewusst offen geblieben sind, sowie
-Abweichungen vom ursprünglich diskutierten Modell. Jede Frage nennt die Optionen
-und, wo vorhanden, eine Tendenz.
+Decisions that were deliberately left open at the concept stage, along with
+deviations from the originally discussed model. Each question lists the
+options and, where one exists, a leaning.
 
-Fragen, die die Praxis inzwischen beantwortet hat, tragen den Vermerk
-*entschieden* oder *geklärt* in der Überschrift. Sie bleiben stehen statt gelöscht
-zu werden — die widerlegten Annahmen sind aufschlussreicher als die richtigen.
-
----
-
-## 1. Spaces und Mission Control
-
-**Frage:** Gehören Zonen zu einem Space? Was passiert, wenn die Zielzone auf
-einem anderen Space liegt als der, den der Nutzer gerade sieht?
-
-Die Accessibility-API kennt Spaces nicht. Es gibt keine offizielle Möglichkeit,
-ein Fenster auf einen bestimmten Space zu legen; die privaten
-`CGSSpace`-Funktionen sind undokumentiert und brechen regelmäßig mit
-macOS-Updates.
-
-Optionen:
-
-- **Spaces ignorieren.** Fenster werden im aktuellen Space platziert. Einfach,
-  ehrlich, aber „Outlook immer im zweiten Space" ist damit nicht abbildbar.
-- **Space als Teil der Rollenbindung**, umgesetzt über private APIs. Mächtig,
-  aber fragil und ein dauerhaftes Wartungsrisiko.
-- **Space-Wechsel simulieren** über Tastaturkurzbefehle vor dem Platzieren.
-  Sichtbar ruckelig und schwer robust zu bekommen.
-
-*Tendenz:* Spaces zunächst ignorieren und erst nach Stufe 6 der Roadmap neu
-bewerten.
-
-**Direkt betroffen:** das ursprünglich diskutierte Profil „Unterwegs" sah
-„Kommunikation = Builtin, Vollbild Space 2" vor. Weil Spaces ungelöst sind, bindet
-das Beispielprofil `mobile` die Rolle stattdessen auf die rechte Hälfte des
-integrierten Displays. Das ist eine bewusste Abweichung, keine Auslassung.
+Questions that practice has since answered carry the note *decided* or
+*resolved* in the heading. They remain rather than being deleted — the
+assumptions that turned out wrong are more instructive than the ones that
+turned out right.
 
 ---
 
-## 2. Mehrere Fenster derselben App
+## 1. Spaces and Mission Control
 
-**Frage:** Was passiert beim zweiten, dritten, zehnten Fenster derselben App?
+**Question:** Do zones belong to a Space? What happens when the target zone
+is on a different Space than the one the user is currently looking at?
 
-Die Voreinstellung `onlyFirstWindowAfterLaunch` löst den häufigsten Fall — sie
-verhindert, dass Dialoge platziert werden. Sie beantwortet aber nicht, was mit
-einem legitimen zweiten Hauptfenster geschehen soll, etwa einem zweiten
-VS-Code-Fenster für ein anderes Projekt.
+The Accessibility API has no notion of Spaces. There is no official way to
+place a window on a specific Space; the private `CGSSpace` functions are
+undocumented and regularly break with macOS updates.
 
-Optionen:
+Options:
 
-- **Nur das erste Fenster platzieren**, alle weiteren ignorieren. Heutiger Stand.
-- **Alle passenden Fenster platzieren**, Konflikte über `occupiedZone` regeln.
-- **Sekundärregel:** das zweite Fenster geht in eine andere Rolle (z. B.
-  „Editor" → „Referenz"). Ausdrucksstark, aber eine deutliche Erweiterung des
-  Regelmodells.
+- **Ignore Spaces.** Windows are placed on the current Space. Simple, honest,
+  but it cannot express "Outlook always on the second Space".
+- **Space as part of the role binding**, implemented via private APIs.
+  Powerful, but fragile and a permanent maintenance risk.
+- **Simulate a Space switch** via keyboard shortcuts before placing. Visibly
+  janky and hard to make robust.
 
-Verwandt: soll `share` automatisch greifen, wenn mehrere Fenster in dieselbe Zone
-wollen — also eine Zone dynamisch aufteilen statt stapeln?
+*Leaning:* ignore Spaces for now and reassess only after roadmap stage 6.
 
----
-
-## 3. Vollbild-Apps
-
-**Frage:** Unterdrückt eine Vollbild-App auf dem Zieldisplay die Regel?
-
-Ein Fenster in eine Zone eines Displays zu legen, das gerade von einer
-Vollbild-App belegt ist, ist meist nicht das, was der Nutzer will — das neue
-Fenster verschwindet hinter dem Vollbildfenster oder reißt aus dem Vollbildmodus
-heraus.
-
-Optionen:
-
-- Regel überspringen, Fenster bleibt wo es ist.
-- Trotzdem platzieren; das Fenster liegt dann auf dem darunterliegenden Space.
-- Auf `suggest` herabstufen und den Nutzer entscheiden lassen.
-
-Hängt eng an Frage 1: das Erkennen von Vollbildzuständen ist ebenfalls
-Space-Territorium.
+**Directly affected:** the originally discussed "On the go" profile called
+for "Communication = Builtin, full screen Space 2". Because Spaces remain
+unsolved, the example `mobile` profile instead binds the role to the right
+half of the built-in display. That is a deliberate deviation, not an
+oversight.
 
 ---
 
-## 4. Nicht-kooperative Apps
+## 2. Multiple windows of the same app
 
-**Frage:** Wie weit wird nachgesetzt, wenn eine App die AX-Positionierung
-ignoriert oder überschreibt?
+**Question:** What happens with the second, third, tenth window of the same
+app?
 
-Java-Toolkits (AWT/Swing) und einzelne Electron-Builds klemmen den gesetzten
-Frame auf ihre eigene Vorstellung eines gültigen Fensters. Der Retry-Loop
-erkennt das über `PlacementOutcome.rejectedByApplication`, aber danach?
+The `onlyFirstWindowAfterLaunch` default setting solves the most common case
+— it stops dialogs from being placed. But it doesn't answer what should
+happen with a legitimate second main window, such as a second VS Code window
+for a different project.
 
-Optionen:
+Options:
 
-- **Aufgeben und melden.** Der Nutzer sieht, welche App sich weigert. Heutiger
-  Stand.
-- **Aggressiver Retry** mit mehr Versuchen über längere Zeit. Riskiert sichtbar
-  springende Fenster.
-- **Dauerhafte Überwachung** des Fensters über `kAXWindowMovedNotification`.
-  Widerspricht dem Nicht-Ziel „keine kontinuierliche Überwachung" und läuft dem
-  Prinzip zuwider, dass das Fenster nach dem Platzieren dem Nutzer gehört.
-- **Bekannte Problem-Apps** in einer mitgelieferten Liste führen und dort direkt
-  auf `suggest` gehen.
+- **Place only the first window**, ignore all further ones. Current state.
+- **Place all matching windows**, resolve conflicts via `occupiedZone`.
+- **Secondary rule:** the second window goes to a different role (e.g.
+  "Editor" → "Reference"). Expressive, but a significant extension of the
+  rule model.
 
----
-
-## 5. Fingerprint-Matching bei unbekannten Setups
-
-**Frage:** Soll es neben dem exakten Vergleich einen Teilmengen-Modus geben?
-
-Heute wird das Set der Display-Identitäten exakt verglichen. Steckt im Büro
-zusätzlich ein Beamer, passt kein Profil und der Nutzer wird gefragt.
-
-Optionen:
-
-- **Exakt bleiben** und fragen. Vorhersagbar, aber lästig bei Konferenzräumen und
-  wechselnden Beamern.
-- **Beste Teilmenge**: das Profil mit der größten Überschneidung gewinnt, das
-  unbekannte Display bleibt ungenutzt. Bequem, aber es platziert Fenster ohne
-  ausdrückliche Zustimmung.
-- **Displays als „ignorieren" markierbar**, sodass sie nicht in den Fingerprint
-  eingehen. Kompromiss, erfordert aber eine einmalige Nutzerentscheidung je
-  Display.
+Related: should `share` kick in automatically when several windows want the
+same zone — i.e. split a zone dynamically instead of stacking?
 
 ---
 
-## 6. Speicherort der Konfiguration und Migration — *entschieden*
+## 3. Full-screen apps
 
-**Frage:** Wohin gehört die Datei?
+**Question:** Does a full-screen app on the target display suppress the
+rule?
 
-**Entscheidung:** Standardablage in `~/Library/Application Support/OpenZonr/config.json`,
-mit einem Override über die Umgebungsvariable `OPENZONR_CONFIG` und, davor, über
-einen expliziten Pfad, den der Aufrufer übergibt.
+Placing a window into a zone on a display that a full-screen app currently
+occupies is usually not what the user wants — the new window either
+vanishes behind the full-screen window or tears it out of full-screen mode.
 
-Damit sind beide Nutzergruppen bedient: wer die Datei nie anfasst, findet sie
-dort, wo Apple sie erwartet, und wer seine Dotfiles versioniert, legt sie ins
-eigene Repository und setzt eine Variable. Der Preis ist eine einzige
-Umgebungsvariable — deutlich weniger als der Streit, den ein einzelner erzwungener
-Ort dauerhaft erzeugt. Umgesetzt in `ConfigurationLocation`; die Auflösung liest
-weder Umgebung noch Home-Verzeichnis selbst, beides wird übergeben.
+Options:
 
-**Migration:** automatisch beim Laden, ohne Rückfrage, aber nie stillschweigend
-zerstörend. Eine ältere `version` wird schrittweise auf
-`Configuration.currentVersion` gehoben; vor einer *schreibenden* Migration wird
-die Ursprungsdatei als `config.json.v<alte Version>.backup` daneben gesichert.
-Eine **neuere** Version wird rundheraus abgelehnt statt halb interpretiert: ein
-neueres Schema kann Felder verschoben haben, und eine halb verstandene
-Konfiguration platziert Fenster dort, wo niemand sie haben wollte.
+- Skip the rule, the window stays where it is.
+- Place it anyway; the window then ends up on the Space underneath.
+- Downgrade to `suggest` and let the user decide.
 
-Weiterhin offen ist ein expliziter Import/Export in der Oberfläche.
+Closely tied to question 1: detecting full-screen state is also Space
+territory.
 
 ---
 
-## 7. Verteilung und Signierung — *teilweise entschieden*
+## 4. Non-cooperative apps
 
-**Der Verdacht hat sich bestätigt, und zwar deutlicher als erwartet.** Der
-Accessibility-Grant hängt an der Code-Signatur, und ohne sie ist das Werkzeug
-nicht bloß unbequem, sondern unbrauchbar: `AXIsProcessTrusted()` meldet `true`,
-aber jede App liefert auf `AXWindows` nur Stellvertreter mit Rolle
-`AXApplication`, und `AXPosition` scheitert mit `-25205`. Der Haken in den
-Systemeinstellungen bleibt gesetzt und meint nach jedem Neubau ein anderes
-Programm.
+**Question:** How hard should the tool push back when an app ignores or
+overrides AX placement?
 
-**Entschieden ist die Entwicklungsseite.** `Scripts/bundle.sh` baut, packt und
-signiert mit Developer ID. Die Designated Requirement bindet an Identifier und
-Team statt an die Prüfsumme:
+Java toolkits (AWT/Swing) and some Electron builds clamp the frame that was
+set to their own notion of a valid window. The retry loop detects this via
+`PlacementOutcome.rejectedByApplication`, but what then?
+
+Options:
+
+- **Give up and report it.** The user sees which app is refusing. Current
+  state.
+- **More aggressive retrying** with more attempts over a longer period.
+  Risks visibly jumping windows.
+- **Continuous monitoring** of the window via `kAXWindowMovedNotification`.
+  Conflicts with the non-goal "no continuous monitoring" and violates the
+  principle that the window belongs to the user once placed.
+- **Maintain a bundled list of known problem apps** and send them straight
+  to `suggest`.
+
+---
+
+## 5. Fingerprint matching for unknown setups
+
+**Question:** Should there be a subset mode alongside the exact match?
+
+Today the set of display identities is compared exactly. If an extra
+projector shows up in the office, no profile matches and the user is asked.
+
+Options:
+
+- **Stay exact** and ask. Predictable, but tiresome for conference rooms and
+  changing projectors.
+- **Best subset**: the profile with the largest overlap wins, the unknown
+  display stays unused. Convenient, but it places windows without explicit
+  consent.
+- **Displays can be marked "ignore"**, so they don't enter the fingerprint.
+  A compromise, but it requires a one-time decision per display from the
+  user.
+
+---
+
+## 6. Configuration storage location and migration — *decided*
+
+**Question:** Where does the file belong?
+
+**Decision:** the default location is
+`~/Library/Application Support/OpenZonr/config.json`, with an override via
+the `OPENZONR_CONFIG` environment variable and, taking precedence over that,
+an explicit path passed in by the caller.
+
+This serves both groups of users: anyone who never touches the file finds it
+where Apple expects it, and anyone who versions their dotfiles puts it in
+their own repository and sets one variable. The cost is a single environment
+variable — considerably less than the argument a single enforced location
+would keep generating. Implemented in `ConfigurationLocation`; the
+resolution logic reads neither the environment nor the home directory
+itself, both are passed in.
+
+**Migration:** automatic on load, without asking, but never silently
+destructive. An older `version` is stepped forward incrementally to
+`Configuration.currentVersion`; before a *write* migration, the original
+file is backed up next to it as `config.json.v<old version>.backup`. A
+**newer** version is rejected outright rather than half-interpreted: a newer
+schema may have moved fields, and a half-understood configuration places
+windows where nobody wanted them.
+
+Still open is explicit import/export in the interface.
+
+---
+
+## 7. Distribution and signing — *partially decided*
+
+**The suspicion has been confirmed, and more starkly than expected.** The
+Accessibility grant is tied to the code signature, and without it the tool
+isn't merely inconvenient, it's unusable: `AXIsProcessTrusted()` reports
+`true`, but every app returns nothing but `AXApplication`-role proxies for
+`AXWindows`, and `AXPosition` fails with `-25205`. The checkbox in System
+Settings stays checked and, after every rebuild, refers to a different
+program.
+
+**The development side is decided.** `Scripts/bundle.sh` builds, packages
+and signs with a Developer ID. The designated requirement binds to
+identifier and team rather than to the checksum:
 
 ```
 designated => identifier "com.trsdn.openzonr" and anchor apple generic
   and certificate leaf[subject.OU] = <TEAM>
 ```
 
-Damit übersteht die Freigabe einen Neubau in der Regel; zugesichert ist das nicht
-(Issue #35, beobachtet am 30.08.2026). Ein Ad-hoc-Zertifikat genügt nicht, es
-hat keine solche Kette.
+This means the grant usually survives a rebuild; that is not guaranteed
+(issue #35, observed on 30.08.2026). An ad-hoc certificate is not enough —
+it has no such chain.
 
-**Der Pfad zählt trotzdem.** Ein frisch gebautes, identisch signiertes Bundle an
-einem neuen Ort ist nicht freigegeben — über LaunchServices gestartet meldet es
-„nicht vertraut". Die Freigabe gilt dem Programm an seinem Platz, nicht dem
-Identifier allein. `Scripts/bundle.sh` legt das Bundle deshalb unter
-`~/Applications/OpenZonr.app` ab statt in `.build`, wo die erste Aufräumaktion
-sie kosten würde.
+**The path matters regardless.** A freshly built, identically signed bundle
+in a new location is not granted — launched via LaunchServices it reports
+"not trusted". The grant applies to the program at its location, not to the
+identifier alone. `Scripts/bundle.sh` therefore places the bundle under
+`~/Applications/OpenZonr.app` instead of in `.build`, where the first
+cleanup would cost it.
 
-Praktische Folge für Mitwirkende: **ohne Developer-ID-Zertifikat
-lässt sich an der Platzierung nicht sinnvoll arbeiten.** Die rechnende Hälfte in
-`OpenZonrCore` bleibt headless testbar, die Anbindung nicht.
+Practical consequence for contributors: **without a Developer ID
+certificate, meaningful work on placement is not possible.** The
+computational half in `OpenZonrCore` stays testable headless; the
+integration does not.
 
-**Offen bleibt die Verteilung an andere:**
+**Distribution to others remains open:**
 
-- **Notarisierte Direktverteilung** (Developer ID) — der naheliegende Weg, setzt
-  die kostenpflichtige Entwicklermitgliedschaft voraus, die hier ohnehin
-  vorhanden ist. Notarisierung ist noch nicht eingerichtet.
-- **App Store** — scheidet praktisch aus: die Accessibility-API ist mit dem
-  App-Sandbox nicht vereinbar.
-- **Selbst gebaut aus dem Quellcode** — funktioniert nur mit eigenem
-  Zertifikat, siehe oben.
+- **Notarized direct distribution** (Developer ID) — the obvious path,
+  requires the paid developer membership, which already exists here.
+  Notarization is not yet set up.
+- **App Store** — effectively ruled out: the Accessibility API is
+  incompatible with the App Sandbox.
+- **Self-built from source** — only works with your own certificate, see
+  above.
 
-Damit verbunden: ob und wie ein automatischer Update-Mechanismus eingebaut wird.
-Da die Requirement an Identifier und Team bindet, sollte ein Update den Grant
-nicht kosten — geprüft ist das noch nicht.
-
----
-
-## 8. Zonenkonfiguration und Editor — *entschieden*
-
-**Frage:** Wie werden Zonen tatsächlich gezeichnet — freies Zeichnen, Raster
-mit einrastenden Kanten, mitgelieferte Vorlagen? Und: sollen Zonenränder und
-Abstände (Gaps) konfigurierbar sein?
-
-**Entscheidung: alle drei Wege zugleich, Vorlagen als Ausgangspunkt.** Der
-Editor liefert Vorlagen für Hälften, Drittel, Viertel, 25/50/25 und Fünftel;
-darüber hinaus wird auf einem Zwölftelraster gerastet, das *während* der
-Geste sichtbar ist, und beim Loslassen zusätzlich an Kanten benachbarter
-Zonen gefangen. Die Sichtbarkeit des Rasters ist der Punkt: eine Zone rastet
-seit dem Durchstich auf Zwölftel, ohne dass jemand das gesehen hätte, und
-das Rechteck sprang beim Loslassen ohne erkennbaren Grund. Zwölftel, weil
-Hälften (6/12), Drittel (4/12) und Viertel (3/12) alle darauf liegen.
-Fünftel sind auf 5120 px Fenster von 1024 px, Drittel dort 1706 px — die
-zwei Vorlagen decken zwei Grenzfälle, die dieselbe Frage stellen.
-
-Vorlagen ersetzen die Zonen eines Layouts vollständig. **Vorher** wird
-gemeldet, welche Bindungen dadurch ins Leere zeigen würden — die
-Validierung meldet den Fall bereits als
-[`unknownZoneInBinding`](../Sources/OpenZonrCore/Validation/), das reicht
-aber erst *nach* der Anwendung. `Configuration.previewApplying(template:…)`
-liefert die Vorschau davor, `applying(template:…)` führt die Änderung aus;
-beides sind reine Funktionen und headless bewiesen
-(`LayoutTemplateTests.swift`).
-
-Unbedeckte Fläche wird im Canvas schraffiert. Überlappung ist laut
-`Zone.swift` ausdrücklich erlaubt (großes „Fokus"-Feld über zwei Hälften)
-und darf kein Fehler sein. Unbedeckte Fläche dagegen ist fast immer ein
-Versehen und war bisher unsichtbar; Schraffur statt Fehlermeldung — eine
-Beobachtung, keine Behauptung. Die Rechnung liegt in `LayoutCoverage` und
-ist an denselben Vorlagen bewiesen, für die sie exakt Null liefern muss.
-
-**Zur Gap-Frage: keine Abstände pro Zone, sondern ein Randwert pro Layout.**
-`Layout.margin` steht neben `zones`; der Standardwert `0` bewahrt das
-bisherige Verhalten, das Feld ist beim Dekodieren und Kodieren omissible.
-
-**Und die eigentliche Vorschrift, ohne die es jemand naheliegend und
-falsch baut:**
-
-- **Beim Platzieren: Rand abziehen.** `DefaultZoneResolver` verkleinert die
-  Zone um `margin` an jeder Seite; das Fenster bekommt seine Luft.
-- **Beim Treffertest: nicht.** `DropzoneMap.zones(in:…)` rechnet weiter mit
-  den ungeschrumpften Zonen. Die kacheln den Bildschirm lückenlos, jeder
-  Punkt gehört genau einer Zone, kein Flackern beim Ziehen über eine Naht.
-
-Wer den Rand an beiden Stellen abzöge, bekäme optisch dasselbe Ergebnis und
-ein Overlay, das an jeder Naht blinkt — und der Zusammenhang wäre schwer zu
-finden, weil die Fenster ja richtig liegen. Ein Test hält es fest: ein Punkt
-exakt auf der Naht zweier Zonen mit `margin > 0` liefert weiterhin genau
-eine Zone (`DropzoneMapTests`), während das aufgelöste Fenster den Rand als
-Luft trägt (`ZoneResolverTests`).
-
-**Verworfene Alternative — Gaps pro Zone.** Zwei Nachteile stehen
-gleichauf: die Zahl dupliziert sich an jeder Zone und driftet auseinander,
-sobald jemand eine Zone anfasst. Das wiegt aber weniger als das Zweite:
-Zonen kacheln den Bildschirm heute lückenlos, und die Dropzones hängen
-daran. Mit echten Lücken im Modell würde die Frage *welche Zone liegt
-unter dem Zeiger* nur da eine Antwort haben, wo keine Lücke ist — und wer
-ein Fenster quer über ein Drei-Spalten-Layout zieht, bekäme Hervorhebung —
-nichts — Hervorhebung — nichts — Hervorhebung. Das trifft genau die
-Stelle, die schon nach Punkt 13 wackelt: dort eine zu groß geratene
-Totzone, hier eine, die niemand als solche gemeint hat.
+Tied to this: whether and how an automatic update mechanism gets built.
+Since the requirement binds to identifier and team, an update should not
+cost the grant — that has not been checked yet.
 
 ---
 
-## 9. Virtuelle Displays kippen den Setup-Fingerprint — *entschieden*
+## 8. Zone configuration and editor — *decided*
 
-**Der Befund.** Auf dem Setup des Autors melden vier Displays, aber nur zwei sind
-physisch. „AAA" (vermutlich OBS) und „Teleprompter Source" sind
-Software-Displays. Sie erscheinen und verschwinden, während sich am Schreibtisch
-nichts ändert.
+**Question:** How are zones actually drawn — free-form drawing, a grid with
+snapping edges, bundled templates? And: should zone margins and gaps be
+configurable?
 
-Nach dem ursprünglichen Konzept ändert sich damit **jedes Mal der
-Fingerprint**, das Profil springt um, und Fenster landen woanders — ausgelöst
-davon, dass jemand OBS startet. Das ist kein Randfall, sondern ein
-Konzeptfehler.
+**Decision: all three approaches at once, templates as the starting point.**
+The editor ships templates for halves, thirds, quarters, 25/50/25 and
+fifths; beyond that, it snaps to a twelfths grid that stays visible *during*
+the gesture, and additionally snaps to the edges of neighbouring zones on
+release. The grid's visibility is the point: since the prototype, a zone has
+snapped to twelfths without anyone seeing it happen, and the rectangle would
+jump on release for no apparent reason. Twelfths, because halves (6/12),
+thirds (4/12) and quarters (3/12) all land exactly on it. On a 5120 px
+window, a fifth is 1024 px; a third there is 1706 px — the two templates
+cover two edge cases that raise the same rounding question.
 
-**Erwogene Wege:**
+Templates replace a layout's zones entirely. **Beforehand**, the app reports
+which bindings would then point nowhere — the validation already reports
+this case as
+[`unknownZoneInBinding`](../Sources/OpenZonrCore/Validation/), but only
+*after* applying it. `Configuration.previewApplying(template:…)` supplies
+the preview beforehand, `applying(template:…)` carries out the change; both
+are pure functions and proven headless (`LayoutTemplateTests.swift`).
 
-- **`CGDisplayIsOnline` / `CGDisplayIsAsleep` prüfen.** Hilft nicht: virtuelle
-  Displays sind online und wach.
-- **Über die physische Größe erkennen** (`CGDisplayScreenSize`). Getestet und
-  **widerlegt**: „AAA" meldet 677,3 × 381,0 mm, „Teleprompter Source" 478,1 ×
-  268,9 mm — beides völlig plausible Monitorgrößen. Die verbreitete Annahme
-  „virtuelle Displays melden 0 × 0" trifft hier nicht zu.
-- **Über unplausible EDID-Kennungen raten** (`modelNumber <= 1`, Seriennummer 0).
-  Trifft die beiden Fälle, ist aber nachweislich unzuverlässig: der *echte*
-  Hauptmonitor meldet ebenfalls Seriennummer 0.
-- **Eine explizite Ignorierliste in der Konfiguration.**
+Uncovered area is hatched in the canvas. Overlap is explicitly permitted per
+`Zone.swift` (a large "focus" field spanning two halves) and must not be an
+error. Uncovered area, by contrast, is nearly always an oversight and was
+previously invisible; hatching instead of an error message — an
+observation, not a claim. The computation lives in `LayoutCoverage` and is
+proven against the same templates, for which it must yield exactly zero.
 
-**Entscheidung: explizite Liste `Configuration.ignoredDisplays`.** Displays
-darin fließen nicht in den Fingerprint ein. `openzonr displays` markiert
-Verdachtsfälle sichtbar mit `virtuell?` und
-`openzonr displays --config-fragment` schlägt sie als `ignoredDisplays`-Einträge
-vor — **entscheiden muss der Nutzer.**
+**On the gap question: no per-zone spacing, but a single margin value per
+layout.** `Layout.margin` sits alongside `zones`; the default value of `0`
+preserves prior behaviour, and the field is omissible when decoding and
+encoding.
 
-Begründung: jede Heuristik, die stark genug ist, um beide virtuellen Displays zu
-fangen, fängt auf anderen Setups auch echte Monitore. Ein Werkzeug, das einen
-angeschlossenen Bildschirm stillschweigend aus dem Profil nimmt, ist schlimmer
-als eines, das eine Zeile Konfiguration verlangt. Die Heuristik bleibt deshalb
-eine *Anzeige*, nie eine *Aktion*.
+**And the actual rule, without which someone would build it plausibly and
+wrong:**
 
-**Neu aufgeworfen:** Die Markierung `virtuell?` ist eine Vermutung und als solche
-beschriftet. Ob es eine belastbare öffentliche API zur Unterscheidung gibt, ist
-weiterhin offen — die naheliegenden Kandidaten sind widerlegt.
+- **When placing: subtract the margin.** `DefaultZoneResolver` shrinks the
+  zone by `margin` on every side; the window gets its breathing room.
+- **When hit-testing: don't.** `DropzoneMap.zones(in:…)` keeps computing
+  with the unshrunk zones. Those tile the screen without gaps, every point
+  belongs to exactly one zone, no flicker when dragging across a seam.
+
+Anyone who subtracted the margin in both places would get the visually same
+result and an overlay that flickers at every seam — and the connection
+would be hard to find, because the windows are, after all, positioned
+correctly. A test pins this down: a point exactly on the seam between two
+zones with `margin > 0` still resolves to exactly one zone
+(`DropzoneMapTests`), while the resolved window carries the margin as
+breathing room (`ZoneResolverTests`).
+
+**Rejected alternative — gaps per zone.** Two drawbacks weigh equally: the
+number duplicates at every zone and drifts apart as soon as someone touches
+a zone. But that weighs less than the second one: zones tile the screen
+without gaps today, and the dropzones depend on that. With real gaps in the
+model, the question *which zone is under the pointer* would only have an
+answer where there is no gap — and dragging a window across a three-column
+layout would produce highlight — nothing — highlight — nothing — highlight.
+That hits exactly the spot that already wobbles under point 13: there, an
+oversized dead zone; here, one nobody intended as such.
 
 ---
 
-## 10. `AXIsProcessTrusted()` ist kein verlässlicher Berechtigungstest — *geklärt*
+## 9. Virtual displays throw off the setup fingerprint — *decided*
 
-**Der Befund.** Beim Bauen des Durchstichs trat ein Zustand auf, den das Konzept
-nicht vorsah:
+**The finding.** On the author's setup, four displays report, but only two
+are physical. "AAA" (presumably OBS) and "Teleprompter Source" are software
+displays. They appear and disappear while nothing changes at the desk.
+
+Under the original concept, this means **the fingerprint changes every
+time**, the profile jumps, and windows land somewhere else — triggered by
+someone starting OBS. That is not an edge case, it's a design flaw.
+
+**Approaches considered:**
+
+- **Check `CGDisplayIsOnline` / `CGDisplayIsAsleep`.** Doesn't help: virtual
+  displays are online and awake.
+- **Detect via physical size** (`CGDisplayScreenSize`). Tested and
+  **disproven**: "AAA" reports 677.3 × 381.0 mm, "Teleprompter Source"
+  478.1 × 268.9 mm — both entirely plausible monitor sizes. The common
+  assumption that "virtual displays report 0 × 0" does not hold here.
+- **Guess via implausible EDID identifiers** (`modelNumber <= 1`, serial
+  number 0). Catches both cases, but is demonstrably unreliable: the *real*
+  main monitor also reports serial number 0.
+- **An explicit ignore list in the configuration.**
+
+**Decision: an explicit `Configuration.ignoredDisplays` list.** Displays in
+it don't enter the fingerprint. `openzonr displays` visibly flags suspected
+cases with `virtuell?` (virtual?) and
+`openzonr displays --config-fragment` suggests them as `ignoredDisplays`
+entries — **the user has to decide.**
+
+Rationale: any heuristic strong enough to catch both virtual displays would,
+on other setups, also catch real monitors. A tool that silently drops a
+connected screen from the profile is worse than one that asks for one line
+of configuration. The heuristic therefore stays a *display*, never an
+*action*.
+
+**Newly raised:** the `virtuell?` marker is a guess and labelled as such.
+Whether there is a reliable public API to distinguish the two remains open
+— the obvious candidates have been disproven.
+
+---
+
+## 10. `AXIsProcessTrusted()` is not a reliable permission test — *resolved*
+
+**The finding.** While building the tracer bullet, a state occurred that
+the concept had not anticipated:
 
 ```
 AXIsProcessTrusted()                                     → true
 AXUIElementCopyAttributeValue(app, kAXWindowsAttribute)  → .success
-  … liefert ein Element mit Rolle AXApplication, ohne Position und Größe
+  … delivers an element with role AXApplication, without position or size
 AXObserverAddNotification(kAXWindowCreatedNotification)  → .success
-  … und die Benachrichtigung wird tatsächlich zugestellt
+  … and the notification is actually delivered
 ```
 
-Die API meldet also durchgehend Erfolg, aber es kommen keine echten Fenster
-zurück. Reproduziert mit `openzonr` **und** mit einem unabhängig kompilierten
-Probe-Programm im selben Prozesskontext — es liegt nicht am Werkzeug.
+So the API consistently reports success, but no real windows come back.
+Reproduced with `openzonr` **and** with an independently compiled probe
+program in the same process context — it's not the tool.
 
-**Die Ursache ist inzwischen weitgehend geklärt, und die erste Vermutung war
-nicht falsch, sondern unvollständig.** Angenommen wurde, die Berechtigung hänge
-am startenden Programm (Terminal, Editor, Agent-Prozess). Hinzu kommt die
-Code-Signatur: eine unsignierte Binärdatei bekommt bei jedem Neubau eine neue
-Prüfsumme, und TCC erkennt sie nicht wieder. Beide Mechanismen wirken zusammen,
-und der degradierte Zustand ist genau ihr Zusammenspiel — `AXIsProcessTrusted()`
-erbt das Vertrauen des startenden Terminals, die Fensterzugriffe erben es nicht.
-Mit einem freigegebenen, signierten Bundle liefert derselbe Aufruf 19 echte
-`AXWindow` mit lesbarem Frame. Einzelheiten in Frage 7.
+**The cause is now largely understood, and the first guess wasn't wrong,
+just incomplete.** The assumption was that the grant is tied to the
+launching program (Terminal, editor, agent process). On top of that comes
+the code signature: an unsigned binary gets a new checksum on every
+rebuild, and TCC doesn't recognize it again. Both mechanisms act together,
+and the degraded state is exactly their interplay — `AXIsProcessTrusted()`
+inherits the trust of the launching terminal, window access does not. With
+a granted, signed bundle, the same call returns 19 real `AXWindow` elements
+with a readable frame. Details in question 7.
 
-**Konsequenz für die Implementierung:** `openzonr` verlässt sich nicht auf
-`AXIsProcessTrusted()`, sondern führt einen echten Selbsttest aus
-(`Accessibility.probeWindowAccess()`): Liefert *irgendeine* App ein Element mit
-der Rolle `AXWindow` **und** lesbarem Frame? Nur dann gilt der Zugriff als
-funktionsfähig. Die drei Ergebnisse — gewährt, nicht vertraut, degradiert — haben
-je eine eigene deutschsprachige Anleitung. Unter `--dry-run` ist „degradiert" nur
-eine Warnung, damit Konfiguration und Profilwahl trotzdem prüfbar bleiben.
+**Consequence for the implementation:** `openzonr` does not rely on
+`AXIsProcessTrusted()`, but runs a real self-test
+(`Accessibility.probeWindowAccess()`): does *any* app return an element
+with role `AXWindow` **and** a readable frame? Only then does access count
+as working. The three outcomes — granted, not trusted, degraded — each get
+their own German-language walkthrough. Under `--dry-run`, "degraded" is
+only a warning, so that configuration and profile selection can still be
+checked.
 
-**Dieser Selbsttest bleibt trotzdem richtig.** Der degradierte Zustand tritt bei
-jedem unsignierten Build auf, also bei jedem Mitwirkenden ohne Zertifikat. Ein
-Werkzeug, das nur `AXIsProcessTrusted()` prüft, täte dort stumm gar nichts und
-gäbe keinen Hinweis darauf, woran es liegt.
+**This self-test remains correct regardless.** The degraded state occurs
+with every unsigned build, i.e. for every contributor without a
+certificate. A tool that only checks `AXIsProcessTrusted()` would silently
+do nothing there and give no indication of the reason.
 
-**Nachgetragen:** Das Retry-Verhalten ist inzwischen gemessen. Der erste
-Nachtrag hier lautete „beide getesteten Apps fügen sich beim ersten Schreiben" —
-das galt für zwei Fälle, in denen das Fenster kaum etwas zurücklegen musste.
-Sobald ein Fenster wirklich über den Bildschirm zu ziehen ist, braucht Outlook
-einen zweiten Versuch; die Schleife ist tragend. Siehe
-[tracer-bullet.md](tracer-bullet.md), „Verifiziert: die Platzierung bei laufender
-App".
-
----
-
-## 11. Konkurrierende Fenstermanager — *entschieden: erkennen und warnen*
-
-Auf dem Messrechner läuft Magnet (`com.crowdcafe.windowmagnet`) parallel und
-platziert Fenster über dieselbe Accessibility-API.
-
-Zwei Konsequenzen:
-
-- **Für die Messung.** Eine Abweichung zwischen Soll- und Ist-Frame im
-  Retry-Protokoll ist nicht automatisch das Selbst-Resize der App. Sie kann
-  ebenso gut von Magnet stammen. Wer das nicht weiß, misst Magnet und hält das
-  Ergebnis für Outlook. Für saubere Messungen konkurrierende Werkzeuge
-  vorübergehend beenden.
-- **Für den Betrieb.** Zwei Werkzeuge, die auf dasselbe Ereignis reagieren,
-  können sich gegenseitig überschreiben — im schlechtesten Fall abwechselnd, bis
-  eines aufgibt. OpenZonr gibt nach `RetryPolicy.maximumAttempts` auf und
-  protokolliert das; ein Werkzeug ohne Obergrenze täte das nicht.
-
-**Entschieden mit den Dropzones (#10), weil dort aus der Messstörung ein
-Entwurfsproblem wurde: Magnet und OpenZonr blendeten beide beim Ziehen ein
-Overlay ein.** OpenZonr erkennt 15 verbreitete Werkzeuge über ihre Bundle-ID
-(`CompetingWindowManagers`), meldet einen Treffer einmalig im Menü und
-unterscheidet dabei, ob das andere Werkzeug ebenfalls beim Ziehen zeichnet oder
-nur dieselbe API benutzt. Es kämpft nicht: kein zweites Setzen nach dem
-Loslassen, kein Beenden fremder Programme, kein stillschweigendes Abschalten.
-Die Warnung ist über `defaults.dropzones.warnAboutCompetingManagers`
-abschaltbar, das Ziehen bleibt davon unberührt. Begründung und die verworfenen
-Alternativen stehen in [dropzones.md](dropzones.md).
+**Addendum:** retry behaviour has since been measured. The first addendum
+here read "both tested apps settle on the first write" — that held for two
+cases where the window barely had to move. As soon as a window actually has
+to travel across the screen, Outlook needs a second attempt; the retry loop
+is load-bearing. See [tracer-bullet.md](tracer-bullet.md), "Verified:
+placement while the app is running".
 
 ---
 
-## 12. Fensterebene als Filterkriterium — *entschieden*
+## 11. Competing window managers — *decided: detect and warn*
 
-Der Konzeptstand filterte über Subrolle und Mindestgröße. Die Messung an der
-echten Fensterlandschaft zeigt, dass das nicht reicht: die **Mitteilungszentrale
-ist 5120 × 1440 groß** und besteht damit jede Mindestgrößen-Prüfung. Nur ihre
-Fensterebene (21) unterscheidet sie von einem echten Fenster.
+On the measurement machine, Magnet (`com.crowdcafe.windowmagnet`) runs in
+parallel and places windows via the same Accessibility API.
 
-**Entscheidung:** `kCGWindowLayer == 0` ist ein **eigenständiges, standardmäßig
-aktives und nicht abschaltbares** Filterkriterium — und zwar das erste, vor
-Subrolle und Größe. Es ist bewusst *keine* Option in `WindowMatch`: eine Regel,
-die Fenster auf Ebene 24 platzieren will, will in Wahrheit die Menüleiste
-verschieben.
+Two consequences:
 
----
+- **For measurement.** A discrepancy between the intended and actual frame
+  in the retry log is not automatically the app's own resize. It can just
+  as easily come from Magnet. Anyone who doesn't know this measures Magnet
+  and mistakes the result for Outlook's. For clean measurements, quit
+  competing tools temporarily.
+- **For operation.** Two tools reacting to the same event can overwrite
+  each other — in the worst case alternately, until one gives up. OpenZonr
+  gives up after `RetryPolicy.maximumAttempts` and logs it; a tool without
+  an upper bound would not.
 
-## 13. Keine Hysterese am Zonenrand — *offen, bewusst offen*
-
-`DropzoneOverlayPlan.plan(…)` entscheidet die hervorgehobene Zone allein aus dem
-aktuellen Zeigerpunkt; die Funktion hält keinen vorigen Zustand. In `Sources/`
-kommt das Wort „Hysterese" nicht vor.
-
-Die Zuordnung ist dadurch **eindeutig** — halboffene Rechtecke, jede geteilte
-Kante gehört genau einer Zone, das ist in
-[`dropzones.md`](dropzones.md) als bewiesen ausgewiesen. Eindeutigkeit ist aber
-nicht Stabilität: Sitzt der Zeiger genau auf einer Kante, kippt die
-Hervorhebung schon bei einem Punkt Zittern hin und her. Sichtbar wird das nur
-bei einem echten Zug mit der Hand.
-
-**Warum das offen bleibt und nicht gebaut wird.** Eine Stabilisierung lässt sich
-ohne echten Zug nicht beurteilen: Wie viele Punkte Totzone richtig sind, ob es
-eine Zeit- statt einer Wegschwelle braucht, ob das Problem überhaupt spürbar
-ist — dazu gibt es ohne die Bedienungshilfen-Freigabe keine Beobachtung,
-sondern nur eine Vermutung. Eine ungemessene Stabilisierung wäre genau die Art
-Zusicherung, die dieses Projekt sonst vermeidet, und sie wäre schlimmer als
-keine: Eine Totzone, die zu groß geraten ist, macht kleine Zonen unerreichbar,
-und niemand merkt, dass die Ursache eine Hilfsmaßnahme ist. **Zu entscheiden
-nach der ersten Sitzung mit echtem Ziehen, nicht vorher.**
-
-**Die Falle, falls es jemand baut.** Eine parallel gelaufene Sitzung an #10 hatte
-eine Hysterese bereits gebaut, und ihr eigener Test fand darin einen Denkfehler:
-Die Bedingung verlangte, dass die zuvor hervorgehobene Zone noch **unter den
-Kandidaten** des aktuellen Punktes ist — **beim Kantenübertritt ist sie das
-nie**. Die Hysterese griff also ausgerechnet in dem einzigen Fall nicht, für den
-sie existiert. Die Bedingung sieht dabei völlig plausibel aus; wer sie nachbaut,
-baut denselben Fehler wieder ein. Die richtige Form muss die vorige Zone
-*unabhängig* vom aktuellen Treffer festhalten und erst aufgeben, wenn der Zeiger
-die Kante um mehr als die Totzone überschritten hat.
-
-Herkunft: Die Arbeit dieser Sitzung ist nicht in `main` gelandet (#10 wurde in
-PR #15 aus dem anderen Zweig gemergt); der Befund und der Denkfehler stammen
-aus ihr und sind hier festgehalten, damit die Erfahrung nicht ein zweites Mal
-bezahlt wird.
+**Decided together with the dropzones (#10), because there the measurement
+disturbance turned into a design problem: Magnet and OpenZonr both showed
+an overlay while dragging.** OpenZonr recognizes 15 common tools by their
+bundle ID (`CompetingWindowManagers`), reports a match once in the menu,
+and distinguishes whether the other tool also draws while dragging or
+merely uses the same API. It doesn't fight: no re-setting position after
+release, no quitting other programs, no silently switching itself off. The
+warning can be turned off via
+`defaults.dropzones.warnAboutCompetingManagers`; dragging itself is
+unaffected. Rationale and rejected alternatives are in
+[dropzones.md](dropzones.md).
 
 ---
 
-## 14. Rollenschicht bei nur einem Profil — *entschieden: sichtbar lassen*
+## 12. Window layer as a filter criterion — *decided*
 
-**Frage:** In der real existierenden Konfiguration ist die Kette
-Regel → Rolle → Zone strikt 1:1:1 — drei Regeln, drei Rollen, drei Zonen. Eine
-Rolle heißt `links-aussen`, trägt den Namen „Links außen" und die Notiz
-„Automatisch angelegt für „Systemeinstellungen"". Sie ist nach der Zone
-benannt, auf die sie zeigt: `QuickPin` musste ihr einen Namen geben und hatte
-nichts zu sagen. Soll die Rollenschicht in der Oberfläche verborgen werden,
-bis ein zweites Profil sie nötig macht?
+The concept stage filtered by subrole and minimum size. Measurement against
+the real window landscape shows that isn't enough: the **Notification
+Center is 5120 × 1440** in size and thereby passes any minimum-size check.
+Only its window layer (21) distinguishes it from a real window.
 
-**Entscheidung: nein, die Rolle bleibt sichtbar. Die Übersicht aus #19 hat den
-Zwischenschritt bereits erträglich gemacht, ohne ihn zu verstecken.**
-
-Der Editor öffnet seit #19 auf dem Reiter „Übersicht" (`EditorWindow` mit
-`@State private var tab: Tab = .overview`). Dort steht ein maßstabsgetreues
-Bild der Bildschirmanordnung, in den Zonen die Namen der Zonen und darunter
-die Regeletiketten samt Bundle-Kennung. Das Wort „Rolle" kommt in der
-Zeichnung nicht **einmal** vor — die Rechnung (`PlacementOverview.build`)
-klappt die Kette Regel → Rolle → Bindung → Zone in Core zusammen, und die
-Oberfläche zeigt nur das Ergebnis. Wer den Editor aufmacht, sieht damit
-sofort „TextEdit → Rechts außen", „Outlook → Mitte", „Systemeinstellungen →
-Links außen". Der Alltagsweg begegnet der Rolle nicht mehr. Sie steht nur im
-Reiter „Rollen & Profile", und wer dort landet, will das Datenmodell sehen.
-
-Verstecken hätte an drei Stellen einen Preis, der den Gewinn übersteigt:
-
-- **Der Enthüllungspunkt fehlt.** Das Issue benennt selbst das Risiko:
-  Rollen im Datenmodell zu haben und in der Oberfläche zu verbergen zwingt
-  zu **einem** klar benannten Moment, an dem sie erscheinen — dem Anlegen
-  des zweiten Profils. Diesen Moment gibt es heute nicht. `RoleEditor`
-  iteriert `document.configuration.profiles`; einen Weg, ein Profil
-  anzulegen, hat der Editor nicht. Die Schicht zu verbergen, ohne den
-  Weg dahin zu bauen, ist genau der Schalter „Fortgeschritten", vor dem
-  das Issue warnt.
-- **`QuickPin` beschriftet Rollen nach ihrer Zone.** Das ist die Ursache
-  von „Links außen"; verstecken heilt das Symptom nur im Alltag und
-  überlässt es dem, der den Rollen-Reiter aufmacht. Der Nutzen von
-  `QuickPin` — dass der Nutzer das Wort „Rolle" nicht lernen muss —
-  besteht heute schon (`Outcome.summary` spricht von Regel und Zone,
-  nicht von Rolle). Das Missverhältnis, das das Issue beschreibt, wird
-  erst dann echt, wenn das zweite Profil da ist und die Rolle „Links
-  außen" auf dem Laptop plötzlich woanders liegen soll. Ab diesem
-  Moment ist die Rolle nicht mehr überflüssig, sondern die Antwort auf
-  eine echte Frage.
-- **Der heutige Preis ist niedrig.** Drei Rollen, drei Regeln, drei
-  Zonen — der Rollen-Reiter ist ein kurzer Zettel neben der Übersicht,
-  die die Frage „wohin geht was?" beantwortet. Das Datenformat
-  unverändert zu halten und die Schicht am zweiten Profil wieder
-  hervorzuziehen wäre teurer als sie stehenzulassen: das Verbergen
-  müsste rückwärts kompatibel bleiben, und der Moment des Wiederauftauchens
-  wäre erklärungsbedürftig.
-
-Der Kern: **die Übersicht macht die Rollenschicht erträglich, ohne sie zu
-verstecken.** Genau das war die These im letzten Absatz des Issues. Sie hat
-sich bestätigt.
-
-**Verworfene Alternative — verbergen mit dreistufigem Wiederauftauchen.**
-Das Issue schlug vor: bei einem Profil die Rolle unsichtbar (Kennung =
-Zonenkennung, Dateiformat unverändert), beim Anlegen des zweiten Profils
-die Frage „Wo liegt ‚E-Mail' in diesem Setup?" und ab dort sichtbar,
-zusätzlich ein Hinweis im `FindingIndex`, wenn eine Rolle wie ihre Zone
-heißt. Sauber gedacht, aber:
-
-- Der Enthüllungspunkt „Anlegen des zweiten Profils" existiert im
-  Editor nicht und müsste erst gebaut werden. Ohne ihn wird die
-  Enthüllung ein „Fortgeschritten"-Schalter — genau der Fehler, den das
-  Issue am eigenen Vorschlag benannt hat.
-- `QuickPin` müsste seine Ausgabe umformulieren, obwohl seine heutigen
-  Meldungen bereits nicht das Wort „Rolle" verwenden. Der Aufwand käme
-  aus dem Zwang, keine Rolle sichtbar erzeugen zu dürfen, nicht aus
-  einem Bedarf des Nutzers.
-- Ein Hinweis im `FindingIndex` „Beim zweiten Setup wird dieser Name
-  irreführend" ist ein Befund über ein hypothetisches Setup. Befunde
-  sind sonst Aussagen über die Konfiguration, wie sie ist. Der Hinweis
-  fällt aus der Reihe.
-
-**Was daraus folgt, wenn die Schicht später doch verborgen werden soll.**
-Voraussetzung ist dann der Weg zum zweiten Profil im Editor (Anlegen mit
-einer Frage je bestehender Rolle „Wo liegt sie hier?"). Vorher ist
-Verbergen ein halber Schritt und macht das Ganze schlechter, nicht besser.
+**Decision:** `kCGWindowLayer == 0` is a **standalone, on-by-default and
+non-optional** filter criterion — and it's the first one, ahead of subrole
+and size. It is deliberately *not* an option in `WindowMatch`: a rule that
+wants to place windows on layer 24 actually wants to move the menu bar.
 
 ---
 
-Zur Nachvollziehbarkeit festgehalten:
+## 13. No hysteresis at the zone edge — *open, deliberately left open*
 
-| Abweichung | Begründung |
+`DropzoneOverlayPlan.plan(…)` decides the highlighted zone purely from the
+current pointer point; the function holds no previous state. The word
+"hysteresis" doesn't occur anywhere in `Sources/`.
+
+This makes the assignment **unambiguous** — half-open rectangles, every
+shared edge belongs to exactly one zone, which
+[`dropzones.md`](dropzones.md) documents as proven. But unambiguous is not
+the same as stable: if the pointer sits right on an edge, the highlight can
+flip back and forth from a single pixel of jitter. This only becomes
+visible with an actual hand-drag.
+
+**Why this stays open and unbuilt.** A stabilization can't be judged
+without an actual drag: how many pixels of dead zone are right, whether it
+needs a time threshold instead of a distance threshold, whether the problem
+is even noticeable — without the Accessibility grant there is no
+observation for any of this, only a guess. An unmeasured stabilization
+would be exactly the kind of unbacked assurance this project otherwise
+avoids, and it would be worse than none: a dead zone that ends up too large
+makes small zones unreachable, and nobody notices that a supposed usability
+fix is the cause. **To be decided after the first session with an actual
+drag, not before.**
+
+**The trap, should someone build it anyway.** A session run in parallel on
+#10 had already built a hysteresis, and its own test found a logic error in
+it: the condition required that the previously highlighted zone still be
+**among the candidates** of the current point — **at the moment of crossing
+the edge, it never is.** So the hysteresis failed to engage in the one case
+it exists for. The condition looks entirely plausible; anyone rebuilding it
+will rebuild the same bug. The correct form must hold on to the previous
+zone *independently* of the current hit, and only give it up once the
+pointer has crossed the edge by more than the dead zone.
+
+Provenance: that session's work never landed on `main` (#10 was merged from
+the other branch in PR #15); the finding and the logic error come from it
+and are recorded here so the lesson isn't paid for twice.
+
+---
+
+## 14. The role layer with only one profile — *decided: keep visible*
+
+**Question:** In the actually existing configuration, the chain
+rule → role → zone is strictly 1:1:1 — three rules, three roles, three
+zones. One role is named `links-aussen`, carries the label "Links außen"
+(outer left) and the note "Automatisch angelegt für „Systemeinstellungen""
+(automatically created for "System Settings"). It's named after the zone it
+points to: `QuickPin` had to give it a name and had nothing to say. Should
+the role layer be hidden in the interface until a second profile makes it
+necessary?
+
+**Decision: no, the role stays visible. The overview from #19 has already
+made the intermediate layer tolerable without hiding it.**
+
+Since #19, the editor opens on the "Übersicht" (overview) tab
+(`EditorWindow` with `@State private var tab: Tab = .overview`). It shows a
+to-scale picture of the display arrangement, with zone names in the zones
+and rule labels plus bundle identifier underneath. The word "role" does not
+appear **once** in the drawing — the computation
+(`PlacementOverview.build`) collapses the chain rule → role → binding →
+zone in Core, and the interface shows only the result. Opening the editor
+therefore immediately shows "TextEdit → Rechts außen" (outer right),
+"Outlook → Mitte" (middle), "Systemeinstellungen → Links außen" (outer
+left). The everyday path no longer encounters the role at all. It only
+appears on the "Rollen & Profile" (roles & profiles) tab, and anyone who
+lands there wants to see the data model.
+
+Hiding it would have a cost in three places that outweighs the gain:
+
+- **There's no reveal point.** The issue itself names the risk: having
+  roles in the data model while hiding them in the interface forces **one**
+  clearly named moment at which they appear — creating the second profile.
+  That moment doesn't exist today. `RoleEditor` iterates
+  `document.configuration.profiles`; the editor has no way to create a
+  profile. Hiding the layer without building the path there first is
+  exactly the "Advanced" toggle the issue warns against.
+- **`QuickPin` labels roles after their zone.** That's the cause of "Links
+  außen"; hiding the layer only cures the symptom in everyday use and
+  leaves it for whoever opens the roles tab. `QuickPin`'s benefit — that
+  the user never has to learn the word "role" — already holds today
+  (`Outcome.summary` talks about rule and zone, not role). The mismatch the
+  issue describes only becomes real once a second profile exists and the
+  "Links außen" role on the laptop suddenly needs to sit somewhere else.
+  From that moment on, the role is no longer superfluous but the answer to
+  a real question.
+- **Today's cost is low.** Three roles, three rules, three zones — the
+  roles tab is a short note next to the overview, which already answers
+  "where does what go?". Keeping the data format unchanged and
+  re-surfacing the layer at the second profile would be more expensive
+  than leaving it visible: hiding it would have to remain backward
+  compatible, and the moment it reappears would need explaining.
+
+The core point: **the overview makes the role layer tolerable without
+hiding it.** That was exactly the thesis in the issue's last paragraph. It
+held up.
+
+**Rejected alternative — hide it with a three-stage reappearance.** The
+issue proposed: with one profile, the role stays invisible (identifier =
+zone identifier, file format unchanged), on creating the second profile the
+question "Where does 'E-Mail' live in this setup?", and visible from then
+on, plus a hint in `FindingIndex` when a role is named like its zone.
+Cleanly thought through, but:
+
+- The reveal point "creating the second profile" doesn't exist in the
+  editor and would first have to be built. Without it, the reveal becomes
+  an "Advanced" toggle — exactly the mistake the issue names in its own
+  proposal.
+- `QuickPin` would have to reword its output even though its current
+  messages already avoid the word "role". The effort would come from the
+  constraint of never producing a visible role, not from a user need.
+- A `FindingIndex` hint saying "this name will become misleading with a
+  second setup" is a finding about a hypothetical setup. Findings are
+  otherwise statements about the configuration as it is. This hint would
+  be an outlier.
+
+**What follows if the layer should be hidden later after all.** The
+prerequisite is then the path to a second profile in the editor (creation
+with a question per existing role, "Where does it live here?"). Before
+that, hiding it is a half-step and makes things worse, not better.
+
+---
+
+For the record:
+
+| Deviation | Rationale |
 |---|---|
-| **SwiftPM-Package statt Xcode-Projekt** | Der Anfangsstand war reines Datenmodell und ließ sich so headless mit `swift build` / `swift test` prüfen; das Manifest ist Text und damit reviewbar. Die damalige Annahme, Signierung erfordere ein Xcode-Target, hat sich als falsch erwiesen: `Scripts/bundle.sh` baut aus dem Package ein signiertes `.app`, und der Accessibility-Grant hält. Ein Xcode-Projekt wird damit erst nötig, wenn das Menüleisten-Target mehr braucht als SwiftPM liefert. |
-| **Profil „Unterwegs" ohne Space 2** | Spaces sind über die öffentliche API nicht adressierbar, siehe Frage 1. Die Rolle `communication` liegt im Beispiel stattdessen auf der rechten Hälfte des integrierten Displays. |
-| **`fallback` ist Pflichtfeld im Profil** | Das Konzept forderte eine definierte Default-Zone für nicht gemappte Rollen. Als optionales Feld wäre sie in der Praxis leer geblieben — genau der Zustand, den sie verhindern soll. |
-| **JSON statt YAML** | Bewusst gewählt: `Codable` ohne externe Abhängigkeit. Der Preis sind fehlende Kommentare, weshalb die kommentierte Erklärung in `docs/konfiguration.md` liegt. |
-| **`share` nur als gleichmäßige Slot-Teilung** | Das Konzept nannte „optional Zone teilen", ohne die Ausdrucksstärke festzulegen. Alles über gleich große Slots hinaus gehört als eigene Zone ins Layout, sonst entsteht ein zweites, paralleles Layoutsystem in den Regeln. |
-| **Zonen dürfen sich überlappen** | Nicht explizit im Konzept. Überlappung wird zugelassen, weil eine große Fokuszone über zwei Hälften eine legitime Gestaltung ist. Mehrdeutigkeit löst die Rollenbindung, nicht die Geometrie. |
-| **`RuleEngine` nimmt einen vorbereiteten `CompiledRuleSet` statt `[PlacementRule]`** | Die Skizze übergab die Regeln je Fenster. Damit ließe sich die Forderung „reguläre Ausdrücke werden einmal übersetzt" nur über einen Cache erfüllen, der über Array-Gleichheit rät. Ein explizit vorbereiteter Regelsatz macht stattdessen sichtbar, dass die Übersetzung eines Musters fehlschlagen kann, und zwingt dazu, diesen Fall an einer definierten Stelle zu behandeln — statt mitten in der Auswertung. Eine Regel mit ungültigem Muster landet in `unusableRules` und wird übersprungen; der Durchlauf scheitert nie an einer kaputten Regel. |
-| **`ZoneResolver` rechnet in AppKit-Koordinaten, nicht in AX-Koordinaten** | Das Modell beschreibt Zonen von oben links, AppKit misst von unten links, die Accessibility-API wieder von oben links. Die Umrechnung Modell → AppKit passiert genau einmal, nämlich hier; die Rückrechnung nach AX gehört in die Schicht, die tatsächlich `kAXPositionAttribute` schreibt. Ein eigener Typ `VisibleFrame` macht die Konvention an jeder Aufrufstelle sichtbar, statt sie einem `WindowFrame` anzusehen zu versuchen. |
-| **Kantenweises Runden statt Runden von Ursprung und Größe** | Zwei nebeneinanderliegende Zonen müssen sich exakt berühren. Würden Ursprung und Größe getrennt gerundet, entstünde je nach Displaybreite eine Lücke oder eine Überlappung von einem Punkt. Stattdessen werden die vier Kanten gerundet und Breite und Höhe daraus abgeleitet. |
-| **`WindowFilter` kennt die Regeln, die `onlyFirstWindowAfterLaunch` abwählen** | Die Skizze sah den Filter als reinen Vorfilter vor globalen Vorgaben. Ein Filter, der die Vorgabe hart durchsetzt, macht aber genau die Regeln unerreichbar, die sie abwählen — das Outlook-Verfassen-Fenster der Beispielkonfiguration ist per Definition nie das erste Fenster. Der Filter leitet seine Ausnahmen deshalb einmalig aus dem Regelsatz ab: jede aktivierte Regel, die das Flag auf `false` setzt, nimmt die Fenster ihrer Bundle-ID aus (oder alle, wenn sie keine nennt). |
-| **`Displacement` und `SkipReason` als eigene Ergebnistypen** | `PlacementOutcome` beschreibt, was mit einem Fenster geschehen *ist*. Für die rein rechnende Hälfte fehlte ein Typ, der beschreibt, was geschehen *soll* — inklusive Begründung, wenn nichts geschieht. `PlacementDecision` füllt diese Lücke; ohne sie wäre „nicht platziert" eine Sammelantwort für sehr verschiedene Situationen. |
-| **`ZoneResolver.resolveFallback` neben der Auflösung über die Rolle** | Die Fallback-Bindung eines Profils über ihre Rolle aufzulösen wäre falsch: hat diese Rolle eine eigene Bindung, käme deren reguläre Zone heraus. Ein verdrängtes Fenster landete dann in genau der Zone, aus der es gerade weichen musste. |
+| **SwiftPM package instead of an Xcode project** | The starting point was a pure data model and could be checked headless with `swift build` / `swift test`; the manifest is text and thus reviewable. The assumption at the time — that signing requires an Xcode target — turned out to be wrong: `Scripts/bundle.sh` builds a signed `.app` from the package, and the Accessibility grant holds. An Xcode project only becomes necessary once the menu bar target needs more than SwiftPM can deliver. |
+| **The "Unterwegs" (on the go) profile without Space 2** | Spaces aren't addressable via the public API, see question 1. The `communication` role instead sits on the right half of the built-in display in the example. |
+| **`fallback` is a required field in the profile** | The concept called for a defined default zone for unmapped roles. As an optional field it would, in practice, have stayed empty — exactly the state it's meant to prevent. |
+| **JSON instead of YAML** | A deliberate choice: `Codable` with no external dependency. The cost is the lack of comments, which is why the commented explanation lives in `docs/konfiguration.md`. |
+| **`share` only as an even slot split** | The concept mentioned "optionally split a zone" without fixing how expressive that should be. Anything beyond equal-sized slots belongs in the layout as its own zone, otherwise a second, parallel layout system emerges inside the rules. |
+| **Zones may overlap** | Not explicit in the concept. Overlap is allowed because a large focus zone spanning two halves is a legitimate design. Ambiguity is resolved by the role binding, not by the geometry. |
+| **`RuleEngine` takes a prepared `CompiledRuleSet` instead of `[PlacementRule]`** | The sketch passed the rules per window. That would only satisfy the requirement "regular expressions are compiled once" via a cache that guesses at array equality. An explicitly prepared rule set instead makes visible that compiling a pattern can fail, and forces that case to be handled at one defined spot — rather than mid-evaluation. A rule with an invalid pattern ends up in `unusableRules` and is skipped; a run never fails because of one broken rule. |
+| **`ZoneResolver` computes in AppKit coordinates, not AX coordinates** | The model describes zones from the top left, AppKit measures from the bottom left, and the Accessibility API again from the top left. The conversion model → AppKit happens exactly once, right here; the conversion back to AX belongs in the layer that actually writes `kAXPositionAttribute`. A dedicated `VisibleFrame` type makes the convention visible at every call site instead of leaving it to be inferred from a `WindowFrame`. |
+| **Rounding per edge instead of rounding origin and size** | Two adjacent zones must touch exactly. Rounding origin and size separately would, depending on display width, produce a one-point gap or overlap. Instead, the four edges are rounded and width and height derived from them. |
+| **`WindowFilter` knows the rules that opt out of `onlyFirstWindowAfterLaunch`** | The sketch treated the filter as a pure pre-filter ahead of global defaults. But a filter that enforces the default unconditionally makes exactly the rules that opt out of it unreachable — the example configuration's Outlook compose window is, by definition, never the first window. The filter therefore derives its exceptions once from the rule set: every enabled rule that sets the flag to `false` exempts windows of its bundle ID (or all windows, if it names none). |
+| **`Displacement` and `SkipReason` as their own result types** | `PlacementOutcome` describes what *did* happen to a window. The purely computational half lacked a type describing what *should* happen — including a reason when nothing does. `PlacementDecision` fills that gap; without it, "not placed" would be a catch-all answer for very different situations. |
+| **`ZoneResolver.resolveFallback` alongside resolution via the role** | Resolving a profile's fallback binding via its role would be wrong: if that role has its own binding, its regular zone would come out. A displaced window would then land in exactly the zone it had just had to make way for. |
 
 ---
 
-## Designentscheidungen des Durchstichs
+## Tracer-bullet design decisions
 
-Getroffen beim Bauen von `openzonr`, ohne dass das Konzept sie vorgab:
+Made while building `openzonr`, without the concept dictating them:
 
-| Entscheidung | Begründung |
+| Decision | Rationale |
 |---|---|
-| **Displays über `NSScreen.screens` statt `CGGetActiveDisplayList` aufzählen** | `CGGetActiveDisplayList` liefert in einem reinen Kommandozeilenprozess **null** Displays — reproduzierbar gemessen. Die `CGDirectDisplayID` kommt stattdessen aus `NSScreen.deviceDescription["NSScreenNumber"]`; alle EDID-Abfragen laufen danach unverändert über die `CGDisplay*`-Funktionen. |
-| **Argument-Parsing von Hand statt `swift-argument-parser`** | Drei Unterbefehle mit zusammen fünf Optionen rechtfertigen keine externe Abhängigkeit. `swift build` bleibt ohne Netzwerkzugriff lauffähig. |
-| **Die Umrechnung nach AX-Koordinaten passiert an genau einer Stelle** | `ZoneResolver` liefert AppKit-Koordinaten, die Accessibility-API will den Ursprung oben links. Die Spiegelung liegt ausschließlich in `WatchCommand.place(…)` über `ScreenArrangement.flipVertically`. Zwei Umrechnungsstellen wären zwei Gelegenheiten, das Vorzeichen zu verlieren. |
-| **Schreibsequenz Position → Größe → Position** | Setzt man nur Position und dann Größe, verschiebt eine App, die die Größe begrenzt, das Fenster erneut. Die zweite Positionszuweisung korrigiert das innerhalb desselben Versuchs, bevor überhaupt zurückgelesen wird. |
-| **Erfolg heißt: maximale Kantenabweichung ≤ `tolerance`** | Nicht die Fläche und nicht der Abstand der Ursprünge. Eine App, die nur die Breite ignoriert, fällt sonst durch, obwohl das Fenster sichtbar falsch sitzt — oder umgekehrt. |
-| **Nach erfolgreicher Platzierung wird nicht weiter beobachtet** | Ein Fenster, das nach der Platzierung bewegt wird, wurde vom Nutzer bewegt. Ein Werkzeug, das das rückgängig macht, ist ein Gefängnis. |
-| **Bereits laufende Apps gelten nie als „erstes Fenster nach Start"** | Ihr Zähler startet bei `Int.max / 2`. Sonst würde `onlyFirstWindowAfterLaunch` beim Start von `watch` auf ein beliebiges bestehendes Fenster zutreffen. |
-| **`AXObserverAddNotification` wird bis zu 20× im Abstand von 150 ms wiederholt** | Ein frisch gestarteter Prozess ist für kurze Zeit nicht über die Accessibility-API erreichbar. Ein einzelner Versuch direkt nach `didLaunchApplicationNotification` schlägt regelmäßig fehl — und genau dann verpasst man das erste Fenster, also das interessanteste. |
-| **`mode: "suggest"` wird nur protokolliert** | Ein Vorschlag ohne Overlay ist kein Vorschlag. Die Regel, die Rolle und der Ziel-Frame werden ausführlich ausgegeben, damit sichtbar ist, was passiert *wäre*; bewegt wird nichts. `share` dagegen ist über `DefaultZoneResolver` vollständig umgesetzt und wird nur zusätzlich protokolliert. |
+| **Enumerate displays via `NSScreen.screens` instead of `CGGetActiveDisplayList`** | `CGGetActiveDisplayList` returns **zero** displays in a plain command-line process — reproducibly measured. The `CGDirectDisplayID` instead comes from `NSScreen.deviceDescription["NSScreenNumber"]`; all EDID queries afterward run unchanged through the `CGDisplay*` functions. |
+| **Hand-written argument parsing instead of `swift-argument-parser`** | Three subcommands with five options between them don't justify an external dependency. `swift build` stays runnable without network access. |
+| **The conversion to AX coordinates happens at exactly one spot** | `ZoneResolver` returns AppKit coordinates, the Accessibility API wants the origin top left. The flip lives solely in `WatchCommand.place(…)` via `ScreenArrangement.flipVertically`. Two conversion spots would be two chances to lose the sign. |
+| **Write sequence position → size → position** | Setting only position and then size lets an app that clamps the size move the window again. The second position assignment corrects that within the same attempt, before anything is even read back. |
+| **Success means: maximum edge deviation ≤ `tolerance`** | Not area, and not the distance between origins. An app that only ignores the width would otherwise pass despite the window visibly sitting wrong — or vice versa. |
+| **No further observation after successful placement** | A window that gets moved after placement was moved by the user. A tool that undoes that is a prison. |
+| **Already-running apps never count as "first window after launch"** | Their counter starts at `Int.max / 2`. Otherwise `onlyFirstWindowAfterLaunch` would apply to any pre-existing window when `watch` starts. |
+| **`AXObserverAddNotification` retries up to 20× at 150 ms intervals** | A freshly launched process is briefly unreachable via the Accessibility API. A single attempt right after `didLaunchApplicationNotification` regularly fails — and that's exactly when you'd miss the first window, the most interesting one. |
+| **`mode: "suggest"` is only logged** | A suggestion without an overlay isn't a suggestion. The rule, the role and the target frame are logged in full so it's visible what *would have* happened; nothing gets moved. `share`, by contrast, is fully implemented via `DefaultZoneResolver` and merely logged in addition. |

@@ -1,77 +1,76 @@
-# Konfigurationsreferenz
+# Configuration Reference
 
-Die Konfiguration liegt als **JSON** vor: versionierbar, diffbar, teilbar und mit
-jedem Texteditor bearbeitbar. JSON kennt keine Kommentare — deshalb steht die
-Erklärung hier statt in der Datei.
+The configuration is stored as **JSON**: version-controllable, diffable,
+shareable, and editable with any text editor. JSON has no comments — which is
+why the explanation lives here instead of in the file.
 
-Referenzdatei: [`Examples/openzonr.config.json`](../Examples/openzonr.config.json).
-Sie wird durch die Tests in `Tests/OpenZonrCoreTests/` gegen das Datenmodell
-geprüft und ist damit garantiert gültig.
+Reference file: [`Examples/openzonr.config.json`](../Examples/openzonr.config.json).
+The tests in `Tests/OpenZonrCoreTests/` check it against the data model, so it
+is guaranteed to be valid.
 
-> **Die Beispielkonfiguration ist illustrativ, keine Vorlage zum Kopieren.**
+> **The example configuration is illustrative, not a template to copy.**
 >
-> Sie zeigt die Struktur, nicht ein reales Setup. Konkret:
+> It shows the structure, not a real setup. Specifically:
 >
-> - **Die EDID-Nummern sind frei erfunden.** `vendorNumber`, `modelNumber` und
->   `serialNumber` für „Dell" und „LG" sind Platzhalter. Wer sie übernimmt,
->   bekommt ein Profil, das nie greift.
-> - **Alle drei Profile stützen sich auf ein `builtin`-Display.** Auf einem
->   Schreibtisch mit geschlossenem Deckel oder an einem Desktop-Mac ist
->   `CGDisplayIsBuiltin` bei *keinem* Display wahr — der Alias läuft dort ins
->   Leere. Real gemessen auf dem Setup des Autors: vier Displays, kein einziges
->   integriertes.
+> - **The EDID numbers are made up.** `vendorNumber`, `modelNumber`, and
+>   `serialNumber` for "Dell" and "LG" are placeholders. Anyone who copies
+>   them gets a profile that never matches.
+> - **All three profiles rely on a `builtin` display.** On a desk with the lid
+>   closed, or on a desktop Mac, `CGDisplayIsBuiltin` is true for *no* display
+>   — the alias hits nothing there. Actually measured on the author's setup:
+>   four displays, not one of them built in.
 >
-> **Verbindliche Quelle für echte Identitäten ist `openzonr displays`.**
-> `openzonr displays --config-fragment` gibt ein fertiges `displays`-Fragment
-> aus, das direkt übernommen werden kann. Erst danach Layouts, Rollen, Profile
-> und Regeln ergänzen.
+> **The authoritative source for real identities is `openzonr displays`.**
+> `openzonr displays --config-fragment` prints a ready-made `displays`
+> fragment that can be adopted as-is. Only after that should layouts, roles,
+> profiles, and rules be added.
 
 
 ---
 
-## Aufbau
+## Structure
 
 ```jsonc
 {
-  "version":  1,     // Schemaversion, steuert Migrationen
-  "displays": [],    // physische Bildschirme + ihre Layouts
-  "ignoredDisplays": [], // Displays, die den Fingerprint nicht beeinflussen
-  "roles":    [],    // semantische Platzierungsziele
-  "profiles": [],    // Setups: welche Rolle liegt wo?
-  "rules":    [],    // Match → Aktion
-  "defaults": {}     // Vorgaben, die Regeln erben
+  "version":  1,     // schema version, drives migrations
+  "displays": [],    // physical displays + their layouts
+  "ignoredDisplays": [], // displays that don't affect the fingerprint
+  "roles":    [],    // semantic placement targets
+  "profiles": [],    // setups: which role sits where?
+  "rules":    [],    // match → action
+  "defaults": {}     // defaults that rules inherit
 }
 ```
 
-Die Reihenfolge folgt der Indirektionskette:
+The order follows the chain of indirection:
 
 ```
-Regel ──match──▶ Rolle ──Profil──▶ Display + Zone ──Layout──▶ Geometrie
+Rule ──match──▶ Role ──Profile──▶ Display + Zone ──Layout──▶ Geometry
 ```
 
 ---
 
 ## `displays`
 
-Ein Eintrag je physischem Bildschirm.
+One entry per physical display.
 
-| Feld | Typ | Bedeutung |
+| Field | Type | Meaning |
 |---|---|---|
-| `alias` | String | Kurzer Handle zum Referenzieren, z. B. `"dell-u2723"`. Frei wählbar, muss eindeutig sein. |
-| `displayName` | String | Klartextname für die UI. |
-| `identity` | Objekt | Stabile Hardware-Identität, siehe unten. |
-| `layouts` | Array | Alle für dieses Display definierten Layouts. |
-| `defaultLayoutID` | String | Layout, wenn ein Profil keines auswählt. |
+| `alias` | String | Short handle for referencing it, e.g. `"dell-u2723"`. Freely chosen, must be unique. |
+| `displayName` | String | Plain-text name for the UI. |
+| `identity` | Object | Stable hardware identity, see below. |
+| `layouts` | Array | All layouts defined for this display. |
+| `defaultLayoutID` | String | Layout to use when a profile doesn't select one. |
 
 ### `identity`
 
-Drei Varianten, unterschieden über `kind`:
+Three variants, distinguished by `kind`:
 
 ```jsonc
-// Integriertes Display, erkannt über CGDisplayIsBuiltin
+// Built-in display, detected via CGDisplayIsBuiltin
 { "kind": "builtin" }
 
-// Bevorzugter Fall: vollständige EDID-Daten
+// Preferred case: full EDID data
 {
   "kind": "edid",
   "vendorNumber": 4268,        // CGDisplayVendorNumber
@@ -79,159 +78,163 @@ Drei Varianten, unterschieden über `kind`:
   "serialNumber": 1194485571   // CGDisplaySerialNumber
 }
 
-// Nur wenn der Monitor keine brauchbare Seriennummer meldet
+// Only when the monitor reports no usable serial number
 {
   "kind": "fallback",
   "vendorNumber": 4268,
   "modelNumber": 42145,
-  "pixelWidth": 3840,          // nur Anzeige, zählt nicht für den Vergleich
-  "pixelHeight": 2160,         // nur Anzeige, zählt nicht für den Vergleich
+  "pixelWidth": 3840,          // display only, doesn't count toward the comparison
+  "pixelHeight": 2160,         // display only, doesn't count toward the comparison
   "portIndex": 0
 }
 ```
 
-Die `fallback`-Variante ist nicht global eindeutig. Gespeichert und verglichen
-werden `vendorNumber`, `modelNumber` und `portIndex`. `pixelWidth` und
-`pixelHeight` sind reine Anzeigeinformation und zählen **nicht** für die
-Wiedererkennung; ein Wechsel der Auflösung soll denselben Monitor also nicht zu
-einem anderen machen. Das ist im Code begründet und per Unit-Test abgesichert,
-auf echter Hardware aber noch nicht gemessen (siehe Handprüfung unten).
+The `fallback` variant is not globally unique. `vendorNumber`, `modelNumber`,
+and `portIndex` are stored and compared. `pixelWidth` and `pixelHeight` are
+purely informational for display purposes and **do not** count toward
+recognition; changing the resolution should therefore not turn the same
+monitor into a different one. This is justified in the code and backed by a
+unit test, but not yet measured on real hardware (see the manual check
+below).
 
-### Der `portIndex` wandert — gemessen
+### The `portIndex` drifts — measured
 
-Der `portIndex` kommt aus `CGDisplayUnitNumber`. Die Annahme, dass diese Nummer
-an einem Anschluss klebt, ist **widerlegt**:
+The `portIndex` comes from `CGDisplayUnitNumber`. The assumption that this
+number stays fixed to a port is **disproven**:
 
-| Datum | Monitor | Unit-Nummer |
+| Date | Monitor | Unit number |
 | --- | --- | --- |
-| 29.08.2026 | C49RG9x (Vendor 19501, Modell 3996, Seriennummer 0) | `0` |
-| 19.09.2026 | derselbe Monitor, dasselbe Kabel | `1` |
+| 29.08.2026 | C49RG9x (vendor 19501, model 3996, serial number 0) | `0` |
+| 19.09.2026 | same monitor, same cable | `1` |
 
-Am Schreibtisch hatte sich nichts geändert. Geändert hatte sich, dass zur
-Aufzählungszeit Software-Displays da waren: die Nummern 0, 1, 2, 3 gingen in
-Aufzählungsreihenfolge an „AAA“ (Vendor 21252, Modell 0), C49RG9x, U28E590 und
-„Teleprompter Source“. Jedes Software-Display, das vor einem echten Panel
-aufgezählt wird, verschiebt dessen Nummer. In der Konfiguration stand
-`portIndex: 0`, die Maschine meldete `1`, kein Profil passte — und damit war die
-gesamte Dropzone-Funktion weg (Overlay und Rechtsklickmenü steigen beide bei
-„kein aktives Profil“ aus).
+Nothing had changed at the desk. What had changed was that software displays
+were present at enumeration time: numbers 0, 1, 2, 3 went, in enumeration
+order, to "AAA" (vendor 21252, model 0), C49RG9x, U28E590, and "Teleprompter
+Source". Any software display enumerated before a real panel shifts that
+panel's number. The configuration held `portIndex: 0`, the machine reported
+`1`, no profile matched — and with that the entire dropzone feature was gone
+(both the overlay and the right-click menu bail out on "no active profile").
 
-**Was daraus folgt (`DisplayIdentityReconciler`):**
+**What follows from this (`DisplayIdentityReconciler`):**
 
-- Ein Monitor ohne Seriennummer wird **unabhängig vom `portIndex`** erkannt,
-  wenn seine Kombination aus `vendorNumber` und `modelNumber` sowohl in der
-  Konfiguration als auch unter den angeschlossenen Bildschirmen **genau einmal**
-  vorkommt. Dann gibt es nur einen Kandidaten und nur einen Anwärter; da ist
-  nichts zu raten.
-- Ein exakter Treffer (Vendor, Modell **und** Port) gewinnt immer zuerst.
-- **Baugleiche Monitore ohne Seriennummer hängen weiter am `portIndex`** und
-  können beim Vertauschen der Anschlüsse verwechselt werden. Diese Einschränkung
-  bleibt unverändert bestehen; sie wird ausdrücklich nicht weggeraten.
-- `edid` und `builtin` bleiben unberührt und werden ausschließlich exakt
-  verglichen.
-- Das ist **keine Stabilitätszusage** für die Unit-Nummer. Sie wandert; die
-  Erkennung kommt nur in den eindeutigen Fällen ohne sie aus.
+- A monitor without a serial number is recognized **independently of
+  `portIndex`** when its combination of `vendorNumber` and `modelNumber`
+  occurs **exactly once**, both in the configuration and among the connected
+  displays. In that case there is only one candidate and only one claimant;
+  nothing needs to be guessed.
+- An exact match (vendor, model, **and** port) always wins first.
+- **Identical-model monitors without a serial number still depend on
+  `portIndex`** and can be mixed up if the connections are swapped. This
+  limitation remains exactly as it was; it is explicitly not being guessed
+  away.
+- `edid` and `builtin` are unaffected and are always compared exactly.
+- This is **not a stability guarantee** for the unit number. It drifts;
+  recognition only manages to work around it in the unambiguous cases.
 
-Liegt eine Konfiguration vor, meldet `openzonr displays` einen so aufgefangenen
-Fall als eine Zeile: `konfiguriert als port=0, aktuell port=1: erkannt, weil
-eindeutig`. Ohne Konfiguration sagt der Bericht stattdessen, dass es dazu keine
-Auskunft gibt — eine Konfiguration lässt sich mit `--config <pfad>` angeben.
-Dieselbe Zeile erscheint in der Watch-Diagnose.
+When a configuration is present, `openzonr displays` reports such a recovered
+case as one line: `konfiguriert als port=0, aktuell port=1: erkannt, weil
+eindeutig` ("configured as port=0, currently port=1: recognized, because
+unambiguous"). Without a configuration, the report instead says that no such
+statement is possible — a configuration can be supplied with `--config
+<path>`. The same line appears in the watch diagnostics.
 
-Ältere Konfigurationsdateien, in denen dort die Größe eines skalierten Modus
-steht, sollen unverändert weiter passen. Belegt ist das durch die Tests
-`legacyJSONDecodesEqual` (DisplayIdentityTests) und
-`legacyFallbackProfileStillMatches` (ProfileResolverTests); das Verhalten auf
-echter Hardware ist nicht gemessen. Neu erzeugte Fragmente
-(`openzonr displays --config-fragment`) enthalten die native Größe, wenn der
-Treiber genau einen Modus als nativ kennzeichnet, sonst `0`.
+Older configuration files that hold the size of a scaled mode there are meant
+to keep matching unchanged. This is backed by the tests
+`legacyJSONDecodesEqual` (DisplayIdentityTests) and
+`legacyFallbackProfileStillMatches` (ProfileResolverTests); the behavior on
+real hardware is not measured. Newly generated fragments (`openzonr displays
+--config-fragment`) contain the native size when the driver flags exactly one
+mode as native, otherwise `0`.
 
-**Grenzen:**
+**Limits:**
 
-- Baugleiche Monitore ohne Seriennummer unterscheiden sich nur über den
-  `portIndex`. Dieser wird aus `CGDisplayUnitNumber` gelesen, der nächstliegenden
-  öffentlichen Entsprechung eines Port-Index, nicht aus einer echten
-  Anschlussbezeichnung. Werden solche Monitore zwischen Anschlüssen vertauscht,
-  ist mit Verwechslung zu rechnen — daran ändert der Abgleich oben nichts, weil
-  er in genau diesem Fall nicht greift.
-- Der `portIndex` ändert sich nachweislich auch ohne Umstecken (siehe oben) und
-  kann sich zusätzlich bei geänderter Verkabelung (anderer Port, anderes Dock,
-  Hub) ändern. Bleibt der Monitor dabei eindeutig, wird er trotzdem erkannt. Ist
-  er es nicht, gilt er als unbekannt: es wird kein Profil gewählt (keine
-  geratene Zuordnung), und der Watch-Modus gibt einen Hinweis mit dem nächsten
-  Schritt aus. Ob die Nummer Ab-/Anstecken, Ruhezustand oder Neustart übersteht,
-  ist weiterhin nicht systematisch untersucht.
-- Ob der Treiber bei einem bestimmten Monitor ein Native-Flag setzt, ist offen.
-  Fehlt es, steht `0` in den Pixelfeldern. Das betrifft nur die Anzeige, nicht
-  die Erkennung.
-- Ob es bessere öffentliche Merkmale gibt (etwa `CGDisplayScreenSize` oder
-  IOKit-Pfade), ist bisher nicht untersucht und nicht als stabil belegt.
+- Identical-model monitors without a serial number are distinguished only by
+  `portIndex`. It is read from `CGDisplayUnitNumber`, the closest public
+  equivalent of a port index, not from an actual connector label. If such
+  monitors are swapped between ports, mix-ups should be expected — the
+  reconciliation described above changes nothing here, because it does not
+  apply in precisely this case.
+- The `portIndex` has been shown to change even without re-plugging anything
+  (see above), and can additionally change with altered wiring (a different
+  port, a different dock, a hub). As long as the monitor stays unambiguous, it
+  is still recognized. If it isn't, it counts as unknown: no profile is
+  chosen (no guessed assignment), and watch mode prints a hint with the next
+  step. Whether the number survives unplugging/replugging, sleep, or a
+  restart has still not been systematically investigated.
+- Whether the driver sets a native flag for a given monitor is an open
+  question. If it's missing, the pixel fields hold `0`. This affects only the
+  display information, not recognition.
+- Whether better public identifiers exist (such as `CGDisplayScreenSize` or
+  IOKit paths) has not been investigated so far and is not documented as
+  stable.
 
-**Handprüfung auf Hardware (offen, für #39):** Bisher hat niemand dies auf
-echter Hardware geprüft. Zu erledigen und im Issue festzuhalten:
+**Manual check on hardware (open, for #39):** So far nobody has verified this
+on real hardware. To do, and to record in the issue:
 
-- [ ] Monitor ohne Seriennummer anschließen; `openzonr displays` aufrufen und
-      Identität sowie den Fallback-Hinweis notieren.
-- [ ] `openzonr displays --config-fragment` ausgeben: stehen in
-      `pixelWidth`/`pixelHeight` die native Größe oder `0`?
-- [ ] In den Systemeinstellungen zwischen mindestens drei Modi wechseln (nativ,
-      skaliert, niedrigere Auflösung) und nach jedem Wechsel `openzonr displays`
-      aufrufen: bleiben Vendor, Modell und Port gleich, und bleibt das Profil
-      aktiv?
-- [ ] Ein Fragment mit den Pixelmaßen eines skalierten Modus (alte Datei) laden:
-      passt das Profil weiter?
-- [ ] Zwei baugleiche Monitore ohne Seriennummer, falls vorhanden: unterscheiden
-      sich die `portIndex`-Werte? Kabel tauschen und beobachten, ob die Zuordnung
-      wechselt.
-- [ ] Ab-/Anstecken, Ruhezustand, Neustart: bleibt der `portIndex` gleich?
-- [ ] Fehlt das Native-Flag (Größe `0`)? Im Issue vermerken.
+- [ ] Connect a monitor without a serial number; run `openzonr displays` and
+      record the identity and the fallback note.
+- [ ] Print `openzonr displays --config-fragment`: do `pixelWidth`/
+      `pixelHeight` hold the native size, or `0`?
+- [ ] In System Settings, switch between at least three modes (native,
+      scaled, lower resolution) and run `openzonr displays` after each
+      switch: do vendor, model, and port stay the same, and does the profile
+      stay active?
+- [ ] Load a fragment with the pixel dimensions of a scaled mode (an old
+      file): does the profile still match?
+- [ ] Two identical-model monitors without a serial number, if available: do
+      the `portIndex` values differ? Swap the cables and observe whether the
+      assignment changes.
+- [ ] Unplugging/replugging, sleep, restart: does the `portIndex` stay the
+      same?
+- [ ] Is the native flag missing (size `0`)? Note it in the issue.
 
-Ergebnis (Gerät, Beobachtung, Datum): Teilweise erhoben am 19.09.2026, macOS 26.6.2,
-C49RG9x (Seriennummer 0, `port=1`), aktueller Modus 5120×1440. Die Modusliste
-enthält genau ein Flag für die native Größe (5120×1440), mit und ohne
-`kCGDisplayShowDuplicateLowResolutionModes`. Nach einem Wechsel in 4608×1296
-(nur Sitzung, danach zurückgestellt) blieb die Identität in `openzonr displays`
-unverändert (`fallback vendor=19501 model=3996 5120×1440 port=1`).
+Result (device, observation, date): Partially gathered on 19.09.2026, macOS
+26.6.2, C49RG9x (serial number 0, `port=1`), current mode 5120×1440. The mode
+list contains exactly one flag for the native size (5120×1440), both with and
+without `kCGDisplayShowDuplicateLowResolutionModes`. After switching to
+4608×1296 (session only, reverted afterward), the identity in `openzonr
+displays` stayed unchanged (`fallback vendor=19501 model=3996 5120×1440
+port=1`).
 
-Ebenfalls am 19.09.2026 erhoben — und der Anlass für den Abgleich oben: derselbe
-Monitor trug am 29.08.2026 die Unit-Nummer `0` und am 19.09.2026 die `1`, ohne
-dass ein Kabel bewegt wurde. Ursache waren die zwischenzeitlich vorhandenen
-Software-Displays („AAA“, „Teleprompter Source“), die die Nummernvergabe
-verschieben. **Nicht erhoben:** Drehung um 90° oder 270°, Verhalten der
-Unit-Nummer nach Neustart, Umstecken oder Dock-Wechsel, zwei baugleiche Monitore
-ohne Seriennummer.
+Also gathered on 19.09.2026 — and the reason for the reconciliation described
+above: the same monitor carried unit number `0` on 29.08.2026 and `1` on
+19.09.2026, without any cable being moved. The cause was the software
+displays present in the meantime ("AAA", "Teleprompter Source"), which shift
+the number assignment. **Not gathered:** rotation by 90° or 270°, the unit
+number's behavior after a restart, unplugging, or a dock change, two
+identical-model monitors without a serial number.
 
-> **`serialNumber == 0` ist der Normalfall, nicht der Randfall.**
+> **`serialNumber == 0` is the normal case, not the edge case.**
 >
-> Auf dem gemessenen Setup meldet ausgerechnet der Hauptmonitor — ein Samsung
-> C49RG9x — die Seriennummer 0. Der `fallback`-Pfad ist damit der *wichtigste*
-> Pfad, nicht die Ausnahme. Er ist entsprechend getestet und wird von
-> `openzonr displays --config-fragment` automatisch gewählt, wenn die
-> Seriennummer 0 ist.
+> On the measured setup, it's the main monitor of all things — a Samsung
+> C49RG9x — that reports serial number 0. The `fallback` path is therefore
+> the *most important* path, not the exception. It is tested accordingly and
+> is chosen automatically by `openzonr displays --config-fragment` when the
+> serial number is 0.
 >
-> Beachte dabei: der Fallback enthält bewusst **auch die `modelNumber`**. Auf
-> demselben Setup teilen sich zwei Samsung-Monitore den `vendorNumber` 19501 und
-> unterscheiden sich nur über das Modell. Eine Identität aus Vendor plus
-> Auflösung allein würde hier kollidieren.
+> Note that the fallback deliberately includes **the `modelNumber` too**. On
+> the same setup, two Samsung monitors share `vendorNumber` 19501 and differ
+> only by model. An identity built from vendor plus resolution alone would
+> collide here.
 
-**Nicht als Identität verwendet:** Position im Arrangement, Index in
-`NSScreen.screens`, Auflösung allein oder `CGDirectDisplayID`. Begründung in
-[konzept.md, Abschnitt 6](konzept.md#6-monitor-identität).
+**Not used as identity:** position in the arrangement, index in
+`NSScreen.screens`, resolution alone, or `CGDirectDisplayID`. Reasoning in
+[konzept.md, section 6](konzept.md#6-monitor-identity).
 
 ## `ignoredDisplays`
 
-Eine Liste von `identity`-Objekten im selben Format wie oben. Displays, die
-darin auftauchen, werden **beim Bilden des Setup-Fingerprints übersprungen**.
+A list of `identity` objects in the same format as above. Displays that
+appear in it are **skipped when building the setup fingerprint**.
 
-Der Grund ist ein Problem, das erst an echter Hardware sichtbar wurde:
-**virtuelle Displays kippen den Fingerprint.** Software wie OBS oder ein
-Teleprompter-Werkzeug meldet dem System vollwertige Displays. Sie kommen und
-gehen, während sich physisch nichts ändert — und nach dem ursprünglichen Konzept
-ändert sich damit jedes Mal der Fingerprint und das Profil springt um.
+The reason is a problem that only became visible on real hardware: **virtual
+displays throw off the fingerprint.** Software such as OBS or a teleprompter
+tool reports full-fledged displays to the system. They come and go while
+nothing physically changes — and under the original design, the fingerprint
+changes every time as a result, and the profile switches out from under you.
 
-Auf dem gemessenen Setup betrifft das zwei von vier Displays („AAA",
-„Teleprompter Source"). Mit `ignoredDisplays` bleibt der Fingerprint über beide
-physischen Monitore stabil, egal ob OBS gerade läuft.
+On the measured setup, this affects two of four displays ("AAA", "Teleprompter
+Source"). With `ignoredDisplays`, the fingerprint stays stable across both
+physical monitors, regardless of whether OBS happens to be running.
 
 ```jsonc
 "ignoredDisplays": [
@@ -241,16 +244,15 @@ physischen Monitore stabil, egal ob OBS gerade läuft.
 ]
 ```
 
-**Bewusst eine explizite Liste und keine Heuristik.** `openzonr displays`
-markiert Verdachtsfälle mit `virtuell?`, trägt sie aber nicht selbst aus dem
-Fingerprint aus — die Erkennung ist unzuverlässig (siehe
-[offene-fragen.md](offene-fragen.md)), und ein Werkzeug, das Displays nach
-Bauchgefühl ignoriert, ist schlimmer als eines, das fragt.
-`openzonr displays --config-fragment` schlägt die Einträge vor; die Entscheidung
-trifft der Nutzer.
+**Deliberately an explicit list, not a heuristic.** `openzonr displays` flags
+suspected cases with `virtuell?` ("virtual?"), but does not remove them from
+the fingerprint on its own — the detection is unreliable (see
+[offene-fragen.md](offene-fragen.md)), and a tool that ignores displays by gut
+feeling is worse than one that asks. `openzonr displays --config-fragment`
+suggests the entries; the decision is the user's to make.
 
 
-### `layouts` und `zones`
+### `layouts` and `zones`
 
 ```jsonc
 {
@@ -264,20 +266,22 @@ trifft der Nutzer.
 }
 ```
 
-`frame` ist **prozentual**, `0.0` bis `1.0`, relativ zum *sichtbaren* Frame des
-Displays — also ohne Menüleiste und Dock. Ursprung `(0, 0)` ist **oben links**.
+`frame` is **percentage-based**, `0.0` to `1.0`, relative to the display's
+*visible* frame — i.e., excluding the menu bar and Dock. The origin `(0, 0)`
+is **top-left**.
 
-Niemals Pixel: der Büromonitor ist kleiner als der Home-Ultrawide, Skalierung und
-ein ein- oder ausgeblendetes Dock ändern die nutzbare Fläche.
+Never pixels: the office monitor is smaller than the home ultrawide, and
+scaling plus a shown or hidden Dock change the usable area.
 
-Layouts gehören ans Display, nicht ans Profil — ein Ultrawide will drei Spalten,
-ein 24-Zöller zwei, unabhängig davon, welches Setup gerade aktiv ist.
+Layouts belong to the display, not to the profile — an ultrawide wants three
+columns, a 24-inch display wants two, regardless of which setup is currently
+active.
 
-### `activationArea` — wo losgelassen werden muss, getrennt von wo das Fenster hinkommt
+### `activationArea` — where you must release, separate from where the window ends up
 
-Optional. Derselbe Koordinatenraum wie `frame`: prozentual, relativ zum
-sichtbaren Rahmen des Displays, Ursprung oben links. Fehlt das Feld, gilt
-`frame` selbst als Trefferfläche — das bisherige Verhalten, unverändert.
+Optional. The same coordinate space as `frame`: percentage-based, relative to
+the display's visible frame, origin top-left. If the field is absent, `frame`
+itself counts as the hit area — the previous behavior, unchanged.
 
 ```jsonc
 {
@@ -288,44 +292,44 @@ sichtbaren Rahmen des Displays, Ursprung oben links. Fehlt das Feld, gilt
 }
 ```
 
-Der Grund für die Trennung: liegen mehrere Zonen übereinander, gewinnt beim
-Ziehen die kleinste. Deckt ein Stapel kleinerer Zonen eine größere lückenlos
-ab, ist die größere damit unerreichbar — mit `frame` als einzigem Rechteck
-lässt sich das nicht auflösen, egal welche Regel man wählt. Eine eigene
-`activationArea` macht die Trefferflächen disjunkt, auch wenn die Zielrahmen
-es nicht sind. Der ganze Fall — „Rechts außen" unter zwei gestapelten Hälften
-— steht in [`dropzones.md`](dropzones.md), Abschnitt „Trefferflächen".
+The reason for the separation: when several zones overlap, the smallest one
+wins while dragging. If a stack of smaller zones covers a larger one without
+a gap, the larger one becomes unreachable — with `frame` as the only
+rectangle, there is no rule that resolves this. A separate `activationArea`
+makes the hit areas disjoint, even when the target frames are not. The full
+case — "Rechts außen" ("right edge") underneath two stacked halves — is
+covered in [`dropzones.md`](dropzones.md), section "Trefferflächen" ("hit
+areas").
 
-`activationArea` muss nicht in `frame` liegen. Das ist Absicht: so lässt sich
-eine Zone am Bildschirmrand auslösen, während das Fenster woanders landet.
-Diese Randauslösung ist als Möglichkeit im Modell angelegt, aber bisher nicht
-erprobt — siehe denselben Abschnitt in `dropzones.md`.
+`activationArea` does not have to lie within `frame`. That's intentional: it
+lets a zone be triggered at the screen edge while the window lands somewhere
+else. This edge-triggering is built into the model as a possibility, but has
+not been tried so far — see the same section in `dropzones.md`.
 
-Über den eigenen Bildschirm hinaus reicht sie trotzdem nie: `DropzoneOverlayPlan.plan`
-grenzt vor dem Treffertest auf das Display unter dem Zeiger ein, und
-`activationArea` ist relativ zum sichtbaren Rahmen genau dieses Displays — ein
-Wert im gültigen Bereich 0 bis 1 kann also keinen anderen Bildschirm
-adressieren.
+Even so, it never reaches beyond its own screen: `DropzoneOverlayPlan.plan`
+restricts to the display under the pointer before the hit test, and
+`activationArea` is relative to the visible frame of exactly that display —
+so a value within the valid range of 0 to 1 can never address a different
+screen.
 
-**Der Zoneneditor kennt `activationArea` nicht** (bewusst außerhalb des
-Umfangs). Wer eine Zone dort per Ziehen verschiebt, verändert nur `frame` —
-eine gesetzte `activationArea` bleibt an ihrer alten Stelle stehen und löst
-sich damit lautlos vom Zielrahmen. Genau dafür ist die Warnung
-`activationAreaDetached` das Sicherheitsnetz: sie macht diesen Fall danach
-sichtbar.
+**The zone editor doesn't know about `activationArea`** (deliberately out of
+scope). Anyone who drags a zone there only changes `frame` — an
+`activationArea` that has been set stays put at its old location and
+silently detaches from the target frame as a result. This is exactly what the
+`activationAreaDetached` warning exists to catch: it makes this case visible
+afterward.
 
-**Folge für die Anheft-Marke:** Der Anheft-Punkt sitzt auf der Trefferfläche,
-nicht auf dem Zielrahmen — er ist das zweite Ziel derselben Mausbewegung. Eine
-Trefferfläche unter `4·2 + 8·2 + 24 + 24 = 72` Punkten in der kürzeren Kante
-trägt deshalb **keine** Marke mehr. Platzieren funktioniert dort weiter; die
-Regel muss dann über das Rechtsklickmenü entstehen.
+**Consequence for the pin marker:** The pin point sits on the hit area, not
+on the target frame — it is the second target of the same mouse movement. A
+hit area under `4·2 + 8·2 + 24 + 24 = 72` points on its shorter edge
+therefore no longer carries a marker at all. Placement still works there; the
+rule then has to be created via the right-click menu.
 
 ---
 
 ## `roles`
 
-Semantische Platzierungsziele. Regeln zeigen auf Rollen, niemals direkt auf
-Zonen.
+Semantic placement targets. Rules point at roles, never directly at zones.
 
 ```jsonc
 {
@@ -335,71 +339,71 @@ Zonen.
 }
 ```
 
-`summary` ist optional und rein dokumentarisch.
+`summary` is optional and purely documentary.
 
-Die Beispielkonfiguration definiert fünf Rollen: `communication`, `editor`,
-`reference`, `terminal`, `compose`. Fünf bis sieben sind ein guter Richtwert —
-mehr Rollen bedeuten mehr Bindungen, die je Profil gepflegt werden müssen.
+The example configuration defines five roles: `communication`, `editor`,
+`reference`, `terminal`, `compose`. Five to seven is a good rule of thumb —
+more roles mean more bindings that have to be maintained per profile.
 
 ---
 
 ## `profiles`
 
-Ein Profil beantwortet genau eine Frage: *Bei dieser Bildschirmkonstellation —
-wo liegt welche Rolle?*
+A profile answers exactly one question: *Given this screen constellation —
+where does each role go?*
 
 ```jsonc
 {
   "id": "office",
   "name": "Büro",
 
-  // Aktiviert, wenn genau diese Displays angeschlossen sind.
-  // Reihenfolgeunabhängig; verglichen wird das Set.
+  // Active when exactly these displays are connected.
+  // Order-independent; the set is compared.
   "fingerprint": { "displays": ["builtin", "dell-u2723"] },
 
-  // Welches Layout jedes Display in diesem Profil verwendet.
-  // Fehlt ein Display, gilt sein defaultLayoutID.
+  // Which layout each display uses in this profile.
+  // If a display is missing, its defaultLayoutID applies.
   "layouts": {
     "builtin": "builtin-full",
     "dell-u2723": "dell-two-columns"
   },
 
-  // Das eigentliche Rollen-Mapping.
+  // The actual role mapping.
   "roleBindings": [
     { "role": "communication", "display": "dell-u2723", "zone": "right-half" },
     { "role": "editor",        "display": "dell-u2723", "zone": "left-half"  },
     { "role": "reference",     "display": "builtin",    "zone": "full"       }
   ],
 
-  // Pflichtfeld: wohin, wenn eine Rolle hier nicht gemappt ist.
+  // Required field: where to go if a role isn't mapped here.
   "fallback": { "role": "communication", "display": "builtin", "zone": "full" }
 }
 ```
 
-`fallback` ist bewusst **Pflicht**. Eine nicht gemappte Rolle darf nie
-„irgendwo" bedeuten; das Fenster landet an definierter Stelle und das Ereignis
-wird protokolliert.
+`fallback` is deliberately **mandatory**. An unmapped role must never mean
+"somewhere"; the window lands at a defined location and the event is logged.
 
-Der Fingerprint wird **exakt** verglichen: ein Setup mit einem zusätzlichen,
-unbekannten Monitor ist nicht dasselbe Profil. Ein unbekannter Fingerprint führt
-zur Rückfrage beim Nutzer, nicht zu einem geratenen Profil.
+The fingerprint is compared **exactly**: a setup with one additional, unknown
+monitor is not the same profile. An unknown fingerprint prompts the user,
+rather than guessing a profile.
 
-### Die drei Beispielprofile im Vergleich
+### The three example profiles compared
 
-| Rolle | Büro | Home | Unterwegs |
+| Role | Büro (Office) | Home | Unterwegs (On the Road) |
 |---|---|---|---|
-| `communication` | Dell, rechte Hälfte | LG 38", rechts außen (25 %) | Builtin, rechte Hälfte |
-| `editor` | Dell, linke Hälfte | LG 38", Mitte (50 %) | Builtin, linke Hälfte |
-| `compose` | Dell, linke Hälfte | LG 38", Mitte | Builtin, rechte Hälfte |
-| `reference` | Builtin, Vollbild | LG 38", links außen (25 %) | Builtin, rechte Hälfte |
-| `terminal` | Builtin, Vollbild | Builtin, Vollbild | Builtin, linke Hälfte |
+| `communication` | Dell, right half | LG 38", right edge (25%) | Builtin, right half |
+| `editor` | Dell, left half | LG 38", center (50%) | Builtin, left half |
+| `compose` | Dell, left half | LG 38", center | Builtin, right half |
+| `reference` | Builtin, full screen | LG 38", left edge (25%) | Builtin, right half |
+| `terminal` | Builtin, full screen | Builtin, full screen | Builtin, left half |
 
-Die Regeln darunter sind für alle drei Profile **identisch**. Genau das ist der
-Zweck der Rollen-Indirektion.
+The rules below are **identical** for all three profiles. That is exactly the
+point of the role indirection.
 
-Im Profil „Büro" teilen sich `reference` und `terminal` dieselbe Zone. Das ist
-kein Fehler, sondern der Normalfall für `conflict.occupiedZone: "stack"`: beide
-Fenster liegen in derselben Zone übereinander.
+In the "Büro" (Office) profile, `reference` and `terminal` share the same
+zone. This is not a bug, but the normal case for
+`conflict.occupiedZone: "stack"`: both windows sit stacked on top of each
+other in the same zone.
 
 ---
 
@@ -410,7 +414,7 @@ Fenster liegen in derselben Zone übereinander.
   "id": "outlook-main",
   "name": "Outlook: Hauptfenster",
   "enabled": true,
-  "priority": 50,               // höher = wird früher geprüft
+  "priority": 50,               // higher = checked earlier
 
   "match": {
     "bundleIdentifier": "com.microsoft.Outlook",
@@ -428,46 +432,48 @@ Fenster liegen in derselben Zone übereinander.
 }
 ```
 
-### `match` — alle Felder optional, UND-verknüpft
+### `match` — all fields optional, AND-combined
 
-| Feld | Typ | Zweck |
+| Field | Type | Purpose |
 |---|---|---|
-| `bundleIdentifier` | String | Der Basisfall. |
-| `titlePattern` | String (Regex, ICU) | Trennt Hauptfenster von Verfassen-Fenstern. **Sparsam einsetzen** — Titel sind lokalisiert und ändern sich zur Laufzeit, siehe die Warnung unten. |
-| `roles` | [String] | `kAXRoleAttribute`, z. B. `"AXWindow"`. |
-| `subroles` | [String] | `kAXSubroleAttribute`. `"AXStandardWindow"` filtert Dialoge und Popups. |
-| `minimumSize` / `maximumSize` | `{width, height}` in Punkten | Filtert Popups und Paletten. |
-| `aspectRatio` | `{minimum, maximum}` als `width / height` | Fängt ungewöhnliche Formate ab. |
-| `onlyFirstWindowAfterLaunch` | Bool | Überschreibt die globale Voreinstellung. |
+| `bundleIdentifier` | String | The base case. |
+| `titlePattern` | String (regex, ICU) | Separates main windows from compose windows. **Use sparingly** — titles are localized and change at runtime, see the warning below. |
+| `roles` | [String] | `kAXRoleAttribute`, e.g. `"AXWindow"`. |
+| `subroles` | [String] | `kAXSubroleAttribute`. `"AXStandardWindow"` filters out dialogs and popups. |
+| `minimumSize` / `maximumSize` | `{width, height}` in points | Filters out popups and palettes. |
+| `aspectRatio` | `{minimum, maximum}` as `width / height` | Catches unusual formats. |
+| `onlyFirstWindowAfterLaunch` | Bool | Overrides the global default. |
 
-Ein leeres `match` passt auf **jedes** Fenster.
+An empty `match` matches **every** window.
 
-### Immer aktiv: der Ebenenfilter
+### Always active: the layer filter
 
-Unabhängig von `match` verwirft OpenZonr jedes Fenster, das nicht auf der
-Anwendungsebene liegt (`kCGWindowLayer == 0` bzw. das AX-Äquivalent). Das ist
-**keine Option und nicht abschaltbar**, sondern das erste Kriterium überhaupt.
+Independently of `match`, OpenZonr discards every window that isn't at the
+application layer (`kCGWindowLayer == 0`, or the AX equivalent). This is
+**not an option and cannot be turned off** — it's the very first criterion
+applied.
 
-Der Grund ist eine Messung an der echten Fensterlandschaft:
+The reason is a measurement of the real window landscape:
 
 ```
-Ebene 20            Dock
-Ebene 21            Mitteilungszentrale   5120×1440  ← besteht jeden Größenfilter
-Ebene 24            Menüleiste (4×, je Display)
-Ebene 25            ~130 Kontrollzentrum-Items
-Ebene 3             Overlay einer Fremd-App
-Ebene 2147483630    StatusIndicator des Window Servers
-Ebene 0             echte App-Fenster
+Layer 20           Dock
+Layer 21           Notification Center   5120×1440  ← passes every size filter
+Layer 24           Menu bar (4×, per display)
+Layer 25           ~130 Control Center items
+Layer 3            Overlay of a third-party app
+Layer 2147483630   Window Server status indicator
+Layer 0            real app windows
 ```
 
-Die Mitteilungszentrale ist **so groß wie der ganze Hauptmonitor**. Jede
-Mindestgrößen-Prüfung lässt sie durch; nur die Ebene unterscheidet sie von einem
-echten Fenster. Subrolle und Mindestgröße allein reichen also nicht.
+The Notification Center ("Mitteilungszentrale") is **as large as the entire
+main monitor**. Any minimum-size check lets it through; only the layer
+distinguishes it from a real window. Subrole and minimum size alone are
+therefore not enough.
 
-### Warum `titlePattern` bei Outlook und Browsern unbrauchbar ist
+### Why `titlePattern` is useless for Outlook and browsers
 
-Titel sind kein Identitätsmerkmal, sondern Zustandsanzeige. Zwei Messungen
-desselben Outlook-Hauptfensters, gleiche Sitzung, zwei Minuten Abstand:
+Titles are not an identity marker, they're a state display. Two measurements
+of the same Outlook main window, same session, two minutes apart:
 
 ```
 com.microsoft.Outlook   1708×1344 @ 1706,31
@@ -475,69 +481,70 @@ com.microsoft.Outlook   1708×1344 @ 1706,31
   t₁   yesterbox • torstenmahr@microsoft.com
 ```
 
-Gleiches Fenster, komplett anderer Titel — der erste ist ein *Suchzustand* und
-enthält obendrein verschachtelte Anführungszeichen. Bei Edge und Safari ist der
-Titel schlicht der Seitentitel und ändert sich mit jedem Klick.
+Same window, completely different title — the first is a *search state* and
+additionally contains nested quotation marks. In Edge and Safari, the title
+is simply the page title and changes with every click.
 
-Dazu kommt: **die Systemsprache ist nicht garantiert Englisch.** Ein Muster wie
-`(Message|Compose)` greift auf einem deutschen System nicht. Die
-Beispielkonfiguration listet deshalb `(Nachricht|Message|Verfassen|Compose|Termin|Meeting)`
-— was das Problem lindert, aber nicht löst.
+On top of that: **the system language is not guaranteed to be English.** A
+pattern like `(Message|Compose)` doesn't match on a German system. The
+example configuration therefore lists
+`(Nachricht|Message|Verfassen|Compose|Termin|Meeting)` — which eases the
+problem but doesn't solve it.
 
-**Der robustere Primärweg ist deshalb:**
+**The more robust primary approach is therefore:**
 
-1. `bundleIdentifier` als Basis
-2. `onlyFirstWindowAfterLaunch: true` für das Hauptfenster
-3. `minimumSize` gegen Popups und Paletten
-4. `subroles: ["AXStandardWindow"]` gegen Dialoge
+1. `bundleIdentifier` as the base
+2. `onlyFirstWindowAfterLaunch: true` for the main window
+3. `minimumSize` against popups and palettes
+4. `subroles: ["AXStandardWindow"]` against dialogs
 
-`titlePattern` erst dann, wenn diese vier nicht ausreichen — und dann in dem
-Bewusstsein, dass die Regel bei einem Sprachwechsel oder einem UI-Update der App
-still aufhört zu greifen. `openzonr windows --bundle <id>` zeigt, womit man es
-tatsächlich zu tun hat.
+Reach for `titlePattern` only when these four aren't enough — and then with
+the awareness that the rule will silently stop matching after a language
+change or a UI update to the app. `openzonr windows --bundle <id>` shows what
+you're actually dealing with.
 
-Warum `onlyFirstWindowAfterLaunch` und `minimumSize` beide gebraucht werden,
-zeigt derselbe Messlauf:
+Why `onlyFirstWindowAfterLaunch` and `minimumSize` are both needed is shown
+by the same measurement run:
 
 ```
-com.corecode.MacUpdater   4× deckungsgleich   420×206 @ 750,230   Titel ""
+com.corecode.MacUpdater   4× overlapping   420×206 @ 750,230   title ""
 ```
 
-Vier identische Fenster derselben App, alle mit leerem Titel. Ohne
-Mindestgröße wären alle vier Kandidaten; ohne
-`onlyFirstWindowAfterLaunch` würden alle vier in dieselbe Zone geschoben.
+Four identical windows from the same app, all with an empty title. Without a
+minimum size, all four would be candidates; without
+`onlyFirstWindowAfterLaunch`, all four would be pushed into the same zone.
 
 
 ### `action`
 
-| Feld | Werte | Zweck |
+| Field | Values | Purpose |
 |---|---|---|
-| `role` | Rollen-ID | Pflicht. Das semantische Ziel. |
-| `share` | `{axis, slots, slotIndex}` | Teilt die Zone in gleich große Slots. `axis`: `"horizontal"` oder `"vertical"`. `slotIndex` ist nullbasiert. |
-| `focus` | `"activate"` / `"leaveAsIs"` | Ob das Fenster nach vorn geholt wird. |
-| `mode` | `"place"` / `"suggest"` | `"suggest"` verschiebt nichts, sondern bietet die Platzierung an. |
+| `role` | role ID | Required. The semantic target. |
+| `share` | `{axis, slots, slotIndex}` | Splits the zone into equal-sized slots. `axis`: `"horizontal"` or `"vertical"`. `slotIndex` is zero-based. |
+| `focus` | `"activate"` / `"leaveAsIs"` | Whether the window is brought to the front. |
+| `mode` | `"place"` / `"suggest"` | `"suggest"` doesn't move anything, it only offers the placement. |
 
-### Auswertungsreihenfolge
+### Evaluation order
 
-Nach `priority` absteigend, bei Gleichstand in Dateireihenfolge. **Die erste
-passende Regel gewinnt**, danach wird abgebrochen.
+Descending by `priority`; ties broken by file order. **The first matching
+rule wins**, then evaluation stops.
 
-Daraus folgt: **spezifisch vor generisch**. In der Beispielkonfiguration:
+It follows that: **specific before generic**. In the example configuration:
 
-| Priorität | Regel | Warum diese Reihenfolge |
+| Priority | Rule | Why this order |
 |---|---|---|
-| 100 | `outlook-compose` | Muss vor der allgemeinen Outlook-Regel greifen, sonst kommt sie nie zum Zug. |
-| 50 | `outlook-main` | Der Normalfall. |
+| 100 | `outlook-compose` | Must take effect before the general Outlook rule, otherwise it never gets a turn. |
+| 50 | `outlook-main` | The normal case. |
 | 40 | `teams-main` | |
 | 30 | `vscode` | |
 | 20 | `safari` | |
 | 10 | `terminal` | |
-| −100 | `catch-all` | Auffangregel, standardmäßig `"enabled": false` und `"mode": "suggest"`. |
+| −100 | `catch-all` | Catch-all rule, `"enabled": false` and `"mode": "suggest"` by default. |
 
-### Das Outlook-Beispiel im Detail
+### The Outlook example in detail
 
-Das Verfassen-Fenster ist der Grund, warum es überhaupt mehr als ein
-Match-Kriterium gibt:
+The compose window is the reason there's more than one match criterion at
+all:
 
 ```jsonc
 {
@@ -547,14 +554,14 @@ Match-Kriterium gibt:
     "bundleIdentifier": "com.microsoft.Outlook",
     "titlePattern": "(Nachricht|Message|Verfassen|Compose|Termin|Meeting)",
     "subroles": ["AXStandardWindow"],
-    // Ausdrücklich abgeschaltet: das Verfassen-Fenster ist nie das erste.
+    // Explicitly disabled: the compose window is never the first.
     "onlyFirstWindowAfterLaunch": false
   },
   "action": { "role": "compose", "focus": "activate", "mode": "place" }
 }
 ```
 
-Und der Gegenpart, das Hauptfenster:
+And its counterpart, the main window:
 
 ```jsonc
 {
@@ -564,202 +571,201 @@ Und der Gegenpart, das Hauptfenster:
     "bundleIdentifier": "com.microsoft.Outlook",
     "subroles": ["AXStandardWindow"],
     "minimumSize": { "width": 800, "height": 600 },
-    // Der Standard: Erinnerungs-Popups und Dialoge fallen automatisch heraus.
+    // The default: reminder popups and dialogs fall out automatically.
     "onlyFirstWindowAfterLaunch": true
   },
   "action": {
     "role": "communication",
-    // Obere Hälfte der Kommunikationszone; Teams nimmt die untere.
+    // Upper half of the communication zone; Teams takes the lower one.
     "share": { "axis": "vertical", "slots": 2, "slotIndex": 0 },
-    // Outlook startet oft im Hintergrund und soll den Fokus nicht stehlen.
+    // Outlook often starts in the background and shouldn't steal focus.
     "focus": "leaveAsIs",
     "mode": "place"
   }
 }
 ```
 
-Das Titel-Pattern ist eine Krücke und als solche gedacht: Outlook-Titel sind
-lokalisiert, das Pattern deckt deshalb deutsche und englische Varianten ab. Wer
-nur eine Sprachvariante nutzt, sollte es kürzen.
+The title pattern is a crutch, and it's meant as one: Outlook titles are
+localized, so the pattern covers both German and English variants. Anyone
+using only one language variant should shorten it.
 
 ---
 
 ## `defaults`
 
-Vorgaben, die jede Regel erbt, solange sie sie nicht überschreibt.
+Defaults that every rule inherits unless it overrides them.
 
 ```jsonc
 {
-  // Die wichtigste Voreinstellung überhaupt: Dialoge, Verfassen-Fenster und
-  // Popups fallen automatisch heraus, ohne dass eine Titel-Regex nötig wäre.
+  // The single most important default: dialogs, compose windows, and
+  // popups fall out automatically without needing a title regex.
   "onlyFirstWindowAfterLaunch": true,
 
   "allowedSubroles": ["AXStandardWindow"],
   "minimumWindowSize": { "width": 400, "height": 300 },
 
   "retry": {
-    "attempts": 3,        // inklusive erstem Versuch
-    "initialDelay": 0.05, // Sekunden bis zum ersten Versuch
-    "interval": 0.2,      // Sekunden zwischen den Versuchen
-    "tolerance": 4.0      // Punkte Abweichung, die noch als Erfolg zählen
+    "attempts": 3,        // including the first attempt
+    "initialDelay": 0.05, // seconds until the first attempt
+    "interval": 0.2,      // seconds between attempts
+    "tolerance": 4.0      // points of deviation still counted as success
   },
 
   "conflict": {
     "occupiedZone": "stack",        // "stack" | "replace" | "skip"
-    "honorManualOverride": true,    // manuell verschobene Fenster in Ruhe lassen
-    "manualOverrideTimeout": null   // null = für die Lebensdauer des Fensters
+    "honorManualOverride": true,    // leave manually moved windows alone
+    "manualOverrideTimeout": null   // null = for the lifetime of the window
   },
 
   "dropzones": {
-    "enabled": true,                              // Overlay beim Ziehen
-    "activation": {"showsWhile": "command"},      // Vorgabe seit Issue #23:
-                                                  //   {"showsWhile": "X"}  – Zonen nur, solange X gehalten wird
-                                                  //   {"showsUnless": "X"} – Zonen immer, außer wenn X gehalten wird
-                                                  //   X ist "option" | "command" | "control" | "shift" | "none"
-    "offerRule": false,                           // nach dem Ablegen „immer hier öffnen?" fragen (aus)
-    "minimumDragDistance": 12,                    // Punkte, bevor das Overlay erscheint
-    "warnAboutCompetingManagers": true            // vor Magnet & Co. warnen
+    "enabled": true,                              // overlay while dragging
+    "activation": {"showsWhile": "command"},      // default since issue #23:
+                                                  //   {"showsWhile": "X"}  – zones only while X is held
+                                                  //   {"showsUnless": "X"} – zones always, except while X is held
+                                                  //   X is "option" | "command" | "control" | "shift" | "none"
+    "offerRule": false,                           // ask "always open here?" after dropping (off)
+    "minimumDragDistance": 12,                    // points before the overlay appears
+    "warnAboutCompetingManagers": true            // warn about Magnet & co.
   }
 }
 ```
 
-### Zu `retry`
+### On `retry`
 
-Ein Fenster existiert oft, bevor es endgültig dimensioniert ist; Electron- und
-Office-Apps stellen ihre gespeicherte Geometrie nach dem Öffnen wieder her.
-Deshalb wird platziert, zurückgelesen und wiederholt. Drei Versuche über rund
-500 ms sind das Kleinste, was sich zuverlässig durchsetzt, ohne dass Fenster
-sichtbar zappeln.
+A window often exists before it has its final size; Electron and Office apps
+restore their saved geometry after opening. That's why placement is followed
+by a read-back and retries. Three attempts over roughly 500 ms is the
+smallest amount that reliably takes hold without windows visibly jittering.
 
-`tolerance` verhindert Endlosversuche gegen Apps mit Größenschritten
-(Terminals) oder Mindestgrößen.
+`tolerance` prevents endless retries against apps with size increments
+(terminals) or minimum sizes.
 
-### Zu `conflict`
+### On `conflict`
 
-- `stack` — neues Fenster zusätzlich in die Zone, nichts wird verdrängt.
-- `replace` — neues Fenster übernimmt, der bisherige Insasse wandert in die
-  Fallback-Zone des Profils.
-- `skip` — das neue Fenster bleibt, wo das System es geöffnet hat.
+- `stack` — the new window is added to the zone; nothing gets displaced.
+- `replace` — the new window takes over; the previous occupant moves to the
+  profile's fallback zone.
+- `skip` — the new window stays wherever the system opened it.
 
-`honorManualOverride` ist die Höflichkeitsregel: zieht der Nutzer ein Fenster
-selbst heraus, darf die Regel es nicht zurückreißen.
+`honorManualOverride` is the courtesy rule: if the user drags a window out
+themselves, the rule must not drag it back.
 
-### Zu `dropzones`
+### On `dropzones`
 
-Der ganze Block ist optional; eine `config.json` ohne ihn lädt unverändert und
-bekommt die oben gezeigten Werte. Jedes einzelne Feld ist ebenfalls optional.
+The whole block is optional; a `config.json` without it loads unchanged and
+gets the values shown above. Every individual field is likewise optional.
 
-`activation` sagt, **wann** die Zonen erscheinen. Zwei Formen, eine Datei:
+`activation` says **when** the zones appear. Two forms, one file:
 
-- `{"showsWhile": "command"}` – Vorgabe seit Issue #23. Die Zonen erscheinen
-  nur, solange ⌘ gehalten wird. Ohne die Taste passiert nichts — die alte
-  „ziehen immer, unterdrücken mit ⌥"-Geste ist absichtlich getauscht (Preis
-  und Begründung in [dropzones.md](dropzones.md)).
-- `{"showsUnless": "option"}` – die ältere Polarität. Die Zonen erscheinen bei
-  jedem Zug; die genannte Taste blendet sie aus. Wer die alte Geste möchte,
-  schaltet hierher zurück.
+- `{"showsWhile": "command"}` – the default since issue #23. The zones appear
+  only while ⌘ is held down. Nothing happens without the key — the old
+  "always shown while dragging, suppress with ⌥" gesture was deliberately
+  swapped out (cost and reasoning in [dropzones.md](dropzones.md)).
+- `{"showsUnless": "option"}` – the older polarity. The zones appear on every
+  drag; the named key hides them. Anyone who wants the old gesture switches
+  back to this.
 
-`"none"` ist in beiden Formen erlaubt, hat aber keine sinnvolle Wirkung:
-`{"showsUnless": "none"}` heißt „nie ausblenden" (die Zonen erscheinen also
-immer), `{"showsWhile": "none"}` fiele auf „nie zeigen" zurück — was
-`enabled: false` bereits sagt. OpenZonr lehnt beides nicht ab, sondern lädt
-weiter, damit eine von Hand geschriebene oder ererbte `.none` niemanden ohne
-Zonen dastehen lässt.
+`"none"` is allowed in both forms but has no meaningful effect:
+`{"showsUnless": "none"}` means "never hide" (so the zones always appear),
+while `{"showsWhile": "none"}` would fall back to "never show" — which
+`enabled: false` already says. OpenZonr rejects neither; it keeps loading
+instead, so that a hand-written or inherited `.none` never leaves anyone
+without zones.
 
-**Alte Konfigurationen laden weiter.** Eine `config.json` mit dem früheren
-Feld `suppressionModifier: "option"` (statt `activation`) wird beim Laden auf
-`activation: {"showsUnless": "option"}` abgebildet — dieselbe Polarität, die
-sie ausdrückte. Neu geschrieben wird nur das neue Feld. Sind zufällig beide
-Felder in der Datei, gewinnt das neue.
+**Old configurations keep loading.** A `config.json` with the earlier field
+`suppressionModifier: "option"` (instead of `activation`) is mapped on load
+to `activation: {"showsUnless": "option"}` — the same polarity it expressed.
+Only the new field gets written back out. If both fields happen to be present
+in the file, the new one wins.
 
-`offerRule` bestimmt, ob nach einem Ablegen das Panel „Diese App immer hier
-öffnen?" erscheint. **Seit Issue #23 ist die Vorgabe `false`.** Statt der
-Rückfrage danach trägt jede sichtbare Zone eine kleine Anheft-Marke: loslassen
-auf der Marke schreibt die Regel in derselben Bewegung, loslassen daneben ist
-eine einmalige Platzierung. Der Menü­eintrag „Aktuelles Fenster festhalten"
-schreibt die gleiche Regel über denselben `QuickPin` — der Weg bleibt für den
-Fall, dass die Marke nicht getroffen war.
+`offerRule` determines whether the panel „Diese App immer hier öffnen?"
+("Always open this app here?") appears after a drop. **Since issue #23 the
+default is `false`.** Instead of that follow-up prompt, every visible zone
+carries a small pin marker: releasing on the marker writes the rule in the
+same motion, releasing next to it is a one-time placement. The menu item
+„Aktuelles Fenster festhalten" ("pin current window") writes the same rule
+via the same `QuickPin` — this path remains for when the marker was missed.
 
-`minimumDragDistance` verhindert, dass ein bloßer Klick auf eine Titelleiste das
-Overlay aufblitzen lässt.
+`minimumDragDistance` prevents a mere click on a title bar from flashing up
+the overlay.
 
-`enabled` und `activation` zusammen sind das, was im Menü unter „Zonen beim
-Ziehen" zur Wahl steht: „Aus" ist `enabled: false`, „Nur mit gehaltener
-⌘-Taste" ist `{"showsWhile": "command"}`, „Bei jedem Ziehen" ist
-`{"showsUnless": "none"}`. Eine andere Taste lässt sich weiterhin von Hand
-eintragen; das Menü zeigt sie dann als eigene, angehakte Zeile an, statt einen
-falschen Haken zu setzen.
+`enabled` and `activation` together are what's offered under „Zonen beim
+Ziehen" ("Zones while dragging") in the menu: „Aus" ("Off") is
+`enabled: false`, „Nur mit gehaltener ⌘-Taste" ("Only while ⌘ is held") is
+`{"showsWhile": "command"}`, „Bei jedem Ziehen" ("On every drag") is
+`{"showsUnless": "none"}`. A different key can still be entered by hand; the
+menu then shows it as its own, checked line instead of putting a checkmark in
+the wrong place.
 
-„Fenster automatisch platzieren" im Menü hält auch das Ziehen an — die Pause
-meint alles, nicht nur die Automatik.
+„Fenster automatisch platzieren" ("Place windows automatically") in the menu
+also pauses dragging — the pause means everything, not just the automatic
+placement.
 
-Alles Weitere — die Wahl `CGEventTap` statt `kAXMovedNotification` mit Zahlen,
-das Verhalten neben Magnet, der Tausch bei ⌘ und was daran ungemessen ist —
-steht in [dropzones.md](dropzones.md).
+Everything else — the choice of `CGEventTap` over `kAXMovedNotification` with
+numbers, the behavior alongside Magnet, the ⌘ swap, and what about it remains
+unmeasured — is covered in [dropzones.md](dropzones.md).
 
 ---
 
-## Speicherort
+## Storage location
 
-Gesucht wird in dieser Reihenfolge; die erste Angabe gewinnt:
+The search happens in this order; the first one found wins:
 
-1. ein Pfad, den der Aufrufer ausdrücklich übergibt (Kommandozeilenschalter, Test),
-2. die Umgebungsvariable `OPENZONR_CONFIG`,
+1. a path the caller explicitly passes (a command-line flag, a test),
+2. the environment variable `OPENZONR_CONFIG`,
 3. `~/Library/Application Support/OpenZonr/config.json`.
 
-Ein führendes `~` wird in den ersten beiden Fällen aufgelöst. Wer seine
-Konfiguration im Dotfile-Repository pflegt, setzt also etwa:
+A leading `~` is resolved in the first two cases. Anyone who keeps their
+configuration in a dotfiles repository would set, for example:
 
 ```sh
 export OPENZONR_CONFIG=~/dotfiles/openzonr.json
 ```
 
-Fehlt die Datei, ist das kein Fehler, sondern der normale Zustand beim ersten
-Start — OpenZonr fragt dann nach, statt eine Fehlermeldung zu zeigen.
+If the file is missing, that's not an error but the normal state on first
+launch — OpenZonr then asks, instead of showing an error message.
 
-### Schreiben
+### Writing
 
-Geschrieben wird atomar: zuerst eine Zwischendatei im Zielverzeichnis, dann wird
-die Zieldatei durch sie ersetzt. Bricht der Vorgang ab, bleibt die alte Datei
-unangetastet. Eine halb geschriebene Konfiguration wäre schlimmer als eine
-veraltete — die alte lässt sich wenigstens noch laden.
+Writes are atomic: first a temporary file in the target directory, then the
+target file is replaced by it. If the process aborts, the old file remains
+untouched. A half-written configuration would be worse than a stale one — the
+old one can at least still be loaded.
 
-Die Ausgabe ist stabil: Schlüssel alphabetisch sortiert, eingerückt, mit
-abschließendem Zeilenumbruch. Eine geänderte Zone erzeugt damit einen kurzen
-Diff und keine umsortierte Datei.
+The output is stable: keys sorted alphabetically, indented, with a trailing
+newline. A changed zone therefore produces a short diff, not a reshuffled
+file.
 
 ### Migration
 
-Das Feld `version` steuert die Migration. Beim Laden wird eine ältere Version
-schrittweise auf den aktuellen Stand gehoben. Vor einer *schreibenden* Migration
-sichert OpenZonr die Ursprungsdatei daneben als
-`config.json.v<alte Version>.backup`.
+The `version` field drives migration. On load, an older version is stepped
+forward to the current state. Before a *write-back* migration, OpenZonr backs
+up the original file alongside it as `config.json.v<old version>.backup`.
 
-Eine **neuere** Version als die dem Programm bekannte wird abgelehnt, nicht
-teilweise gelesen: ein neueres Schema kann Felder verschoben haben, und eine halb
-verstandene Konfiguration platziert Fenster dort, wo niemand sie haben wollte.
-In diesem Fall hilft nur ein Update von OpenZonr.
+A version **newer** than the one the program knows about is rejected
+outright, not partially read: a newer schema may have moved fields around,
+and a half-understood configuration places windows where nobody wanted them.
+In this case, only an OpenZonr update helps.
 
 ---
 
-## Fehler und Warnungen
+## Errors and warnings
 
-Beim Laden wird die gesamte Datei geprüft und **alle** Befunde werden zusammen
-gemeldet — nicht nur der erste. Wer drei Tippfehler in seiner Datei hat, soll sie
-in einem Durchgang beheben können und nicht dreimal neu starten.
+On load, the whole file is checked and **all** findings are reported together
+— not just the first one. Someone with three typos in their file should be
+able to fix them in one pass, not restart three times.
 
-Jeder Befund nennt die Stelle im Dokument, an der er entstanden ist, etwa
+Every finding names the location in the document where it occurred, e.g.
 `profiles[office].roleBindings[2].zone`.
 
-Unterschieden wird zwischen:
+A distinction is made between:
 
-- **Fehlern** — die Konfiguration ist unbenutzbar. Beispiele: eine Regel verweist
-  auf eine Rolle, die es nicht gibt; eine Rollenbindung zeigt auf eine Zone, die
-  im gewählten Layout dieses Displays nicht existiert; zwei Profile haben denselben
-  Fingerprint; ein `titlePattern` ist kein übersetzbarer regulärer Ausdruck.
-- **Warnungen** — die Konfiguration ist benutzbar, aber vermutlich nicht so
-  gemeint. Beispiele: eine Rolle, die keine Regel verwendet; eine Regel, die von
-  einer höher priorisierten vollständig überdeckt wird und deshalb nie greifen
-  kann.
+- **Errors** — the configuration is unusable. Examples: a rule references a
+  role that doesn't exist; a role binding points at a zone that doesn't exist
+  in this display's chosen layout; two profiles share the same fingerprint; a
+  `titlePattern` isn't a translatable regular expression.
+- **Warnings** — the configuration is usable, but probably not meant this
+  way. Examples: a role that no rule uses; a rule that is fully shadowed by a
+  higher-priority one and can therefore never fire.
 
-Warnungen halten das Laden nicht auf.
+Warnings don't hold up loading.

@@ -1,70 +1,70 @@
-# Tracer Bullet — der Durchstich
+# Tracer Bullet — the probe
 
-Der kleinste vollständige Weg vom App-Start bis zum platzierten Fenster, als
-Kommandozeilenwerkzeug `openzonr`. Kein UI, kein Regel-Editor, keine
-Menüleisten-App — nur der Durchstich und die Diagnosewerkzeuge, die man braucht,
-um ihn zu benutzen.
+The smallest complete path from app launch to a placed window, as the
+command-line tool `openzonr`. No UI, no rule editor, no menu bar app — just
+the probe and the diagnostic tools needed to use it.
 
-Der Zweck ist nicht Bequemlichkeit, sondern Beweisführung: **Lässt sich ein neu
-geöffnetes Fenster zuverlässig in eine definierte Zone platzieren, auch wenn die
-App sich nach dem Öffnen selbst noch einmal skaliert?**
+The purpose is not convenience but proof: **Can a newly opened window be
+placed reliably into a defined zone, even when the app resizes itself again
+after opening?**
 
-Die Antwort ist gemessen und lautet ja. Die Zahlen stehen unter
-[Verifiziert: die Platzierung](#verifiziert-die-platzierung); den Weg dorthin
-versperrte lange ein Berechtigungsproblem, dessen Auflösung im selben Abschnitt
-beschrieben ist.
+The answer is measured, and it is yes. The numbers are under
+[Verified: the placement](#verified-the-placement); the road there was long
+blocked by a permission problem, whose resolution is described in the same
+section.
 
 ---
 
-## Was der Durchstich abdeckt
+## What the probe covers
 
-Die Kette, die `openzonr watch` durchläuft:
+The chain that `openzonr watch` runs through:
 
-1. Konfiguration laden, migrieren und validieren
-   (`ConfigurationStore`, Standardpfad
-   `~/Library/Application Support/OpenZonr/config.json`, überschreibbar per
-   `--config` oder `OPENZONR_CONFIG`)
-2. Angeschlossene Displays lesen und zum `SetupFingerprint` verdichten,
-   **ohne** die unter `ignoredDisplays` eingetragenen Software-Displays
-3. Aktives Profil bestimmen. Passt keines, bricht `watch` mit einer
-   ausführlichen Meldung ab, statt still das nächstbeste zu nehmen
-4. `NSWorkspace.didLaunchApplicationNotification` beobachten und pro relevanter
-   App einen `AXObserver` auf `kAXWindowCreatedNotification` hängen — auch für
-   Apps, die beim Start schon laufen
-5. Neues Fenster vorfiltern: Fensterebene, Subrolle, Mindestgröße,
+1. Load, migrate, and validate the configuration
+   (`ConfigurationStore`, default path
+   `~/Library/Application Support/OpenZonr/config.json`, overridable via
+   `--config` or `OPENZONR_CONFIG`)
+2. Read connected displays and condense them into the `SetupFingerprint`,
+   **excluding** the software displays listed under `ignoredDisplays`
+3. Determine the active profile. If none matches, `watch` aborts with a
+   detailed message instead of silently picking the next-best one
+4. Observe `NSWorkspace.didLaunchApplicationNotification` and attach an
+   `AXObserver` on `kAXWindowCreatedNotification` for every relevant app —
+   including apps that are already running at startup
+5. Pre-filter the new window: window level, subrole, minimum size,
    `onlyFirstWindowAfterLaunch`
-6. Regeln nach Priorität auswerten, erste passende gewinnt
-7. Rolle über das aktive Profil zu Display und Zone auflösen, Fallback beachten
-8. `RelativeRect` gegen den `visibleFrame` des Zieldisplays in AppKit-Koordinaten
-   umrechnen und anschließend in AX-Koordinaten spiegeln
-9. Über `kAXPositionAttribute` und `kAXSizeAttribute` setzen, den erreichten
-   Frame zurücklesen, mit der Toleranz aus `RetryPolicy` vergleichen und
-   gegebenenfalls erneut versuchen
-10. Jeden Versuch protokollieren: Soll-Frame, Ist-Frame, Abweichung,
-    Versuchsnummer, Dauer
+6. Evaluate rules by priority; the first match wins
+7. Resolve the role to a display and zone via the active profile, honoring
+   the fallback
+8. Convert the `RelativeRect` against the target display's `visibleFrame` in
+   AppKit coordinates, then mirror it into AX coordinates
+9. Set it via `kAXPositionAttribute` and `kAXSizeAttribute`, read back the
+   frame actually achieved, compare it against the tolerance from
+   `RetryPolicy`, and retry if needed
+10. Log every attempt: target frame, actual frame, deviation, attempt
+    number, duration
 
-Dazu die beiden Diagnosebefehle `openzonr displays` und `openzonr windows`, ohne
-die Schritt 1 bis 3 reine Ratearbeit wären.
+Plus the two diagnostic commands `openzonr displays` and `openzonr windows`,
+without which steps 1 through 3 would be pure guesswork.
 
-## Was bewusst noch fehlt
+## What is deliberately still missing
 
-| Fehlt | Warum |
+| Missing | Why |
 |---|---|
-| `mode: "suggest"` | Braucht ein Overlay, das den Vorschlag anzeigt. `watch` protokolliert die Regel und den Ziel-Frame ausführlich, platziert aber nichts. |
-| Regel-Editor, Zonen-Editor | Nicht Teil des Durchstichs. Die Menüleisten-App gibt es inzwischen — [`menueleisten-app.md`](menueleisten-app.md). |
-| Reaktion auf Display-Änderungen zur Laufzeit | Teilweise gelöst: `WatchEngine` bestimmt das Profil bei `NSApplication.didChangeScreenParametersNotification` neu. Nicht gemessen. |
-| Dauerhafte Überwachung platzierter Fenster | Bewusst nicht: nach einer erfolgreichen Platzierung gehört das Fenster dem Nutzer. |
-| Notarisierung | Für den eigenen Rechner nicht nötig. Die Signierung ist es sehr wohl — siehe „Der Blocker und seine Auflösung". |
+| `mode: "suggest"` | Needs an overlay that displays the suggestion. `watch` logs the rule and the target frame in detail but places nothing. |
+| Rule editor, zone editor | Not part of the probe. The menu bar app exists by now — [`menueleisten-app.md`](menueleisten-app.md). |
+| Reacting to display changes at runtime | Partially solved: `WatchEngine` re-determines the profile on `NSApplication.didChangeScreenParametersNotification`. Not measured. |
+| Continuous monitoring of placed windows | Deliberately not: after a successful placement, the window belongs to the user. |
+| Notarization | Not needed for one's own machine. Signing, on the other hand, very much is — see "The blocker and its resolution". |
 
 ---
 
-## Verifikationsstand
+## Verification status
 
-### Verifiziert auf echter Hardware
+### Verified on real hardware
 
-Gemessen auf dem Schreibtisch des Nutzers: vier Displays, davon zwei physisch
-(Samsung C49RG9x 5120×1440 als Hauptmonitor, Samsung U28E590 1920×1080 darüber
-rechts) und zwei virtuell („AAA", „Teleprompter Source").
+Measured on the user's desk: four displays, two of them physical (Samsung
+C49RG9x 5120×1440 as the primary monitor, Samsung U28E590 1920×1080 above it
+to the right) and two virtual ("AAA", "Teleprompter Source").
 
 ```
 · Konfiguration geladen: /tmp/ozconf/config.json
@@ -84,55 +84,56 @@ rechts) und zwei virtuell („AAA", „Teleprompter Source").
 ! Neues Fenster von com.apple.TextEdit ohne lesbaren Frame.
 ```
 
-Damit sind belegt:
+This establishes:
 
-- **Displayerkennung und Identitätsbildung.** Der Hauptmonitor meldet
-  Seriennummer 0 und läuft über den Fallback-Pfad; der Nebenmonitor über EDID.
-- **Der Fingerprint-Fix trägt.** Vier angeschlossene Displays, zwei im
-  Fingerprint. Das Auftauchen von OBS oder des Teleprompters verschiebt das
-  Profil nicht mehr.
-- **Die Profilwahl.** „Schreibtisch" wurde über den reduzierten Fingerprint
-  eindeutig bestimmt.
-- **Die Beobachtungskette.** Nach `didLaunchApplicationNotification` hing der
-  `AXObserver` 37 ms später an der neuen App, und
-  `kAXWindowCreatedNotification` wurde weitere 310 ms danach zugestellt.
+- **Display detection and identity formation.** The primary monitor reports
+  serial number 0 and runs through the fallback path; the secondary monitor
+  via EDID.
+- **The fingerprint fix holds.** Four connected displays, two in the
+  fingerprint. OBS or the teleprompter appearing no longer shifts the
+  profile.
+- **Profile selection.** "Schreibtisch" ("Desk") was determined unambiguously
+  via the reduced fingerprint.
+- **The observation chain.** After `didLaunchApplicationNotification`, the
+  `AXObserver` attached to the new app 37 ms later, and
+  `kAXWindowCreatedNotification` was delivered a further 310 ms after that.
 
-  Diese erste Messung verleitete zu dem Schluss, das Zeitfenster sei „klein,
-  aber ausreichend". Das war zu optimistisch verallgemeinert: 37 ms waren der
-  günstigste beobachtete Fall. Spätere Messungen ergaben 124 ms für TextEdit und
-  2,2 s für Outlook — und in dieser Lücke öffnen Apps ihr erstes Fenster. Siehe
-  Fehler 2 weiter unten.
+  This first measurement invited the conclusion that the window was "small
+  but sufficient." That was too optimistic a generalization: 37 ms was the
+  best case observed. Later measurements yielded 124 ms for TextEdit and
+  2.2 s for Outlook — and it is in this gap that apps open their first
+  window. See Error 2 further below.
 
-### Der Blocker und seine Auflösung: Signierung
+### The blocker and its resolution: signing
 
-Lange sah es so aus, als sei der letzte Schritt nicht messbar. Der Befund war
-eindeutig und reproduzierbar:
+For a long time it looked as though the last step was not measurable. The
+finding was clear and reproducible:
 
 ```
 AXIsProcessTrusted()                                        → true
 AXUIElementCopyAttributeValue(app, kAXWindowsAttribute)     → .success
-  Safari      n=1   Rolle des „Fensters": AXApplication
-  Outlook     n=1   Rolle des „Fensters": AXApplication
-  … 21 Apps, keine einzige liefert ein Element mit Rolle AXWindow
-AXPosition / AXSize auf diesen Elementen                    → -25205
+  Safari      n=1   role of the "window": AXApplication
+  Outlook     n=1   role of the "window": AXApplication
+  … 21 apps, not a single one delivers an element with role AXWindow
+AXPosition / AXSize on these elements                       → -25205
 ```
 
-`-25205` ist `kAXErrorAttributeUnsupported`. Jede App antwortete auf `AXWindows`
-mit einem Stellvertreter, der die Rolle `AXApplication` trug und weder Position
-noch Größe hatte. Ein separat kompiliertes Sondenprogramm, das nichts aus diesem
-Repository verwendet, bekam exakt dieselben Stubs — die Ursache lag also nicht
-im Code.
+`-25205` is `kAXErrorAttributeUnsupported`. Every app responded to
+`AXWindows` with a stand-in that carried the role `AXApplication` and had
+neither position nor size. A separately compiled probe program that used
+nothing from this repository got exactly the same stubs — so the cause was
+not in the code.
 
-**Die Erklärung war fast richtig und die Schlussfolgerung zu schnell.** Vermutet
-wurde, die Berechtigung hänge am *verantwortlichen* Prozess und sei deshalb
-nicht erreichbar. Der ausschlaggebende Hebel ist die **Code-Signatur**: eine
-unsignierte Binärdatei bekommt bei jedem Neubau eine andere Prüfsumme, und TCC
-erkennt sie nicht wieder — der Haken in den Systemeinstellungen bleibt gesetzt
-und meint ein anderes Programm. Dass der verantwortliche Prozess ebenfalls
-mitspielt, zeigt der Nachtrag weiter unten.
+**The explanation was almost right, and the conclusion came too fast.** The
+suspicion was that the permission was tied to the *responsible* process and
+therefore unreachable. The decisive lever is the **code signature**: an
+unsigned binary gets a different checksum on every rebuild, and TCC does not
+recognize it again — the checkbox in System Settings stays checked but
+refers to a different program. That the responsible process also plays a
+role is shown by the addendum further below.
 
-Die Auflösung ist ein signiertes App-Bundle. Die Designated Requirement einer
-Developer-ID-Signatur bindet an Identifier und Team, nicht an die Prüfsumme:
+The resolution is a signed app bundle. The designated requirement of a
+Developer ID signature binds to identifier and team, not to the checksum:
 
 ```
 designated => identifier "com.trsdn.openzonr" and anchor apple generic
@@ -141,43 +142,44 @@ designated => identifier "com.trsdn.openzonr" and anchor apple generic
   and certificate leaf[subject.OU] = G69Z5BNY97
 ```
 
-Damit übersteht die Freigabe einen Neubau in der Regel (siehe den Nachtrag vom
-30.08.2026 weiter unten: zugesichert ist das nicht). `Scripts/bundle.sh` baut, packt und
-signiert in einem Schritt. Ein Ad-hoc-Zertifikat genügt nicht, es hat keine
-solche Kette.
+With this, the grant survives a rebuild as a rule (see the addendum from
+30.08.2026 further below: this is not guaranteed). `Scripts/bundle.sh`
+builds, packages, and signs in one step. An ad-hoc certificate is not
+enough; it has no such chain.
 
-Nach der Signierung liefert derselbe Aufruf 19 echte `AXWindow` mit lesbarem
-Frame. Ein neuer manueller Grant war nicht nötig.
+After signing, the same call returns 19 real `AXWindow` elements with a
+readable frame. A new manual grant was not necessary.
 
-**Nachtrag — eine Behauptung dieses Dokuments war zu weit gefasst.** Hier stand,
-die Freigabe überlebe „sogar einen Umzug des Bundles an einen anderen Pfad, was
-gegengeprüft wurde". Eine spätere, sorgfältigere Gegenprobe widerlegt das:
+**Addendum — a claim in this document was too broadly stated.** It used to
+say that the grant survives "even moving the bundle to a different path,
+which was cross-checked." A later, more careful cross-check disproves that:
 
 ```
-frischer Klon → Scripts/bundle.sh → identische Designated Requirement
-  Start aus der Shell        : "Zugriff degradiert"
-  Start über LaunchServices  : "Kein Zugriff — nicht vertraut"
+fresh clone → Scripts/bundle.sh → identical designated requirement
+  Launch from the shell      : "access degraded"
+  Launch via LaunchServices  : "no access — not trusted"
 ```
 
-Der zweite Befund ist der aussagekräftige. Aus der Shell gestartet erbt der
-Prozess das Vertrauen des Terminals, weshalb `AXIsProcessTrusted()` weiterhin
-`true` meldet — die Fensterzugriffe erben es nicht. Über LaunchServices ist die
-App für sich selbst verantwortlich, und dort zeigt sich die Wahrheit: dieses
-Bundle ist nicht freigegeben. **Die Freigabe gilt dem Programm an seinem Platz,
-nicht dem Identifier allein.** Die ursprüngliche Vermutung über den
-verantwortlichen Prozess war damit nicht falsch, sondern unvollständig; beide
-Mechanismen wirken.
+The second finding is the meaningful one. Started from the shell, the
+process inherits the terminal's trust, which is why `AXIsProcessTrusted()`
+still reports `true` — but window access does not inherit it. Started via
+LaunchServices, the app is responsible for itself, and that is where the
+truth shows: this bundle is not granted access. **The grant belongs to the
+program at its location, not to the identifier alone.** The original
+assumption about the responsible process was thus not wrong, just
+incomplete; both mechanisms are at work.
 
-Praktische Folge, umgesetzt in `Scripts/bundle.sh`: das Bundle landet
-standardmäßig unter `~/Applications/OpenZonr.app` statt in `.build`. Dort
-überlebt die einmalige Freigabe `swift package clean`, einen zweiten Klon und
-jeden Neubau. In `.build` wäre sie bei der ersten Aufräumaktion verloren.
+Practical consequence, implemented in `Scripts/bundle.sh`: the bundle now
+lands under `~/Applications/OpenZonr.app` by default instead of in
+`.build`. There, the one-time grant survives `swift package clean`, a
+second clone, and every rebuild. In `.build` it would be lost at the first
+cleanup.
 
-**Nachtrag zum Nachtrag, 28.08.2026:** Dieser Befund ist inzwischen in einem
-Befehl reproduzierbar. `openzonr selftest` meldet neben Signatur und
-Fensterzugriff auch den *Startweg* — und beantwortet damit die Frage, die den
-Unterschied ausmacht. Zwei Läufe derselben Binärdatei aus
-`~/Applications/OpenZonr.app`, dieselbe Signatur, dieselbe Sekunde:
+**Addendum to the addendum, 28.08.2026:** This finding is by now
+reproducible in a single command. `openzonr selftest` reports, alongside
+signature and window access, the *launch path* as well — and thereby
+answers the question that makes the difference. Two runs of the same binary
+from `~/Applications/OpenZonr.app`, the same signature, the same second:
 
 ```
 # open -n -a … --args selftest --out /tmp/openzonr.txt
@@ -191,98 +193,102 @@ Unterschied ausmacht. Zwei Läufe derselben Binärdatei aus
   probeWindowAccess():    degraded — Vertrauen gemeldet, aber nur Stellvertreter
 ```
 
-`--out` ist dabei kein Komfort, sondern Notwendigkeit: LaunchServices verwirft die
-Standardausgabe, und ohne Datei bliebe genau der maßgebliche Fall unbeobachtbar.
+`--out` here is not a convenience but a necessity: LaunchServices discards
+standard output, and without a file, precisely the decisive case would
+remain unobservable.
 
-**Nachtrag, 30.08.2026 (Issue #35): „überlebt jeden Neubau“ war zu weit gefasst.**
-Nach einem `Scripts/bundle.sh` auf `ec34da5` an denselben Pfad meldete der
-Selbsttest über LaunchServices (Elternprozess `launchd`) `degraded`, dreimal im
-Abstand von etwa 45 s. Pfad, Identifier, Team und Designated Requirement waren
-Zeichen für Zeichen dieselben wie vorher, und an den zwei Neubauten davor
-(29.08. 18:38 und 30.08. 03:45) hatte die Freigabe gehalten. Es ist also ein
-gelegentliches Verhalten, kein durchgängiges. **Warum** der Eintrag ungültig
-wurde, ist nicht bekannt: die TCC-Datenbank ist SIP-geschützt und nicht lesbar.
-Die Häufigkeit der Neubauten oder ein Zeitfenster als Ursache sind nicht
-gemessen und stehen deshalb nicht als Vermutung hier. Abhilfe: den Eintrag in
-den Bedienungshilfen entfernen und neu hinzufügen; Haken aus und wieder an
-genügt nicht. Die Hilfetexte (Selbsttest, `Scripts/bundle.sh`, README) sagen
-seitdem „übersteht einen Neubau in der Regel“.
+**Addendum, 30.08.2026 (Issue #35): "survives every rebuild" was too
+broadly stated.**
+After a `Scripts/bundle.sh` run on `ec34da5` to the same path, the
+self-test over LaunchServices (parent process `launchd`) reported
+`degraded`, three times about 45 s apart. Path, identifier, team, and
+designated requirement were character-for-character the same as before, and
+across the two rebuilds before that (29.08 18:38 and 30.08 03:45) the grant
+had held. So this is occasional behavior, not a consistent one. **Why** the
+entry became invalid is not known: the TCC database is SIP-protected and
+unreadable. Rebuild frequency or a time window as a cause are not measured
+and are therefore not stated here as a guess. Remedy: remove the entry in
+Accessibility and add it again; unchecking and rechecking the box is not
+enough. The help texts (self-test, `Scripts/bundle.sh`, README) have since
+said „übersteht einen Neubau in der Regel“ ("survives a rebuild as a
+rule").
 
-Bemerkenswert und für die spätere Fehlersuche wichtig: **Benachrichtigungen
-funktionieren auch im degradierten Zustand.** `AXObserverAddNotification`
-gelingt und `kAXWindowCreatedNotification` wird zugestellt — nur die Attribute
-des gemeldeten Elements sind leer. Ein Werkzeug, das sich auf
-`AXIsProcessTrusted()` verlässt, täte in genau dieser Lage stumm gar nichts.
-`openzonr` prüft deshalb zusätzlich, ob irgendeine App ein Element mit der Rolle
-`AXWindow` **und** lesbarem Frame liefert, und verweigert `watch` andernfalls
-mit Begründung.
+Notable, and important for later troubleshooting: **notifications work even
+in the degraded state.** `AXObserverAddNotification` succeeds and
+`kAXWindowCreatedNotification` is delivered — only the attributes of the
+reported element are empty. A tool that relies on `AXIsProcessTrusted()`
+would, in exactly this situation, silently do nothing at all. `openzonr`
+therefore additionally checks whether any app returns an element with the
+role `AXWindow` **and** a readable frame, and otherwise refuses `watch` with
+a reason.
 
-### Verifiziert: die Platzierung
+### Verified: the placement
 
-Gemessen am 28.08.2026 auf dem oben beschriebenen Vier-Display-Aufbau, mit
-beendetem Magnet.
+Measured on 28.08.2026 on the four-display setup described above, with
+Magnet quit.
 
-| Fall | Zone | Soll | Ist | Abweichung | Versuche | Dauer |
+| Case | Zone | Target | Actual | Deviation | Attempts | Duration |
 |---|---|---|---|---|---|---|
-| TextEdit, Kaltstart | `c49rg9x/right-quarter` | `3840,31 1280x1344` | `3840,31 1280x1343` | 1,0 pt | **1** | 122 ms |
-| Outlook, laufend | `c49rg9x/center-half` | `1280,31 2560x1344` | `1280,31 2560x1344` | 0,0 pt | **1** | 236 ms |
+| TextEdit, cold start | `c49rg9x/right-quarter` | `3840,31 1280x1344` | `3840,31 1280x1343` | 1.0 pt | **1** | 122 ms |
+| Outlook, running | `c49rg9x/center-half` | `1280,31 2560x1344` | `1280,31 2560x1344` | 0.0 pt | **1** | 236 ms |
 
-Beide Male unabhängig gegengeprüft mit `openzonr windows --bundle …`.
+Both times independently cross-checked with `openzonr windows --bundle …`.
 
-**Damit ist die Frage „reichen drei Versuche über 500 ms?" beantwortet: ja, mit
-großem Abstand.** Beide gemessenen Apps fügen sich beim ersten Schreiben. Die
-eine Abweichung von 1,0 pt bei TextEdit liegt weit innerhalb der Toleranz von
-4 pt und stammt aus der Höhenrundung, nicht aus einem Rückschlag der App.
+**This answers the question "do three attempts over 500 ms suffice?": yes,
+by a wide margin.** Both measured apps comply on the first write. The one
+deviation of 1.0 pt for TextEdit lies well within the 4 pt tolerance and
+comes from height rounding, not from the app pushing back.
 
-Die Retry-Schleife bleibt trotzdem nötig — sie ist gegen Apps gerichtet, die
-sich wehren, und deren Verhalten ist mit einem Fake-Fenster abgedeckt
+The retry loop remains necessary nonetheless — it is aimed at apps that
+push back, and that behavior is covered with a fake window
 (`Tests/OpenZonrCoreTests/RetryingWindowPlacerTests.swift`).
 
-> **Nachgetragen am 29.08.2026 — der letzte Satz dieses Abschnitts war falsch.**
-> Er lautete: „Was die Messung zeigt, ist, dass sie im Normalfall nicht in
-> Anspruch genommen wird." Das galt für zwei Fälle, in denen das Fenster kaum
-> etwas zurücklegen musste. Sobald ein echtes Fenster über den Bildschirm zu
-> ziehen ist, wird die Schleife sehr wohl in Anspruch genommen — siehe
-> [„Verifiziert: die Platzierung bei laufender App"](#verifiziert-die-platzierung-bei-laufender-app).
-> Der Grund, warum sie damals nicht auffiel, ist derselbe, der die Outlook-Zeile
-> oben angreifbar macht: Outlook stand bereits an der Soll-Position.
+> **Added on 29.08.2026 — the last sentence of this section was wrong.**
+> It read: "What the measurement shows is that it is not invoked in the
+> normal case." That held for two cases in which the window barely had to
+> travel. As soon as a real window has to be dragged across the screen, the
+> loop is very much invoked — see
+> ["Verified: the placement with a running app"](#verified-the-placement-with-a-running-app).
+> The reason it did not show up back then is the same one that makes the
+> Outlook row above questionable: Outlook was already at the target
+> position.
 
-### Verifiziert: die Platzierung bei laufender App
+### Verified: the placement with a running app
 
-Gemessen am 29.08.2026, `main` auf `28d84e7`. Der Unterschied zur Tabelle oben
-ist nicht die Logik, sondern der **Startweg**: nicht `openzonr watch` aus einer
-Shell, sondern das signierte Bundle unter `~/Applications/OpenZonr.app`, über
-LaunchServices gestartet, mit der von Hand erteilten Bedienungshilfen-Freigabe.
-Das war die Lücke, die [`menueleisten-app.md`](menueleisten-app.md) offen ließ.
+Measured on 29.08.2026, `main` at `28d84e7`. The difference from the table
+above is not the logic but the **launch path**: not `openzonr watch` from a
+shell, but the signed bundle under `~/Applications/OpenZonr.app`, started
+via LaunchServices, with the Accessibility grant given by hand. That was the
+gap that [`menueleisten-app.md`](menueleisten-app.md) had left open.
 
-Vorbedingungen, jede einzeln geprüft statt angenommen:
+Preconditions, each checked individually rather than assumed:
 
 ```
-selftest über LaunchServices (Elternprozess launchd)
+selftest via LaunchServices (parent process launchd)
   probeWindowAccess():  granted
-Gegenprobe an fremder App: Safari → AXWindow / AXStandardWindow, Frame 1820,74 1202x1108
-Magnet:                   läuft nicht (pgrep, nicht vermutet)
-Displays:                 4 aktiv, beide Fingerprint-Displays vorhanden
-Profil:                   „Schreibtisch" (messung) greift
+Cross-check on a foreign app: Safari → AXWindow / AXStandardWindow, frame 1820,74 1202x1108
+Magnet:                   not running (pgrep, not merely assumed)
+Displays:                 4 active, both fingerprint displays present
+Profile:                  „Schreibtisch" (measured) applies
 ```
 
-| Fall | Zone | Ist **mit** OpenZonr | Ist **ohne** OpenZonr | Aussagekraft |
+| Case | Zone | Actual **with** OpenZonr | Actual **without** OpenZonr | Probative value |
 |---|---|---|---|---|
-| TextEdit, Kaltstart | `c49rg9x/right-quarter` | `3840,31 1280x1343` | `1920,32 1280x1343` | **beweisend** — 1920 pt Versatz, gleiche Größe |
-| Outlook, Kaltstart | `c49rg9x/center-half` | `1280,31 2560x1344` | `1280,31 2560x1344` | **wertlos** — siehe unten |
-| Outlook gegen die eigene Erinnerung | `c49rg9x/left-quarter` | `0,31 1280x1344` | (erinnert `1280,…`) | **beweisend** — siehe unten |
+| TextEdit, cold start | `c49rg9x/right-quarter` | `3840,31 1280x1343` | `1920,32 1280x1343` | **conclusive** — 1920 pt offset, same size |
+| Outlook, cold start | `c49rg9x/center-half` | `1280,31 2560x1344` | `1280,31 2560x1344` | **worthless** — see below |
+| Outlook against its own memory | `c49rg9x/left-quarter` | `0,31 1280x1344` | (remembers `1280,…`) | **conclusive** — see below |
 
-**Die mittlere Zeile steht absichtlich in dieser Tabelle.** Outlook stellt die
-Position seines Fensters selbst wieder her. Es landet also auch dann in
-`center-half`, wenn OpenZonr gar nicht läuft — die Messung gelingt ohne die
-Sache, die sie belegen soll, und belegt damit nichts. Sie war der erste Versuch
-und wäre als Erfolg durchgegangen.
+**The middle row is deliberately in this table.** Outlook restores its own
+window position by itself. So it lands in `center-half` even when OpenZonr
+is not running at all — the measurement succeeds without the thing it is
+supposed to prove, and thereby proves nothing. It was the first attempt and
+would have passed as a success.
 
-Entscheidbar wird der Fall erst, wenn beide Antworten **auseinanderfallen**:
-eine Kopie der Konfiguration (`watch --config`, nichts am Original verändert)
-schickt die Rolle `mail` nach `left-quarter`. Outlook erinnert `x=1280`, die
-Regel verlangt `x=0`. Aus dem Protokoll — Zeitstempel entfernt, der Fenstertitel
-enthält eine Mailadresse und ist deshalb ausgelassen, sonst unverändert:
+The case only becomes decidable once the two answers **diverge**: a copy of
+the configuration (`watch --config`, nothing changed on the original) sends
+the role `mail` to `left-quarter`. Outlook remembers `x=1280`, the rule
+demands `x=0`. From the log — timestamps removed, the window title contains
+an email address and is therefore omitted, otherwise unchanged:
 
 ```
 ▸ Neues Fenster: com.microsoft.Outlook  1280,31 2560x1344  subrole=AXUnknown  Ebene 0
@@ -295,167 +301,168 @@ enthält eine Mailadresse und ist deshalb ausgelassen, sonst unverändert:
 ✓ Platziert nach 2 Versuchen.
 ```
 
-Das `-0` in der Ist-Spalte ist kein Messwert, sondern negative Null aus der
-Formatierung; die Abweichung daneben ist 0,0 pt. `openzonr windows` gibt danach
-denselben Rahmen als `-0,31 1280x1344` aus. Kein Fehler in der Platzierung, aber
-eine Stelle, an der ein Leser stolpert.
+The `-0` in the actual column is not a measurement but negative zero from
+formatting; the deviation next to it is 0.0 pt. `openzonr windows`
+subsequently outputs the same frame as `-0,31 1280x1344`. Not a placement
+error, but a spot where a reader stumbles.
 
-Drei Dinge, die diese acht Zeilen belegen und die vorherige Messung nicht konnte:
+Three things these eight lines establish that the previous measurement
+could not:
 
-1. **Die App gewinnt gegen die Positionserinnerung der Ziel-App.** Genau das war
-   der Anlass des Projekts.
-2. **Die Retry-Schleife ist tragend, nicht Zierde.** Outlook fügte sich beim
-   ersten Schreiben *nicht*: 1288 statt 1280 pt breit, 8 pt über der Toleranz von
-   4 pt. Ohne den zweiten Versuch wäre das Fenster falsch stehengeblieben — und
-   die Abweichung wäre klein genug gewesen, dass niemand sie als Fehler erkannt
-   hätte. Die Aussage weiter oben, die Schleife werde „im Normalfall nicht in
-   Anspruch genommen", ist damit widerlegt.
-3. **Der Subrole-Filter arbeitet.** Outlook meldet zwei Fenster mit identischem
-   Frame; eines trägt `AXUnknown`. Ohne den Filter wäre die Platzierung auf ein
-   Phantom gegangen.
+1. **The app wins against the target app's position memory.** That is
+   exactly what prompted the project.
+2. **The retry loop is load-bearing, not decoration.** Outlook did *not*
+   comply on the first write: 1288 instead of 1280 pt wide, 8 pt over the
+   4 pt tolerance. Without the second attempt, the window would have stayed
+   wrongly placed — and the deviation would have been small enough that no
+   one would have recognized it as an error. The claim further above, that
+   the loop is "not invoked in the normal case," is thereby refuted.
+3. **The subrole filter works.** Outlook reports two windows with an
+   identical frame; one carries `AXUnknown`. Without the filter, the
+   placement would have gone to a phantom.
 
-**Ein Methodenfehler, der beinahe eine zweite wertlose Messung erzeugt hätte:**
-`pgrep -x Outlook` findet Outlook **nicht** — der Prozess heißt
-`Microsoft Outlook`. Ein Test, der daraufhin „nicht laufend" annimmt und
-anschließend einen Frame misst, misst ein Fenster, das seit Stunden dort steht.
-Aufgefallen ist es nur an `ps -p <pid> -o lstart`. Wer eine Platzierung als
-frisch ausgibt, muss die **Startzeit des Prozesses** belegen, nicht seine
-Abwesenheit vermuten. Aus demselben Grund taugt `ps aux | grep -i openzonr`
-nicht zur Prüfung, ob die App läuft: es trifft jeden Prozess, der den Pfad im
-Aufruf trägt. Richtig ist `pgrep -lf 'OpenZonr.app/Contents/MacOS'`.
+**A methodological error that nearly produced a second worthless
+measurement:** `pgrep -x Outlook` does **not** find Outlook — the process is
+named `Microsoft Outlook`. A test that then assumes "not running" and
+subsequently measures a frame is measuring a window that has been sitting
+there for hours. It only surfaced via `ps -p <pid> -o lstart`. Anyone
+reporting a placement as fresh must establish the **process's start time**,
+not merely assume its absence. For the same reason, `ps aux | grep -i
+openzonr` is not suitable for checking whether the app is running: it
+matches every process that carries the path in its invocation. The correct
+command is `pgrep -lf 'OpenZonr.app/Contents/MacOS'`.
 
-Ungemessen bleibt: der Autostart über `SMAppService` nach einer echten
-Neuanmeldung, und alles, was eine Hand an der Maus braucht — Overlay,
-echter Zug, Magnet im Konflikt, Angebotspanel (siehe
-[`dropzones.md`](dropzones.md)).
+Left unmeasured: autostart via `SMAppService` after a real re-login, and
+everything that needs a hand on the mouse — overlay, an actual drag, Magnet
+in conflict, the offer panel (see [`dropzones.md`](dropzones.md)).
 
-### Was die Messung an Fehlern zutage gefördert hat
+### What the measurement brought to light in the way of bugs
 
-Drei Fehler, die alle einzeln unsichtbar waren und zusammen dazu führten, dass
-kein einziges Fenster platziert wurde. Keiner davon wäre ohne echte Hardware
-aufgefallen; alle drei erzeugten ein leeres Protokoll statt einer Fehlermeldung.
+Three bugs, each invisible on its own, that together resulted in not a
+single window being placed. None of them would have surfaced without real
+hardware; all three produced an empty log instead of an error message.
 
-**1. Die Anwendung wurde schwach gehalten.** Die Retry-Schleife, die den
-`AXObserver` anhängt, hielt `NSRunningApplication` schwach, und niemand sonst
-hielt sie. Vor dem ersten Wiederholungsversuch nach 150 ms war die Instanz
-freigegeben, das `guard` schlug fehl, und die Schleife kehrte zurück, ohne
-Erfolg *oder* Fehler zu melden. Im Protokoll stand „App gestartet" und danach
-nichts — ununterscheidbar davon, dass die App kein Fenster geöffnet hätte.
+**1. The application was held weakly.** The retry loop that attaches the
+`AXObserver` held `NSRunningApplication` weakly, and no one else held it.
+Before the first retry after 150 ms, the instance had been released, the
+`guard` failed, and the loop returned without reporting success *or*
+failure. The log read „App gestartet" ("app started") and then nothing —
+indistinguishable from the app never having opened a window.
 
-**2. Das Fenster war schneller als der Observer.** Das Anhängen dauert Zeit:
-124 ms bei TextEdit, 2,2 s bei Outlook. Apps öffnen ihr erstes Fenster genau in
-dieser Lücke. Da die API nur Fenster meldet, die *nach* der Registrierung
-entstehen, war dieses Fenster endgültig verloren — ausgerechnet das eine, für
-das die Regel geschrieben wurde. Bereits vorhandene Fenster werden jetzt einmal
-nachgeholt.
+**2. The window was faster than the observer.** Attaching takes time:
+124 ms for TextEdit, 2.2 s for Outlook. Apps open their first window
+exactly in this gap. Since the API only reports windows created *after*
+registration, this window was lost for good — precisely the one the rule
+was written for. Already-existing windows are now caught up once.
 
-**3. Der Frame war noch nicht lesbar.** Ein nachgeholtes Fenster kann zu einer
-App gehören, die noch startet. Outlook lieferte sieben Sekunden lang gar nichts,
-wobei jeder einzelne Lesezugriff drei Sekunden blockierte. Beim ersten leeren
-Frame aufzugeben verwarf genau das gesuchte Fenster. Der Frame wird jetzt bis zu
-sechsmal erneut gelesen.
+**3. The frame was not yet readable.** A caught-up window can belong to an
+app that is still launching. Outlook returned nothing at all for seven
+seconds, with each individual read blocking for three seconds. Giving up at
+the first empty frame discarded exactly the window being sought. The frame
+is now re-read up to six times.
 
-Ein vierter Fehler betraf die Regelauswahl statt der Mechanik: Outlook öffnet
-ein `AXUnknown`-Fenster derselben Größe **vor** seinem echten. Der Zähler für
-„erstes Fenster nach dem Start" lief vor dem Strukturfilter und zählte dieses
-Attrappenfenster mit, wodurch das Postfach zum *zweiten* Fenster wurde und die
-Regel nicht mehr griff. Der Zähler läuft jetzt hinter dem Filter.
+A fourth bug concerned rule selection rather than mechanics: Outlook opens
+an `AXUnknown` window of the same size **before** its real one. The counter
+for "first window after launch" ran ahead of the structural filter and
+counted this dummy window too, which made the mailbox the *second* window
+and the rule no longer matched. The counter now runs after the filter.
 
-### Was die Messung über Outlook gelehrt hat
+### What the measurement taught about Outlook
 
-Outlook startet sich nach einem `quit` selbsttätig neu. Es gilt dadurch beim
-nächsten Start von `watch` als bereits laufende App und nie als frisch
-gestartete. Für den Anwendungsfall „Outlook soll *immer* in seiner Zone liegen"
-ist deshalb `onlyFirstWindowAfterLaunch: false` die richtige Einstellung — die
-Vorgabe `true` ist für Apps gedacht, die beim Arbeiten weitere Fenster öffnen.
+Outlook restarts itself automatically after a `quit`. As a result, it
+counts as an already-running app the next time `watch` starts, and never as
+freshly launched. For the use case "Outlook should *always* sit in its
+zone," `onlyFirstWindowAfterLaunch: false` is therefore the right setting —
+the default of `true` is meant for apps that open further windows during
+work.
 
 ---
 
-## Bekannte Interferenzquelle: konkurrierende Fenstermanager
+## Known source of interference: competing window managers
 
-Auf dem Messrechner laufen parallel:
+Running in parallel on the measurement machine:
 
-| Bundle ID | Werkzeug |
+| Bundle ID | Tool |
 |---|---|
 | `com.crowdcafe.windowmagnet` | Magnet |
-| `com.openswitchr.app` | eigenes Overlay des Nutzers, Ebene 3 |
+| `com.openswitchr.app` | the user's own overlay, layer 3 |
 
-**Magnet platziert Fenster über dieselbe Accessibility-API.** Es kann eine
-Platzierung von OpenZonr überschreiben, und OpenZonr kann eine von Magnet
-überschreiben. Für die Auswertung des Retry-Protokolls heißt das: eine Abweichung
-zwischen Soll- und Ist-Frame ist nicht automatisch das Selbst-Resize der App —
-sie kann genauso gut von Magnet stammen. Wer das nicht weiß, misst Magnet und
-hält das Ergebnis für Outlook.
+**Magnet places windows through the same Accessibility API.** It can
+override a placement by OpenZonr, and OpenZonr can override one by Magnet.
+For reading the retry log, this means: a deviation between the target and
+actual frame is not automatically the app's own resize — it could just as
+well come from Magnet. Anyone who does not know this measures Magnet and
+mistakes the result for Outlook.
 
-**Für eine saubere Messung Magnet vorübergehend beenden.** Wenn das nicht in
-Frage kommt, mindestens im Protokoll vermerken, dass es lief.
+**For a clean measurement, quit Magnet temporarily.** If that is not an
+option, at least note in the log that it was running.
 
-**Mit den Dropzones (#10) ist Magnet vom Messproblem zum Entwurfsproblem
-geworden**, weil beide Programme beim Ziehen ein Overlay einblenden. Wie sich
-OpenZonr dann verhält — erkennen und einmal warnen, nicht um die Vorherrschaft
-kämpfen — steht in [dropzones.md](dropzones.md).
+**With the dropzones (#10), Magnet turned from a measurement problem into a
+design problem**, because both programs display an overlay while dragging.
+How OpenZonr behaves in that case — detect and warn once, not fight for
+dominance — is covered in [dropzones.md](dropzones.md).
 
 ---
 
-## Die Koordinatenfalle, mit echten Zahlen
+## The coordinate trap, with real numbers
 
-Zwei Koordinatensysteme treffen aufeinander:
+Two coordinate systems collide:
 
-| | Ursprung | y wächst |
+| | Origin | y increases |
 |---|---|---|
-| AppKit (`NSScreen.frame`, `visibleFrame`, `ZoneResolver`) | unten links des Hauptdisplays | nach oben |
-| Accessibility (`kAXPositionAttribute`, `CGDisplayBounds`, `CGWindowListCopyWindowInfo`) | oben links des Hauptdisplays | nach unten |
+| AppKit (`NSScreen.frame`, `visibleFrame`, `ZoneResolver`) | bottom-left of the primary display | upward |
+| Accessibility (`kAXPositionAttribute`, `CGDisplayBounds`, `CGWindowListCopyWindowInfo`) | top-left of the primary display | downward |
 
-Umrechnung: `y' = primaryTopY - (y + height)`, selbstinvers.
+Conversion: `y' = primaryTopY - (y + height)`, self-inverse.
 
-Auf dem gemessenen Schreibtisch:
+On the measured desk:
 
-| Display | AppKit `frame` | AX-Bounds (gemessen) |
+| Display | AppKit `frame` | AX bounds (measured) |
 |---|---|---|
-| C49RG9x (Haupt) | `0, 0, 5120×1440` | `0, 0, 5120×1440` |
+| C49RG9x (primary) | `0, 0, 5120×1440` | `0, 0, 5120×1440` |
 | U28E590 | `2833, 1440, 1920×1080` | `2833, -1080, 1920×1080` |
 | AAA | `-1007, 1440, 1920×1080` | `-1007, -1080, 1920×1080` |
 | Teleprompter Source | `913, 1440, 1920×1080` | `913, -1080, 1920×1080` |
 
-Diese Anordnung ist der eigentliche Testfall: der Hauptmonitor ist 1440 hoch, die
-darüber liegenden 1080. Bei gleich hohen Displays landet ein Fenster trotz
-falscher Umrechnung noch auf dem richtigen Bildschirm und der Fehler überlebt.
-Hier nicht — `ScreenArrangementTests` rechnet genau diese Werte nach.
+This arrangement is the actual test case: the primary monitor is 1440 tall,
+the ones above it 1080. With equally tall displays, a window still lands on
+the right screen despite a wrong conversion, and the bug survives. Not
+here — `ScreenArrangementTests` recomputes exactly these values.
 
-Ebenso wichtig: **der `visibleFrame` wird pro Display gelesen.** Nur der
-Hauptmonitor meldet einen reduzierten (1344 statt 1440, also 96 Punkte für
-Menüleiste und Dock); die drei anderen melden `visibleFrame == frame`, obwohl auf
-jedem eine Menüleiste sichtbar ist. Ein globaler Menüleisten-Abzug wäre auf drei
-von vier Displays falsch.
+Equally important: **the `visibleFrame` is read per display.** Only the
+primary monitor reports a reduced one (1344 instead of 1440, i.e., 96
+points for the menu bar and Dock); the other three report `visibleFrame ==
+frame`, even though a menu bar is visible on each of them. A global
+menu-bar deduction would be wrong on three of the four displays.
 
 ---
 
-## Nachvollziehen
+## Reproducing this
 
 ```bash
-Scripts/bundle.sh                       # baut, packt und signiert
+Scripts/bundle.sh                       # builds, packages, and signs
 ```
 
-Das Bundle einmalig in Systemeinstellungen → Datenschutz & Sicherheit →
-Bedienungshilfen eintragen. Bei einem vorhandenen Eintrag aus einem unsignierten
-Lauf: entfernen und neu hinzufügen — den Haken nur neu zu setzen genügt nicht.
+Register the bundle once in System Settings → Privacy & Security →
+Accessibility. If there is an existing entry from an unsigned run: remove
+it and add it again — merely re-checking the box is not enough.
 
 ```bash
 APP=~/Applications/OpenZonr.app/Contents/MacOS/OpenZonrApp
-"$APP" windows --bundle com.apple.Safari       # muss AXStandardWindow ≠ 0x0 zeigen
-"$APP" displays --config-fragment              # Displays für die Konfiguration
-"$APP" watch --config <pfad>
+"$APP" windows --bundle com.apple.Safari       # must show AXStandardWindow ≠ 0x0
+"$APP" displays --config-fragment              # displays for the configuration
+"$APP" watch --config <path>
 ```
 
-Vor Messungen konkurrierende Fenstermanager beenden (siehe oben). Danach die
-Ziel-App beenden und neu starten; die Versuchszeilen stehen im Protokoll.
+Before measuring, quit competing window managers (see above). Then quit and
+restart the target app; the attempt lines appear in the log.
 
 ---
 
-## Weiterlesen
+## Further reading
 
-- [README.md](../README.md) — Bauen, Berechtigung, die drei Unterbefehle
-- [docs/konfiguration.md](konfiguration.md) — Feldreferenz, inklusive
-  `ignoredDisplays` und der Warnung vor Titel-Regex
-- [docs/offene-fragen.md](offene-fragen.md) — was der Durchstich beantwortet und
-  was er neu aufgeworfen hat
+- [README.md](../README.md) — building, permission, the three subcommands
+- [docs/konfiguration.md](konfiguration.md) — field reference, including
+  `ignoredDisplays` and the warning about title regex
+- [docs/offene-fragen.md](offene-fragen.md) — what the probe answered and
+  what it raised anew
