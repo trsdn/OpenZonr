@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "OpenZonr",
+    defaultLocalization: "en",
     platforms: [
         // Accessibility, CoreGraphics display and NSWorkspace APIs are all long-established.
         // macOS 14 is chosen for the UI layer that will follow (Observation, MenuBarExtra).
@@ -67,6 +68,7 @@ let package = Package(
             // unter `Sources/<Produkt>/Info.plist` erwartet (siehe README,
             // „Veröffentlichen"). Für SwiftPM ist sie kein Quelltext.
             exclude: ["Info.plist"],
+            resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // The macOS layer is mostly untestable without a screen and a granted

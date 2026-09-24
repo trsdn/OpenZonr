@@ -91,6 +91,17 @@ BINARY="$BIN_DIR/$PRODUCT"
 RESOURCE_BUNDLE="$BIN_DIR/AppUpdater_AppUpdater.bundle"
 [ -d "$RESOURCE_BUNDLE" ] || { echo "Ressourcenbündel fehlt: $RESOURCE_BUNDLE" >&2; exit 1; }
 
+# Das eigene Ressourcenbündel trägt die übersetzten Oberflächentexte
+# (Localizable.xcstrings, von SwiftPM nach <locale>.lproj/Localizable.strings
+# übersetzt). Fehlt es, läuft die App weiter — sie zeigt dann überall die
+# englischen Quelltexte, und niemandem fiele auf, dass die Übersetzung nicht
+# ausgeliefert wurde. Deshalb hier laut abbrechen.
+#
+# Dasselbe Bündel muss im Broker-Profil unter `nested_resource_bundles`
+# stehen, sonst fehlt es genau im veröffentlichten Bundle und nur dort.
+APP_RESOURCE_BUNDLE="$BIN_DIR/OpenZonr_OpenZonrApp.bundle"
+[ -d "$APP_RESOURCE_BUNDLE" ] || { echo "Ressourcenbündel fehlt: $APP_RESOURCE_BUNDLE" >&2; exit 1; }
+
 # Das App-Icon liegt als erzeugte Datei im Repo (Scripts/make-icon.swift).
 # Info.plist verweist mit CFBundleIconFile darauf; fehlt die Datei, zeigt macOS
 # stumm das Platzhalter-Icon — also lieber hier abbrechen.
@@ -102,6 +113,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/$PRODUCT"
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
+cp -R "$APP_RESOURCE_BUNDLE" "$APP/Contents/Resources/"
 # Vor dem Signieren, sonst siegelt die Signatur ein Bundle ohne Icon und
 # `codesign --verify --deep --strict` schlägt hinterher fehl.
 cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
