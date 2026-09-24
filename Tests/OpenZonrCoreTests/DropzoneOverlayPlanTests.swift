@@ -35,6 +35,33 @@ struct DropzoneOverlayPlanTests {
         #expect(result.highlighted?.zone == "left")
     }
 
+    @Test("Vorberechnete Zonen liefern denselben Plan")
+    func precomputedZonesProduceTheSamePlan() throws {
+        let configuration = TestConfigurations.minimal()
+        let profile = try #require(configuration.profiles.first)
+        let visibleFrames: VisibleFrames = ["main": TestConfigurations.mainVisibleFrame]
+        let zones = DropzoneMap.zones(in: configuration, profile: profile.id, visibleFrames: visibleFrames)
+
+        let fromConfiguration = DropzoneOverlayPlan.plan(
+            pointer: ScreenPoint(x: 400, y: 500),
+            origin: ScreenPoint(x: 0, y: 0),
+            configuration: configuration,
+            profile: profile.id,
+            visibleFrames: visibleFrames,
+            settings: DropzoneSettings(),
+            modifiers: [.command]
+        )
+        let fromPrecomputedZones = DropzoneOverlayPlan.plan(
+            pointer: ScreenPoint(x: 400, y: 500),
+            origin: ScreenPoint(x: 0, y: 0),
+            zones: zones,
+            settings: DropzoneSettings(),
+            modifiers: [.command]
+        )
+
+        #expect(fromPrecomputedZones == fromConfiguration)
+    }
+
     @Test("Die Hervorhebung folgt dem Zeiger")
     func theHighlightFollowsThePointer() throws {
         #expect(try plan(pointer: ScreenPoint(x: 400, y: 500), modifiers: [.command]).highlighted?.zone == "left")

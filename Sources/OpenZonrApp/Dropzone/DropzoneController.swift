@@ -21,8 +21,8 @@ final class DropzoneController {
     private var tracker: (any WindowDragTracker)?
 
     /// The drag in progress.
-    private var origin: ScreenPoint?
     private var dragged: DraggedWindow?
+    private var dragContext: DragContext?
     private var lastPlan: DropzoneOverlayPlan.Plan = .hidden(.disabled)
 
     /// Set when the tracker could not be started, so the menu can say why
@@ -65,6 +65,16 @@ final class DropzoneController {
         let id = UUID()
         let question: String
         let request: QuickPin.Request
+    }
+
+    /// What stays fixed for the duration of one drag.
+    ///
+    /// Screens and zones cannot change while the mouse button is down, so
+    /// resolving them once per drag instead of once per pointer move removes
+    /// a screen enumeration and a full zone rebuild from every mouse event.
+    private struct DragContext {
+        var origin: ScreenPoint
+        var zones: [Dropzone]
     }
 
     init(model: AppModel, overlay: any DropzoneOverlaying = DropzoneOverlay()) {
@@ -127,8 +137,8 @@ final class DropzoneController {
         tracker?.stop()
         tracker = nil
         overlay.hide()
-        origin = nil
         dragged = nil
+        dragContext = nil
     }
 
     /// Restarts after a settings change; also the way the menu switches the
@@ -155,11 +165,11 @@ final class DropzoneController {
     private func handle(_ event: WindowDragEvent) {
         switch event {
         case let .began(window, point):
-            origin = point
             dragged = window
             dragSawZones = false
             dragHiddenReason = nil
             dragLacksSetup = false
+            dragContext = makeDragContext(origin: point)
             // A new drag retires the previous offer: answering it now would
             // pin the app to the zone of a drop two gestures ago.
             dismissOffer()
@@ -181,8 +191,8 @@ final class DropzoneController {
             model.recordDragOutcome(finishedDragOutcome())
             // Nach dem Loslassen steht kein Overlay mehr, egal was der Plan war.
             overlay.hide()
-            origin = nil
             dragged = nil
+            dragContext = nil
 
         case let .cancelled(reason):
             model.recordDragOutcome(.cancelled(reason: reason))
@@ -194,8 +204,8 @@ final class DropzoneController {
             Log.detail("Zug abgebrochen: \(reason)")
             model.reportPinFailure("Der Zug wurde abgebrochen: \(reason)")
             overlay.hide()
-            origin = nil
             dragged = nil
+            dragContext = nil
         }
     }
 
@@ -218,25 +228,21 @@ final class DropzoneController {
     /// - Parameter render: `false` beim Loslassen — dann wird nur der Plan
     ///   nachgeführt, das Overlay aber weder gezeigt noch angefasst.
     private func update(pointer: ScreenPoint, modifiers: ModifierState, render: Bool = true) {
-        guard let origin, let configuration = model.configuration, let profile = model.activeProfile else {
+        // The zones come from the drag context, resolved once at `.began`.
+        // Screens and zones cannot change while the button is down, so
+        // rebuilding them per pointer move bought nothing and cost a screen
+        // enumeration plus a full zone rebuild on every event.
+        guard let dragContext else {
             // Ohne Setup gibt es keine Zonen — ein eigener Grund, der sonst als
             // „abgeschaltet" gemeldet würde und niemanden weiterbrächte.
             if model.activeProfile == nil { dragLacksSetup = true }
             if render { overlay.hide() }
             return
         }
-        let snapshots = SystemDisplays.snapshots()
-        let arrangement = ScreenArrangement(snapshots: snapshots)
-        // Derselbe Abgleich wie bei der Profilwahl: ein Bildschirm ohne
-        // Seriennummer, dessen Port-Index verrutscht ist, muss auch seine Zonen
-        // bekommen — sonst passt das Profil und das Overlay bleibt leer.
-        let reconciler = configuration.displayReconciler(observing: snapshots)
         let plan = DropzoneOverlayPlan.plan(
             pointer: pointer,
-            origin: origin,
-            configuration: configuration,
-            profile: profile.id,
-            visibleFrames: arrangement.visibleFrames(for: configuration.displays, reconciler: reconciler),
+            origin: dragContext.origin,
+            zones: dragContext.zones,
             settings: settings,
             modifiers: modifiers
         )
@@ -247,6 +253,27 @@ final class DropzoneController {
             dragSawZones = true
         }
         if render { overlay.show(plan) }
+    }
+
+    private func makeDragContext(origin: ScreenPoint) -> DragContext? {
+        guard let configuration = model.configuration, let profile = model.activeProfile else {
+            return nil
+        }
+
+        let snapshots = SystemDisplays.snapshots()
+        let arrangement = ScreenArrangement(snapshots: snapshots)
+        // The same reconciliation the profile choice uses: a display without a
+        // serial number whose port index has drifted must still get its zones,
+        // or the profile matches and the overlay stays empty. This moved here
+        // with the zones — resolving them once per drag must not silently drop
+        // the matching that resolving them per move did.
+        let reconciler = configuration.displayReconciler(observing: snapshots)
+        let zones = DropzoneMap.zones(
+            in: configuration,
+            profile: profile.id,
+            visibleFrames: arrangement.visibleFrames(for: configuration.displays, reconciler: reconciler)
+        )
+        return DragContext(origin: origin, zones: zones)
     }
 
     /// Puts the window in the zone under the pointer.
