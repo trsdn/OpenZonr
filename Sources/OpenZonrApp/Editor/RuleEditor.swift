@@ -35,9 +35,14 @@ struct RuleEditor: View {
                             .tag(rule.id)
                     }
                 } header: {
-                    Text("Auswertungsreihenfolge — die erste passende Regel gewinnt")
-                        .font(.caption)
-                        .textCase(nil)
+                    Text(
+                        localized(
+                            "ruleEditor.list.header",
+                            "Evaluation order — the first matching rule wins"
+                        )
+                    )
+                    .font(.caption)
+                    .textCase(nil)
                 }
             }
             Divider()
@@ -66,7 +71,7 @@ struct RuleEditor: View {
     }
 
     private func subtitle(of rule: PlacementRule) -> String {
-        let match = rule.match.bundleIdentifier ?? "jede App"
+        let match = rule.match.bundleIdentifier ?? localized("ruleEditor.subtitle.everyApp", "every app")
         let role = document.configuration.roles.first { $0.id == rule.action.role }?.name
             ?? rule.action.role.rawValue
         return "\(match) → \(role)"
@@ -79,7 +84,7 @@ struct RuleEditor: View {
             } label: {
                 Image(systemName: "plus")
             }
-            .help("Regel hinzufügen")
+            .help(localized("ruleEditor.addRule.help", "Add Rule"))
 
             Button {
                 if let selection { document.apply { $0.removingRule(selection) } }
@@ -88,7 +93,7 @@ struct RuleEditor: View {
                 Image(systemName: "minus")
             }
             .disabled(selection == nil)
-            .help("Regel entfernen")
+            .help(localized("ruleEditor.removeRule.help", "Remove Rule"))
 
             Divider().frame(height: 16)
 
@@ -98,7 +103,7 @@ struct RuleEditor: View {
                 Image(systemName: "chevron.up")
             }
             .disabled(selection == nil)
-            .help("Früher auswerten")
+            .help(localized("ruleEditor.evaluateEarlier.help", "Evaluate Earlier"))
 
             Button {
                 if let selection { document.apply { $0.movingRule(selection, by: 1) } }
@@ -106,7 +111,7 @@ struct RuleEditor: View {
                 Image(systemName: "chevron.down")
             }
             .disabled(selection == nil)
-            .help("Später auswerten")
+            .help(localized("ruleEditor.evaluateLater.help", "Evaluate Later"))
 
             Spacer()
         }
@@ -115,13 +120,14 @@ struct RuleEditor: View {
     }
 
     private func addRule() {
-        let id = document.configuration.availableRuleID(basedOn: "Neue Regel")
-        let role = document.configuration.roles.first?.id ?? "rolle"
+        let defaultName = localized("ruleEditor.newRule.defaultName", "New Rule")
+        let id = document.configuration.availableRuleID(basedOn: defaultName)
+        let role = document.configuration.roles.first?.id ?? "role"
         let priority = (document.configuration.rules.map(\.priority).max() ?? 0) + Configuration.rulePriorityStep
         document.apply {
             $0.adding(rule: PlacementRule(
                 id: id,
-                name: "Neue Regel",
+                name: defaultName,
                 priority: priority,
                 match: WindowMatch(),
                 action: PlacementAction(role: role)
@@ -142,13 +148,16 @@ struct RuleEditor: View {
                 Image(systemName: "list.bullet.rectangle")
                     .font(.system(size: 28))
                     .foregroundStyle(.secondary)
-                Text("Keine Regel gewählt")
+                Text(localized("ruleEditor.noRule.title", "No Rule Selected"))
                     .font(.headline)
-                Text("""
-                Eine Regel beschreibt, welche Fenster wohin gehören. Für den \
-                Normalfall genügt „Aktuelles Fenster festhalten“ im Menü — \
-                hier stehen die Fälle, für die das nicht reicht.
-                """)
+                Text(
+                    localized(
+                        "ruleEditor.noRule.message",
+                        "A rule describes which windows belong where. For the ordinary case, "
+                            + "“Pin Frontmost Window Here” in the menu is enough — this is for the "
+                            + "cases that is not enough for."
+                    )
+                )
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: 380)
@@ -166,49 +175,57 @@ private struct RuleForm: View {
 
     var body: some View {
         Form {
-            Section("Regel") {
-                TextField("Name", text: binding(\.name))
-                LabeledContent("Kennung") {
+            Section(localized("ruleEditor.section.rule", "Rule")) {
+                TextField(localized("ruleEditor.nameField", "Name"), text: binding(\.name))
+                LabeledContent(localized("ruleEditor.idField", "Identifier")) {
                     Text(rule.id.rawValue)
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(.secondary)
                 }
-                Toggle("Aktiv", isOn: binding(\.enabled))
-                LabeledContent("Priorität") {
+                Toggle(localized("ruleEditor.activeToggle", "Active"), isOn: binding(\.enabled))
+                LabeledContent(localized("ruleEditor.priorityField", "Priority")) {
                     Text("\(rule.priority)")
                         .foregroundStyle(.secondary)
                 }
             }
 
-            Section("Wann greift sie?") {
+            Section(localized("ruleEditor.section.whenDoesItApply", "When Does It Apply?")) {
                 OptionalTextField(
-                    title: "Bundle-Kennung",
+                    title: localized("ruleEditor.bundleIdentifierField", "Bundle Identifier"),
                     prompt: "com.microsoft.Outlook",
                     path: .ruleMatch(rule.id).field("bundleIdentifier"),
                     index: document.findings,
                     value: optionalBinding(\.match.bundleIdentifier)
                 )
                 OptionalTextField(
-                    title: "Titelmuster",
-                    prompt: "^Posteingang",
+                    title: localized("ruleEditor.titlePatternField", "Title Pattern"),
+                    prompt: "^Inbox",
                     path: .ruleMatch(rule.id).field("titlePattern"),
                     index: document.findings,
                     value: optionalBinding(\.match.titlePattern)
                 )
-                Picker("Erstes Fenster nach Start", selection: Binding(
+                Picker(localized("ruleEditor.onlyFirstWindowPicker", "First Window After Launch"), selection: Binding(
                     get: { rule.match.onlyFirstWindowAfterLaunch },
                     set: { value in update { $0.match.onlyFirstWindowAfterLaunch = value } }
                 )) {
-                    Text("Voreinstellung (\(document.configuration.defaults.onlyFirstWindowAfterLaunch ? "nur erstes" : "jedes"))")
-                        .tag(Bool?.none)
-                    Text("Nur das erste").tag(Bool?.some(true))
-                    Text("Jedes Fenster").tag(Bool?.some(false))
+                    Text(
+                        localized(
+                            "ruleEditor.onlyFirstWindowPicker.defaultOption",
+                            "Default (%@)",
+                            document.configuration.defaults.onlyFirstWindowAfterLaunch
+                                ? localized("ruleEditor.onlyFirstWindowPicker.onlyFirst", "only first")
+                                : localized("ruleEditor.onlyFirstWindowPicker.every", "every")
+                        )
+                    )
+                    .tag(Bool?.none)
+                    Text(localized("ruleEditor.onlyFirstWindowPicker.firstOnly", "Only the First")).tag(Bool?.some(true))
+                    Text(localized("ruleEditor.onlyFirstWindowPicker.everyWindow", "Every Window")).tag(Bool?.some(false))
                 }
                 sizeFields
             }
 
-            Section("Wohin?") {
-                Picker("Rolle", selection: Binding(
+            Section(localized("ruleEditor.section.whereTo", "Where To?")) {
+                Picker(localized("ruleEditor.roleField", "Role"), selection: Binding(
                     get: { rule.action.role },
                     set: { role in update { $0.action.role = role } }
                 )) {
@@ -218,23 +235,25 @@ private struct RuleForm: View {
                 }
                 FieldFindings(path: .ruleAction(rule.id).field("role"), index: document.findings)
 
-                Picker("Beim Platzieren", selection: Binding(
+                Picker(localized("ruleEditor.placingPicker", "When Placing"), selection: Binding(
                     get: { rule.action.mode ?? .place },
                     set: { mode in update { $0.action.mode = mode } }
                 )) {
-                    Text("Fenster verschieben").tag(PlacementMode.place)
-                    Text("Nur vorschlagen").tag(PlacementMode.suggest)
+                    Text(localized("ruleEditor.placingPicker.move", "Move Window")).tag(PlacementMode.place)
+                    Text(localized("ruleEditor.placingPicker.suggest", "Only Suggest")).tag(PlacementMode.suggest)
                 }
-                Picker("Fokus", selection: Binding(
+                Picker(localized("ruleEditor.focusPicker", "Focus"), selection: Binding(
                     get: { rule.action.focus ?? .leaveAsIs },
                     set: { focus in update { $0.action.focus = focus } }
                 )) {
-                    Text("Vordergrund unverändert lassen").tag(FocusBehavior.leaveAsIs)
-                    Text("Fenster nach vorne holen").tag(FocusBehavior.activate)
+                    Text(localized("ruleEditor.focusPicker.leaveAsIs", "Leave Foreground Unchanged"))
+                        .tag(FocusBehavior.leaveAsIs)
+                    Text(localized("ruleEditor.focusPicker.activate", "Bring Window Forward"))
+                        .tag(FocusBehavior.activate)
                 }
             }
 
-            Section("Was würde jetzt passieren?") {
+            Section(localized("ruleEditor.section.whatWouldHappen", "What Would Happen Now?")) {
                 RuleDryRunLine(
                     rule: rule,
                     configuration: document.configuration,
@@ -243,7 +262,7 @@ private struct RuleForm: View {
             }
 
             if !document.findings.findings(under: .rule(rule.id)).isEmpty {
-                Section("Befunde zu dieser Regel") {
+                Section(localized("ruleEditor.section.findingsForThisRule", "Findings for This Rule")) {
                     ForEach(document.findings.findings(under: .rule(rule.id)), id: \.self) { finding in
                         Label {
                             VStack(alignment: .leading, spacing: 1) {
@@ -265,9 +284,9 @@ private struct RuleForm: View {
 
     @ViewBuilder
     private var sizeFields: some View {
-        LabeledContent("Mindestgröße") {
+        LabeledContent(localized("ruleEditor.minimumSizeField", "Minimum Size")) {
             HStack(spacing: 6) {
-                TextField("Breite", value: Binding(
+                TextField(localized("ruleEditor.widthField", "Width"), value: Binding(
                     get: { rule.match.minimumSize?.width ?? 0 },
                     set: { width in
                         let height = rule.match.minimumSize?.height ?? 0
@@ -276,7 +295,7 @@ private struct RuleForm: View {
                 ), format: .number)
                 .frame(width: 70)
                 Text("×")
-                TextField("Höhe", value: Binding(
+                TextField(localized("ruleEditor.heightField", "Height"), value: Binding(
                     get: { rule.match.minimumSize?.height ?? 0 },
                     set: { height in
                         let width = rule.match.minimumSize?.width ?? 0

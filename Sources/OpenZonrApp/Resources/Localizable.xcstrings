@@ -1332,6 +1332,402 @@
         }
       }
     },
+    "ruleEditor.activeToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        }
+      }
+    },
+    "ruleEditor.addRule.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.bundleIdentifierField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundle Identifier"
+          }
+        }
+      }
+    },
+    "ruleEditor.evaluateEarlier.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evaluate Earlier"
+          }
+        }
+      }
+    },
+    "ruleEditor.evaluateLater.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evaluate Later"
+          }
+        }
+      }
+    },
+    "ruleEditor.focusPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus"
+          }
+        }
+      }
+    },
+    "ruleEditor.focusPicker.activate": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring Window Forward"
+          }
+        }
+      }
+    },
+    "ruleEditor.focusPicker.leaveAsIs": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave Foreground Unchanged"
+          }
+        }
+      }
+    },
+    "ruleEditor.heightField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Height"
+          }
+        }
+      }
+    },
+    "ruleEditor.idField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifier"
+          }
+        }
+      }
+    },
+    "ruleEditor.list.header": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evaluation order — the first matching rule wins"
+          }
+        }
+      }
+    },
+    "ruleEditor.minimumSizeField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimum Size"
+          }
+        }
+      }
+    },
+    "ruleEditor.nameField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "ruleEditor.newRule.defaultName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.noRule.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A rule describes which windows belong where. For the ordinary case, “Pin Frontmost Window Here” in the menu is enough — this is for the cases that is not enough for."
+          }
+        }
+      }
+    },
+    "ruleEditor.noRule.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Rule Selected"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First Window After Launch"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.defaultOption": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default (%@)"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.every": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.everyWindow": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every Window"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.firstOnly": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only the First"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.onlyFirst": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only first"
+          }
+        }
+      }
+    },
+    "ruleEditor.placingPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When Placing"
+          }
+        }
+      }
+    },
+    "ruleEditor.placingPicker.move": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Window"
+          }
+        }
+      }
+    },
+    "ruleEditor.placingPicker.suggest": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only Suggest"
+          }
+        }
+      }
+    },
+    "ruleEditor.priorityField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Priority"
+          }
+        }
+      }
+    },
+    "ruleEditor.removeRule.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.roleField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Role"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.findingsForThisRule": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Findings for This Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.rule": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.whatWouldHappen": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What Would Happen Now?"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.whenDoesItApply": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When Does It Apply?"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.whereTo": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where To?"
+          }
+        }
+      }
+    },
+    "ruleEditor.subtitle.everyApp": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every app"
+          }
+        }
+      }
+    },
+    "ruleEditor.titlePatternField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Title Pattern"
+          }
+        }
+      }
+    },
+    "ruleEditor.widthField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Width"
+          }
+        }
+      }
+    },
     "statusWindow.accessibility.degraded": {
       "extractionState": "extracted_with_value",
       "localizations": {
