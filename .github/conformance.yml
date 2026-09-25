@@ -21,7 +21,7 @@
 # record, then regenerate. Never the other way round.
 
 standard_version: "1.19.0"
-assessed_on: "2026-09-21"
+assessed_on: "2026-09-25"
 state: "Needs work"
 evidence: "docs/self-assessment.md"
 
@@ -114,7 +114,7 @@ criteria:
   L01: partial
   L02: pass
   L03: pass
-  L04: na
+  L04: partial
   L05: partial
   L06: na
   L07: fail
