@@ -760,6 +760,193 @@
         }
       }
     },
+    "statusWindow.accessibility.degraded": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is the insidious case: macOS reports trust but delivers no real windows. Every app answers AXWindows with only a stand-in of role AXApplication. Relying on AXIsProcessTrusted() silently does nothing in this situation."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded.step1": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings → Privacy & Security → Accessibility."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded.step2": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove the existing entry for OpenZonr — merely re-checking the box is not enough."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded.step3": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add the same bundle again and enable it — the path is below under “Code Signature”; a second copy elsewhere does not help."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded.step4": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If the state reappears afterwards, the signature is almost always the cause — see below."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.granted": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access works: at least one app delivers a real window with a readable position. That is the check that counts — AXIsProcessTrusted() alone does not predict it."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.inconclusive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No ordinary app was reachable to check access against. Open any program with a window and check again."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr is not on the list of programs allowed to use Accessibility. Without that entry, no tool can read or move a window."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted.step1": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click “Request Permission” — macOS then shows the system dialog once."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted.step2": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If no dialog appears: open System Settings → Privacy & Security → Accessibility."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted.step3": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click “+” there and add exactly this bundle — the path is below under “Code Signature”. “Show in Finder” has it ready to drag in."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted.step4": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn the switch on. OpenZonr then checks again on its own."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility"
+          }
+        }
+      }
+    },
+    "statusWindow.activeProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active profile: %@ (%@)"
+          }
+        }
+      }
+    },
+    "statusWindow.configuration.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration"
+          }
+        }
+      }
+    },
+    "statusWindow.observedApplications": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld observed apps"
+          }
+        }
+      }
+    },
+    "statusWindow.openSystemSettingsButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
+          }
+        }
+      }
+    },
     "statusWindow.panelTitle": {
       "extractionState": "extracted_with_value",
       "localizations": {
@@ -767,6 +954,105 @@
           "stringUnit": {
             "state": "translated",
             "value": "OpenZonr — Status and Permission"
+          }
+        }
+      }
+    },
+    "statusWindow.presence.backgroundWarning": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With no icon and no Dock presence, no click leads back here anymore. Opening the app again brings this window back — that is the way back."
+          }
+        }
+      }
+    },
+    "statusWindow.presence.explanation": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takes effect after the app restarts. The Accessibility permission is bound to the bundle and its path; switching it at runtime is unmeasured, and a lost grant could not be restored from here."
+          }
+        }
+      }
+    },
+    "statusWindow.presence.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presence"
+          }
+        }
+      }
+    },
+    "statusWindow.recheckButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Again"
+          }
+        }
+      }
+    },
+    "statusWindow.reloadButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload"
+          }
+        }
+      }
+    },
+    "statusWindow.requestPermissionButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request Permission"
+          }
+        }
+      }
+    },
+    "statusWindow.revealInFinderButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show in Finder"
+          }
+        }
+      }
+    },
+    "statusWindow.signature.explanation": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The signature binds to the bundle identifier and team rather than to the checksum. The grant therefore applies to this bundle at this path and usually survives a rebuild there — but not a move. If it does become invalid after a rebuild, the only fix is: remove the entry and add it again."
+          }
+        }
+      }
+    },
+    "statusWindow.signature.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code Signature"
           }
         }
       }

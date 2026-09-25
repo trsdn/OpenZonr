@@ -27,10 +27,10 @@ struct StatusWindow: View {
     /// this the one place the setting can always be undone.
     private var presenceSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Präsenz")
+            Text(localized("statusWindow.presence.title", "Presence"))
                 .font(.headline)
 
-            Picker("Präsenz", selection: $presence) {
+            Picker(localized("statusWindow.presence.title", "Presence"), selection: $presence) {
                 ForEach(AppPresence.allCases, id: \.self) { value in
                     Text(value.title).tag(value)
                 }
@@ -41,16 +41,29 @@ struct StatusWindow: View {
                 PresenceSettings().presence = value
             }
 
-            Text("Wirksam nach einem Neustart der App. Die Berechtigung für die Bedienungshilfen hängt am Bundle und seinem Pfad; sie zur Laufzeit umzuschalten ist ungemessen, und ein verlorener Haken wäre von hier aus nicht wiederherzustellen.")
+            Text(
+                localized(
+                    "statusWindow.presence.explanation",
+                    "Takes effect after the app restarts. The Accessibility permission is bound to "
+                        + "the bundle and its path; switching it at runtime is unmeasured, and a lost "
+                        + "grant could not be restored from here."
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            if presence == .background {
+                Text(
+                    localized(
+                        "statusWindow.presence.backgroundWarning",
+                        "With no icon and no Dock presence, no click leads back here anymore. "
+                            + "Opening the app again brings this window back — that is the way back."
+                    )
+                )
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-
-            if presence == .background {
-                Text("Ohne Symbol und ohne Dock führt kein Klick mehr hierher. Die App noch einmal zu öffnen bringt dieses Fenster zurück — das ist der Weg zurück.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -86,9 +99,13 @@ struct StatusWindow: View {
                 Text(model.status.headline).font(.title2).bold()
                 Text(model.statusDetail).foregroundStyle(.secondary)
                 if model.status == .active || model.status == .paused {
-                    Text("\(model.observedApplications) beobachtete Apps")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        localized(
+                            "statusWindow.observedApplications", "%lld observed apps", model.observedApplications
+                        )
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
                 }
             }
             Spacer()
@@ -109,59 +126,107 @@ struct StatusWindow: View {
     @ViewBuilder
     private var permissionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Bedienungshilfen", systemImage: "lock.shield")
+            Label(localized("statusWindow.accessibility.title", "Accessibility"), systemImage: "lock.shield")
                 .font(.headline)
 
             switch model.windowAccess {
             case .granted:
-                Text("""
-                Der Zugriff funktioniert: mindestens eine App liefert ein echtes \
-                Fenster mit lesbarer Position. Das ist die Prüfung, die zählt — \
-                AXIsProcessTrusted() allein sagt sie nicht voraus.
-                """)
+                Text(
+                    localized(
+                        "statusWindow.accessibility.granted",
+                        "Access works: at least one app delivers a real window with a readable "
+                            + "position. That is the check that counts — AXIsProcessTrusted() alone "
+                            + "does not predict it."
+                    )
+                )
                 .foregroundStyle(.secondary)
 
             case .notTrusted:
-                Text("""
-                OpenZonr steht nicht in der Liste der Programme, die die \
-                Bedienungshilfen verwenden dürfen. Ohne diesen Eintrag kann kein \
-                Werkzeug ein Fenster lesen oder bewegen.
-                """)
+                Text(
+                    localized(
+                        "statusWindow.accessibility.notTrusted",
+                        "OpenZonr is not on the list of programs allowed to use Accessibility. "
+                            + "Without that entry, no tool can read or move a window."
+                    )
+                )
                 steps([
-                    "Auf „Berechtigung anfragen“ klicken — macOS zeigt dann einmalig den Systemdialog.",
-                    "Falls kein Dialog erscheint: Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen öffnen.",
-                    "Dort auf „+“ klicken und genau dieses Bundle hinzufügen — der Pfad steht unten unter „Code-Signatur“. „Im Finder zeigen“ legt es bereit, damit es sich hineinziehen lässt.",
-                    "Schalter aktivieren. Danach prüft OpenZonr von selbst wieder nach."
+                    localized(
+                        "statusWindow.accessibility.notTrusted.step1",
+                        "Click “Request Permission” — macOS then shows the system dialog once."
+                    ),
+                    localized(
+                        "statusWindow.accessibility.notTrusted.step2",
+                        "If no dialog appears: open System Settings → Privacy & Security → "
+                            + "Accessibility."
+                    ),
+                    localized(
+                        "statusWindow.accessibility.notTrusted.step3",
+                        "Click “+” there and add exactly this bundle — the path is below under "
+                            + "“Code Signature”. “Show in Finder” has it ready to drag in."
+                    ),
+                    localized(
+                        "statusWindow.accessibility.notTrusted.step4",
+                        "Turn the switch on. OpenZonr then checks again on its own."
+                    )
                 ])
 
             case .degraded:
-                Text("""
-                Das ist der heimtückische Fall: macOS meldet Vertrauen, liefert aber \
-                keine echten Fenster. Jede App antwortet auf AXWindows nur mit einem \
-                Stellvertreter der Rolle AXApplication. Wer sich auf \
-                AXIsProcessTrusted() verlässt, tut in dieser Lage stumm gar nichts.
-                """)
+                Text(
+                    localized(
+                        "statusWindow.accessibility.degraded",
+                        "This is the insidious case: macOS reports trust but delivers no real "
+                            + "windows. Every app answers AXWindows with only a stand-in of role "
+                            + "AXApplication. Relying on AXIsProcessTrusted() silently does nothing "
+                            + "in this situation."
+                    )
+                )
                 .foregroundStyle(.secondary)
                 steps([
-                    "Systemeinstellungen → Datenschutz & Sicherheit → Bedienungshilfen öffnen.",
-                    "Den vorhandenen Eintrag für OpenZonr entfernen — den Haken nur neu zu setzen genügt nicht.",
-                    "Dasselbe Bundle neu hinzufügen und aktivieren — der Pfad steht unten unter „Code-Signatur“; eine zweite Kopie an anderer Stelle hilft nicht.",
-                    "Erscheint der Zustand danach erneut, ist fast immer die Signatur die Ursache — siehe unten."
+                    localized(
+                        "statusWindow.accessibility.degraded.step1",
+                        "Open System Settings → Privacy & Security → Accessibility."
+                    ),
+                    localized(
+                        "statusWindow.accessibility.degraded.step2",
+                        "Remove the existing entry for OpenZonr — merely re-checking the box is "
+                            + "not enough."
+                    ),
+                    localized(
+                        "statusWindow.accessibility.degraded.step3",
+                        "Add the same bundle again and enable it — the path is below under "
+                            + "“Code Signature”; a second copy elsewhere does not help."
+                    ),
+                    localized(
+                        "statusWindow.accessibility.degraded.step4",
+                        "If the state reappears afterwards, the signature is almost always the "
+                            + "cause — see below."
+                    )
                 ])
 
             case .inconclusive:
-                Text("""
-                Es war keine gewöhnliche App erreichbar, an der sich der Zugriff prüfen \
-                ließe. Öffne irgendein Programm mit einem Fenster und prüfe erneut.
-                """)
+                Text(
+                    localized(
+                        "statusWindow.accessibility.inconclusive",
+                        "No ordinary app was reachable to check access against. Open any program "
+                            + "with a window and check again."
+                    )
+                )
                 .foregroundStyle(.secondary)
             }
 
             HStack {
-                Button("Berechtigung anfragen") { model.requestPermission() }
-                Button("Systemeinstellungen öffnen") { model.openAccessibilitySettings() }
-                Button("Im Finder zeigen") { model.revealInFinder() }
-                Button("Erneut prüfen") { model.refreshPermission(probe: true) }
+                Button(localized("statusWindow.requestPermissionButton", "Request Permission")) {
+                    model.requestPermission()
+                }
+                Button(localized("statusWindow.openSystemSettingsButton", "Open System Settings")) {
+                    model.openAccessibilitySettings()
+                }
+                Button(localized("statusWindow.revealInFinderButton", "Show in Finder")) {
+                    model.revealInFinder()
+                }
+                Button(localized("statusWindow.recheckButton", "Check Again")) {
+                    model.refreshPermission(probe: true)
+                }
             }
         }
     }
@@ -170,7 +235,7 @@ struct StatusWindow: View {
 
     private var signatureSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Code-Signatur", systemImage: "signature")
+            Label(localized("statusWindow.signature.title", "Code Signature"), systemImage: "signature")
                 .font(.headline)
             Text(model.signing.summary)
                 .font(.system(.body, design: .monospaced))
@@ -179,13 +244,16 @@ struct StatusWindow: View {
                     .foregroundStyle(.orange)
                     .textSelection(.enabled)
             } else {
-                Text("""
-                Die Signatur bindet an Bundle-Identifier und Team statt an die \
-                Prüfsumme. Die Freigabe gilt deshalb diesem Bundle an diesem Pfad \
-                und übersteht einen Neubau dorthin in der Regel — aber keinen \
-                Umzug. Ist sie nach einem Neubau doch ungültig, hilft nur: \
-                Eintrag entfernen und neu hinzufügen.
-                """)
+                Text(
+                    localized(
+                        "statusWindow.signature.explanation",
+                        "The signature binds to the bundle identifier and team rather than to the "
+                            + "checksum. The grant therefore applies to this bundle at this path and "
+                            + "usually survives a rebuild there — but not a move. If it does become "
+                            + "invalid after a rebuild, the only fix is: remove the entry and add it "
+                            + "again."
+                    )
+                )
                 .foregroundStyle(.secondary)
             }
 
@@ -201,7 +269,7 @@ struct StatusWindow: View {
 
     private var configurationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Konfiguration", systemImage: "doc.text")
+            Label(localized("statusWindow.configuration.title", "Configuration"), systemImage: "doc.text")
                 .font(.headline)
             Text(model.configurationURL.path)
                 .font(.system(.callout, design: .monospaced))
@@ -216,8 +284,12 @@ struct StatusWindow: View {
                     .foregroundStyle(.orange)
                     .textSelection(.enabled)
             } else if let profile = model.activeProfile {
-                Text("Aktives Profil: \(profile.name) (\(profile.id.rawValue))")
-                    .foregroundStyle(.secondary)
+                Text(
+                    localized(
+                        "statusWindow.activeProfile", "Active profile: %@ (%@)", profile.name, profile.id.rawValue
+                    )
+                )
+                .foregroundStyle(.secondary)
             }
 
             if let problem = model.loginItemProblem {
@@ -227,8 +299,10 @@ struct StatusWindow: View {
             }
 
             HStack {
-                Button("Neu laden") { model.reloadConfiguration() }
-                Button("Im Finder zeigen") { model.revealConfiguration() }
+                Button(localized("statusWindow.reloadButton", "Reload")) { model.reloadConfiguration() }
+                Button(localized("statusWindow.revealInFinderButton", "Show in Finder")) {
+                    model.revealConfiguration()
+                }
             }
         }
     }
