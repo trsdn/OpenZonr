@@ -430,6 +430,138 @@
         }
       }
     },
+    "overviewEditor.displaySize.estimated": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· Display not connected — estimated 16:10"
+          }
+        }
+      }
+    },
+    "overviewEditor.displaySize.measured": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· %@ (measured)"
+          }
+        }
+      }
+    },
+    "overviewEditor.layerCaption": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layer %lld of %lld"
+          }
+        }
+      }
+    },
+    "overviewEditor.noLayout": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No layout is described for this profile."
+          }
+        }
+      }
+    },
+    "overviewEditor.noProfile.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a profile above to see its rule-to-zone overview."
+          }
+        }
+      }
+    },
+    "overviewEditor.noProfile.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Profile Selected"
+          }
+        }
+      }
+    },
+    "overviewEditor.notMeasuredNote": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not measured: the spatial arrangement (left/right/top/bottom). Shown is the size ratio, the same way the zone editor has used it since #18. Rule-to-zone assignment is computed, not guessed. Overlapping zones sit on separate layers, stacked — two rectangles in the same place could otherwise not both be labeled."
+          }
+        }
+      }
+    },
+    "overviewEditor.profilePicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile"
+          }
+        }
+      }
+    },
+    "overviewEditor.subtitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What goes into which zone?"
+          }
+        }
+      }
+    },
+    "overviewEditor.zoneCell.everyApp": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (every app)"
+          }
+        }
+      }
+    },
+    "overviewEditor.zoneCell.fallback": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(fallback)"
+          }
+        }
+      }
+    },
+    "overviewEditor.zoneCell.noRule": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no rule points here"
+          }
+        }
+      }
+    },
     "ruleDryRunLine.genericSubject": {
       "extractionState": "extracted_with_value",
       "localizations": {
