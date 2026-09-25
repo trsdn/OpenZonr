@@ -562,6 +562,182 @@
         }
       }
     },
+    "roleEditor.addRole.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Role"
+          }
+        }
+      }
+    },
+    "roleEditor.fallbackExplanation": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where windows go that no rule matches."
+          }
+        }
+      }
+    },
+    "roleEditor.idField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifier"
+          }
+        }
+      }
+    },
+    "roleEditor.nameField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "roleEditor.newRole.defaultName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Role"
+          }
+        }
+      }
+    },
+    "roleEditor.noRole.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A role is a named place — “Mail”, “Notes”. Where that place is is up to each profile to decide."
+          }
+        }
+      }
+    },
+    "roleEditor.noRole.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Role Selected"
+          }
+        }
+      }
+    },
+    "roleEditor.removeBinding.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Binding"
+          }
+        }
+      }
+    },
+    "roleEditor.removeRole.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove role — rules that use it stay and are reported as a finding"
+          }
+        }
+      }
+    },
+    "roleEditor.section.fallbackPerProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallback Rule per Profile"
+          }
+        }
+      }
+    },
+    "roleEditor.section.role": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Role"
+          }
+        }
+      }
+    },
+    "roleEditor.section.whereIsIt": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where Is It?"
+          }
+        }
+      }
+    },
+    "roleEditor.summaryField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note"
+          }
+        }
+      }
+    },
+    "roleEditor.summaryField.prompt": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is this place for?"
+          }
+        }
+      }
+    },
+    "roleEditor.zoneTargetPicker.unknownZone": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (unknown)"
+          }
+        }
+      }
+    },
+    "roleEditor.zoneTargetPicker.unset": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "— not set —"
+          }
+        }
+      }
+    },
     "ruleDryRunLine.genericSubject": {
       "extractionState": "extracted_with_value",
       "localizations": {
