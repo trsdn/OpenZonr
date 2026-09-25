@@ -62,7 +62,7 @@ struct AppModelEditorReconcileTests {
         #expect(document.save() == false)
 
         #expect(try diskRoles(loaded).contains("extra"))
-        #expect(document.saveProblem?.contains("außerhalb") == true)
+        #expect(document.saveProblem?.contains("outside") == true)
         // onExternalChange hat die Laufzeit auf den Dateistand gebracht.
         #expect(loaded.model.configuration?.roles.contains(where: { $0.id == "extra" }) == true)
     }
@@ -103,7 +103,7 @@ struct AppModelEditorReconcileTests {
         loaded.model.setDropzoneTrigger(.off)
 
         #expect(loaded.model.lastPinFailed == true)
-        #expect(loaded.model.lastPinMessage?.contains("außerhalb") == true)
+        #expect(loaded.model.lastPinMessage?.contains("outside") == true)
         #expect(try diskRoles(loaded).contains("extra"))
     }
 

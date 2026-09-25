@@ -20,19 +20,43 @@ struct EditorWindow: View {
         VStack(spacing: 0) {
             TabView(selection: $tab) {
                 OverviewEditor(document: document)
-                    .tabItem { Label("Übersicht", systemImage: "square.grid.3x3.topleft.filled") }
+                    .tabItem {
+                        Label {
+                            Text(localized("editorWindow.tab.overview", "Overview"))
+                        } icon: {
+                            Image(systemName: "square.grid.3x3.topleft.filled")
+                        }
+                    }
                     .tag(Tab.overview)
 
                 RuleEditor(document: document)
-                    .tabItem { Label("Regeln", systemImage: "list.number") }
+                    .tabItem {
+                        Label {
+                            Text(localized("editorWindow.tab.rules", "Rules"))
+                        } icon: {
+                            Image(systemName: "list.number")
+                        }
+                    }
                     .tag(Tab.rules)
 
                 RoleEditor(document: document)
-                    .tabItem { Label("Rollen & Profile", systemImage: "square.grid.2x2") }
+                    .tabItem {
+                        Label {
+                            Text(localized("editorWindow.tab.roles", "Roles & Profiles"))
+                        } icon: {
+                            Image(systemName: "square.grid.2x2")
+                        }
+                    }
                     .tag(Tab.roles)
 
                 ZoneEditor(document: document)
-                    .tabItem { Label("Zonen", systemImage: "rectangle.split.2x2") }
+                    .tabItem {
+                        Label {
+                            Text(localized("editorWindow.tab.zones", "Zones"))
+                        } icon: {
+                            Image(systemName: "rectangle.split.2x2")
+                        }
+                    }
                     .tag(Tab.zones)
             }
             .padding(.top, 8)
@@ -79,18 +103,47 @@ struct EditorWindow: View {
         HStack(spacing: 10) {
             status
             Spacer()
-            Button("Verwerfen") { document.revert() }
-                .disabled(!document.hasUnsavedChanges)
-            Button("Sichern") { document.save() }
-                .keyboardShortcut("s")
-                .disabled(!document.hasUnsavedChanges || !document.isUsable)
-                .help(document.isUsable
-                      ? "Schreibt die Konfiguration atomar über den ConfigurationStore"
-                      : "Es gibt Fehler, mit denen die Konfiguration nicht arbeiten kann")
+            Button {
+                document.revert()
+            } label: {
+                Text(localized("editorWindow.discardButton", "Discard"))
+            }
+            .disabled(!document.hasUnsavedChanges)
+            Button {
+                document.save()
+            } label: {
+                Text(localized("editorWindow.saveButton", "Save"))
+            }
+            .keyboardShortcut("s")
+            .disabled(!document.hasUnsavedChanges || !document.isUsable)
+            .help(
+                Text(
+                    document.isUsable
+                        ? localized(
+                            "editorWindow.saveButton.help.usable",
+                            "Writes the configuration atomically through ConfigurationStore"
+                        )
+                        : localized(
+                            "editorWindow.saveButton.help.unusable",
+                            "There are errors the configuration cannot work with"
+                        )
+                )
+            )
             if document.hasExternalChange {
-                Button("Trotzdem sichern") { document.save(overwritingExternalChanges: true) }
-                    .disabled(!document.isUsable)
-                    .help("Überschreibt die außerhalb geänderte Datei mit diesem Editorstand")
+                Button {
+                    document.save(overwritingExternalChanges: true)
+                } label: {
+                    Text(localized("editorWindow.saveAnywayButton", "Save Anyway"))
+                }
+                .disabled(!document.isUsable)
+                .help(
+                    Text(
+                        localized(
+                            "editorWindow.saveAnywayButton.help",
+                            "Overwrites the externally changed file with this editor's state"
+                        )
+                    )
+                )
             }
         }
         .padding(10)
@@ -106,14 +159,25 @@ struct EditorWindow: View {
                 .lineLimit(1)
                 .truncationMode(.head)
         case .modified:
-            Label("Ungesicherte Änderungen", systemImage: "pencil")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Label {
+                Text(localized("editorWindow.status.unsavedChanges", "Unsaved Changes"))
+            } icon: {
+                Image(systemName: "pencil")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         case let .saved(date):
-            Label(
-                "Gesichert um \(date.formatted(date: .omitted, time: .standard))",
-                systemImage: "checkmark.circle"
-            )
+            Label {
+                Text(
+                    localized(
+                        "editorWindow.status.savedAt",
+                        "Saved at %@",
+                        date.formatted(date: .omitted, time: .standard)
+                    )
+                )
+            } icon: {
+                Image(systemName: "checkmark.circle")
+            }
             .font(.caption)
             .foregroundStyle(.green)
         case let .failed(message):

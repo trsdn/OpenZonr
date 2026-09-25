@@ -1,6 +1,72 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "activityWindow.clearButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
+          }
+        }
+      }
+    },
+    "activityWindow.emptyBody": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every window a rule matched appears here. Launch an app that a rule exists for — windows that were never a candidate are deliberately left out."
+          }
+        }
+      }
+    },
+    "activityWindow.emptyTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Placements Yet"
+          }
+        }
+      }
+    },
+    "activityWindow.entryCount": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld entries"
+          }
+        }
+      }
+    },
+    "activityWindow.showLogToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Log"
+          }
+        }
+      }
+    },
+    "activityWindow.windowTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”"
+          }
+        }
+      }
+    },
     "appPresence.title.background": {
       "extractionState": "extracted_with_value",
       "localizations": {
@@ -30,6 +96,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Menu Bar"
+          }
+        }
+      }
+    },
+    "configurationDocument.externalChangeMessage": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The configuration file was changed outside the editor. “Discard” adopts the file, “Save Anyway” overwrites it."
+          }
+        }
+      }
+    },
+    "configurationDocument.saveFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save failed: %@"
           }
         }
       }
@@ -129,6 +217,138 @@
           "stringUnit": {
             "state": "translated",
             "value": "Target Frame"
+          }
+        }
+      }
+    },
+    "editorWindow.discardButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard"
+          }
+        }
+      }
+    },
+    "editorWindow.saveAnywayButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Anyway"
+          }
+        }
+      }
+    },
+    "editorWindow.saveAnywayButton.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overwrites the externally changed file with this editor's state"
+          }
+        }
+      }
+    },
+    "editorWindow.saveButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    "editorWindow.saveButton.help.unusable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are errors the configuration cannot work with"
+          }
+        }
+      }
+    },
+    "editorWindow.saveButton.help.usable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writes the configuration atomically through ConfigurationStore"
+          }
+        }
+      }
+    },
+    "editorWindow.status.savedAt": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved at %@"
+          }
+        }
+      }
+    },
+    "editorWindow.status.unsavedChanges": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsaved Changes"
+          }
+        }
+      }
+    },
+    "editorWindow.tab.overview": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overview"
+          }
+        }
+      }
+    },
+    "editorWindow.tab.roles": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roles & Profiles"
+          }
+        }
+      }
+    },
+    "editorWindow.tab.rules": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rules"
+          }
+        }
+      }
+    },
+    "editorWindow.tab.zones": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zones"
           }
         }
       }

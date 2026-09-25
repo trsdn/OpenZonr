@@ -33,13 +33,16 @@ struct ActivityWindow: View {
                 Image(systemName: "rectangle.dashed")
                     .font(.system(size: 32))
                     .foregroundStyle(.secondary)
-                Text("Noch keine Platzierung")
+                Text(localized("activityWindow.emptyTitle", "No Placements Yet"))
                     .font(.headline)
-                Text("""
-                Hier steht jedes Fenster, für das eine Regel gegriffen hat. Starte eine \
-                App, für die eine Regel existiert — Fenster, die kein Kandidat waren, \
-                werden bewusst nicht aufgeführt.
-                """)
+                Text(
+                    localized(
+                        "activityWindow.emptyBody",
+                        "Every window a rule matched appears here. Launch an app that a rule "
+                            + "exists for — windows that were never a candidate are deliberately "
+                            + "left out."
+                    )
+                )
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: 420)
@@ -62,7 +65,9 @@ struct ActivityWindow: View {
                         }
                         Text(record.summary).font(.callout).foregroundStyle(.secondary)
                         if let title = record.windowTitle, !title.isEmpty {
-                            Text("„\(title)“").font(.caption).foregroundStyle(.tertiary)
+                            Text(localized("activityWindow.windowTitle", "“%@”", title))
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
                     }
                     Spacer()
@@ -83,15 +88,21 @@ struct ActivityWindow: View {
 
     private var footer: some View {
         HStack {
-            Toggle("Protokoll anzeigen", isOn: $showsLog)
-                .toggleStyle(.switch)
-                .controlSize(.small)
+            Toggle(isOn: $showsLog) {
+                Text(localized("activityWindow.showLogToggle", "Show Log"))
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
             Spacer()
-            Text("\(model.records.count) Einträge")
+            Text(localized("activityWindow.entryCount", "%lld entries", model.records.count))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Button("Leeren") { model.clearRecords() }
-                .disabled(model.records.isEmpty)
+            Button {
+                model.clearRecords()
+            } label: {
+                Text(localized("activityWindow.clearButton", "Clear"))
+            }
+            .disabled(model.records.isEmpty)
         }
         .padding(10)
     }
