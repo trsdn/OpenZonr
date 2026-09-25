@@ -2,19 +2,19 @@ import OpenZonrCore
 import OpenZonrMac
 import SwiftUI
 
-/// Die Dry-Run-Zeile aus Issue #19 als eigenes View.
+/// The dry-run line from Issue #19, as its own view.
 ///
-/// Zeigt bei jeder ausgewählten Regel eine Vorschau, was passieren würde,
-/// wenn die Regel *jetzt* für die zugehörige App feuerte. Für den Fall, dass
-/// die App gerade läuft, wird ihr Fenster durch dieselbe Engine geschickt, die
-/// später auch die Platzierung ausführt — die Zeile ist dann eine Messung.
-/// Läuft die App nicht, ist die Zeile bedingt und benennt jedes Kriterium,
-/// das die Regel prüft und das ohne Fenster nicht entschieden werden kann.
+/// Shows, for whichever rule is selected, a preview of what would happen if
+/// the rule fired *right now* for its app. If the app happens to be running,
+/// its window is sent through the same engine that later performs the
+/// placement — the line is then a measurement. If the app is not running,
+/// the line is conditional and names every criterion the rule checks that
+/// cannot be decided without a window.
 ///
-/// Warum eine eigene View: das Erzeugen der Zeile ist der eine Ort, an dem der
-/// Editor `WindowInventory` befragt. Kapselung genügt, damit die restliche
-/// Form-Datei so bleibt, wie sie ist — der eigentliche Wert liegt in Core
-/// (``DryRunPreview`` + ``DryRunPreviewFormatter``), diese View bindet an.
+/// Why its own view: building the line is the one place the editor queries
+/// `WindowInventory`. Encapsulation is enough to keep the rest of the form
+/// file as it is — the real value lives in Core (``DryRunPreview`` +
+/// ``DryRunPreviewFormatter``), this view just binds to it.
 struct RuleDryRunLine: View {
 
     let rule: PlacementRule
@@ -39,10 +39,15 @@ struct RuleDryRunLine: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !line.caveats.isEmpty {
-                // Genau die Ausweisung, die den Unterschied zwischen einer
-                // Messung und einer Vermutung sichtbar macht.
+                // Exactly the disclosure that makes the difference between a
+                // measurement and a guess visible.
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Nicht geprüft — die Regel prüft es, aber es steht erst am offenen Fenster fest:")
+                    Text(
+                        localized(
+                            "ruleDryRunLine.uncheckedHeader",
+                            "Not checked — the rule checks this, but it is only decided once the window is open:"
+                        )
+                    )
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     ForEach(line.caveats, id: \.self) { caveat in
@@ -57,20 +62,20 @@ struct RuleDryRunLine: View {
         .padding(.vertical, 4)
     }
 
-    // MARK: - Auswertung
+    // MARK: - Evaluation
 
-    /// Sucht nach einem laufenden Fenster für die Regel und lässt Core
-    /// entscheiden, welche der beiden Fassungen der Nutzer sieht.
+    /// Looks for a running window for the rule and lets Core decide which
+    /// of the two variants the user sees.
     ///
-    /// `WindowInventory` liest live aus der Accessibility-API. Das ist die
-    /// einzige AX-Lesemessung im Editor und passiert nur, während eine Regel
-    /// mit gesetzter Bundle-Kennung ausgewählt ist — nicht im Leerlauf.
+    /// `WindowInventory` reads live from the Accessibility API. That is the
+    /// only AX read measurement in the editor, and it only happens while a
+    /// rule with a bundle identifier set is selected — not while idle.
     private var computedResult: DryRunPreview.Result {
         guard let bundleIdentifier = rule.match.bundleIdentifier, !bundleIdentifier.isEmpty else {
-            // Ohne Bundle-Kennung ist die Regel ein Auffangfall. Für den Fall
-            // würde die Zeile ohne Fenster nicht mehr sagen als „irgendein
-            // Fenster ginge nach …". Das wäre die stumme Vermutung, gegen die
-            // dieses Feature gebaut ist — lieber gar keine Zeile.
+            // Without a bundle identifier, the rule is a catch-all. For that
+            // case, the line without a window would say no more than "some
+            // window would go to …" — the silent guess this feature is built
+            // against. Better no line at all.
             return .noMatch
         }
 
@@ -89,14 +94,14 @@ struct RuleDryRunLine: View {
     }
 
     private var subject: String {
-        rule.match.bundleIdentifier ?? "Ein Fenster"
+        rule.match.bundleIdentifier ?? localized("ruleDryRunLine.genericSubject", "A window")
     }
 
-    /// Das erste laufende Fenster mit der passenden Bundle-Kennung.
+    /// The first running window with a matching bundle identifier.
     ///
-    /// `allWindows` benötigt den MainActor, aber `body` ist bereits eine
-    /// SwiftUI-View, die dort läuft. Der Aufruf ist trotzdem so eng wie
-    /// möglich gehalten: eine einzelne Bundle-gefilterte Abfrage.
+    /// `allWindows` needs the main actor, but `body` is already a SwiftUI
+    /// view, which runs there. The call is still kept as narrow as
+    /// possible: a single bundle-filtered query.
     @MainActor
     private func firstMatchingSnapshot(for bundleIdentifier: String) -> WindowSnapshot? {
         WindowInventory

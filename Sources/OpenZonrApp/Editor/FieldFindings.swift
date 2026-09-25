@@ -66,8 +66,8 @@ extension ValidationSeverity {
 
     var label: String {
         switch self {
-        case .error: return "Fehler"
-        case .warning: return "Warnung"
+        case .error: return localized("validationSeverity.label.error", "Error")
+        case .warning: return localized("validationSeverity.label.warning", "Warning")
         }
     }
 }
