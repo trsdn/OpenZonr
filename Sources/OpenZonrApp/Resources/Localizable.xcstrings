@@ -276,6 +276,83 @@
         }
       }
     },
+    "updatePolicy.installTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install and Relaunch (%@)"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.checking": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for updates …"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.downloading": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading update %@ …"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.failed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update failed: %@"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.installing": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installing update …"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.readyToInstall": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update %@ is ready"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.upToDate": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr is up to date"
+          }
+        }
+      }
+    },
     "validationSeverity.label.error": {
       "extractionState": "extracted_with_value",
       "localizations": {
@@ -294,6 +371,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "Warning"
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.missingBundleIdentifier": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” reports no bundle identifier; without it, no rule can be written."
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.noZonesForDisplay": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no zones for display “%@” in profile “%@”."
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.optionClickHint": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ + Click: save as rule"
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.windowNoLongerReachable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”'s window is no longer reachable; nothing was placed."
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.windowOnNoConfiguredDisplay": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”'s window is not on any configured display."
           }
         }
       }

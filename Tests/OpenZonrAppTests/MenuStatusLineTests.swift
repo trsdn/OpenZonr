@@ -105,8 +105,8 @@ struct MenuStatusLineTests {
     @Test("Ein bereitliegendes Update bringt Zeile und Knöpfe")
     func bannerShowsLineAndButtons() {
         let banner = MenuStatus.updateBanner(for: .readyToInstall(version: "0.2.0"))
-        #expect(banner.line == "Update 0.2.0 liegt bereit")
-        #expect(banner.installTitle == "Installieren und neu starten (0.2.0)")
+        #expect(banner.line == "Update 0.2.0 is ready")
+        #expect(banner.installTitle == "Install and Relaunch (0.2.0)")
     }
 
     @Test("Nichts los heisst nichts im Menü; „aktuell“ bleibt sichtbar wie bisher")
@@ -114,7 +114,7 @@ struct MenuStatusLineTests {
         #expect(MenuStatus.updateBanner(for: .idle).isVisible == false)
         // Unverändertes Verhalten aus der alten Fassung: nach einer Suche ohne
         // Fund steht die Zeile da.
-        #expect(MenuStatus.updateBanner(for: .upToDate).line == "OpenZonr ist aktuell")
+        #expect(MenuStatus.updateBanner(for: .upToDate).line == "OpenZonr is up to date")
         #expect(MenuStatus.updateBanner(for: .upToDate).installTitle == nil)
     }
 }

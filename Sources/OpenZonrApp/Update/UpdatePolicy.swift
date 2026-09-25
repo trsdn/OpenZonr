@@ -1,73 +1,72 @@
 import Foundation
 
-/// Wo im Update-Ablauf die App gerade steht.
+/// Where in the update flow the app currently stands.
 ///
-/// Eigener Typ und nicht `AppUpdater`s eigener Zustand: was die Menüleiste
-/// anzeigt, ist eine Entscheidung dieser App, und sie soll ohne Netz, ohne
-/// Bundle und ohne `AppUpdater` prüfbar sein.
+/// Its own type, not `AppUpdater`'s own state: what the menu bar shows is
+/// this app's own decision, and it should be checkable without a network,
+/// without a bundle and without `AppUpdater`.
 enum UpdateState: Equatable {
-    /// Nichts läuft, nichts liegt bereit.
+    /// Nothing is running, nothing is ready.
     case idle
-    /// Eine Suche, die der Nutzer angestossen hat, läuft.
+    /// A check the user triggered is running.
     case checking
-    /// Die letzte ausdrückliche Suche fand nichts Neueres.
+    /// The last explicit check found nothing newer.
     case upToDate
-    /// Ein gefundenes Update wird geladen und geprüft.
+    /// A found update is downloading and being verified.
     case downloading(version: String)
-    /// Geladen und geprüft — ein Klick genügt.
+    /// Downloaded and verified — a click is all it takes.
     case readyToInstall(version: String)
-    /// Der Bundle-Tausch läuft. Danach startet die App neu.
+    /// The bundle swap is running. The app relaunches afterwards.
     case installing
-    /// Suche oder Installation ist gescheitert.
+    /// The check or the installation failed.
     case failed(String)
 }
 
-/// Die reinen Entscheidungen rund um Updates: wann fällig, was voreingestellt,
-/// was im Menü steht.
+/// The pure decisions around updates: when one is due, what the default is,
+/// what the menu says.
 ///
-/// Getrennt von ``UpdateManager``, weil dort alles am Netz und an einem echten
-/// Bundle hängt. Hier hängt nichts daran, und genau das ist geprüft (siehe
-/// `Tests/OpenZonrAppTests/UpdatePolicyTests.swift`).
+/// Separate from ``UpdateManager``, because everything there depends on the
+/// network and a real bundle. Nothing here does, and that is exactly what
+/// is tested (see `Tests/OpenZonrAppTests/UpdatePolicyTests.swift`).
 enum UpdatePolicy {
 
-    /// Gesucht wird höchstens einmal am Tag.
+    /// Checked at most once a day.
     static let checkInterval: TimeInterval = 24 * 60 * 60
 
-    /// Nachgesehen wird stündlich, ob die Tagesfrist abgelaufen ist.
+    /// Checked hourly whether the daily deadline has passed.
     ///
-    /// Ein schlichter 24-Stunden-Wecker würde auf einem Mac, der nachts
-    /// schläft, beliebig lange nie klingeln: der Timer läuft im Schlaf nicht
-    /// weiter, und der nächste Termin verschiebt sich mit jedem Ruhezustand.
-    /// Stündlich aufwachen und die Uhr lesen tut das nicht.
+    /// A plain 24-hour alarm would never fire, for an arbitrarily long time,
+    /// on a Mac that sleeps at night: the timer does not keep running
+    /// through sleep, and the next deadline shifts with every sleep cycle.
+    /// Waking hourly and reading the clock does not have that problem.
     static let wakeInterval: TimeInterval = 60 * 60
 
-    /// Der Voreinstellungsschlüssel des automatischen Suchens.
+    /// The preferences key for automatic checking.
     static let automaticChecksKey = "checkForUpdatesAutomatically"
 
-    /// Der Voreinstellungsschlüssel des letzten automatischen Suchlaufs.
+    /// The preferences key for the last automatic check.
     ///
-    /// In den Voreinstellungen und nicht nur im Speicher: eine Menüleisten-App
-    /// wird selten beendet, aber ein Rechner wird neu gestartet. Mit einem rein
-    /// gemerkten Zeitpunkt begänne jeder Start mit einer fälligen Suche, und
-    /// „höchstens einmal am Tag“ wäre in Wahrheit „bei jedem Anmelden“.
+    /// In the preferences, not just in memory: a menu bar app is rarely
+    /// quit, but a machine does get restarted. With a purely remembered
+    /// timestamp, every launch would start with a due check, and "at most
+    /// once a day" would really mean "at every login".
     static let lastAutomaticCheckKey = "lastAutomaticUpdateCheck"
 
-    /// Liest den gesicherten Zeitpunkt, oder `nil`, wenn dort nichts Brauchbares
-    /// steht.
+    /// Reads the stored timestamp, or `nil` when nothing usable is there.
     static func lastAutomaticCheck(stored: Any?) -> Date? {
         stored as? Date
     }
 
-    /// Ob eine automatische Suche fällig ist.
+    /// Whether an automatic check is due.
     ///
-    /// Ohne vorherige Suche ist sie es sofort — sonst würde eine frisch
-    /// gestartete App bis zum nächsten Tag nichts von einem Update erfahren.
+    /// With no previous check, it is due immediately — otherwise a freshly
+    /// launched app would not learn about an update until the next day.
     ///
-    /// Ein gesicherter Zeitpunkt, der in der Zukunft liegt, gilt ebenfalls als
-    /// fällig. Sonst genügte eine Uhr, die einmal zurückspringt — durch
-    /// Zeitzonenwechsel, NTP oder von Hand gestellt —, um das automatische
-    /// Suchen dauerhaft stillzulegen: die Differenz bliebe für immer negativ
-    /// und erreichte die Tagesfrist nie.
+    /// A stored timestamp that lies in the future also counts as due.
+    /// Otherwise a clock that jumps backward once — a time zone change,
+    /// NTP, or set by hand — would be enough to permanently disable
+    /// automatic checking: the difference would stay negative forever and
+    /// never reach the daily deadline.
     static func isCheckDue(lastCheck: Date?, now: Date) -> Bool {
         guard let lastCheck else { return true }
         let elapsed = now.timeIntervalSince(lastCheck)
@@ -75,17 +74,18 @@ enum UpdatePolicy {
         return elapsed >= checkInterval
     }
 
-    /// Der Anfangswert des Schalters „Automatisch nach Updates suchen“.
+    /// The initial value of the "Automatically check for updates" switch.
     ///
-    /// Voreingestellt an. `UserDefaults.bool(forKey:)` würde das nicht
-    /// hergeben: es liefert `false`, wenn der Schlüssel fehlt, und kann damit
-    /// „nie eingestellt“ nicht von „ausgeschaltet“ unterscheiden. Deshalb geht
-    /// der Weg über `object(forKey:)`.
+    /// On by default. `UserDefaults.bool(forKey:)` would not give that:
+    /// it returns `false` when the key is missing, which cannot tell "never
+    /// set" apart from "switched off". Hence the route through
+    /// `object(forKey:)`.
     static func automaticChecksEnabled(stored: Any?) -> Bool {
         (stored as? Bool) ?? true
     }
 
-    /// Ob gerade etwas läuft, das eine zweite Suche stören würde.
+    /// Whether something is running right now that a second check would
+    /// disrupt.
     static func isBusy(_ state: UpdateState) -> Bool {
         switch state {
         case .checking, .downloading, .installing: return true
@@ -93,34 +93,34 @@ enum UpdatePolicy {
         }
     }
 
-    /// Die Zeile, die im Menü über den Update-Einträgen steht — oder `nil`,
-    /// wenn es nichts zu sagen gibt.
+    /// The line that sits above the update entries in the menu — or `nil`
+    /// when there is nothing to say.
     ///
-    /// `.idle` sagt nichts: eine Zeile „nichts los“ wäre Rauschen in einem
-    /// Menü, das ohnehin lang ist.
+    /// `.idle` says nothing: a line saying "nothing going on" would be noise
+    /// in a menu that is already long.
     static func statusLine(for state: UpdateState) -> String? {
         switch state {
         case .idle:
             return nil
         case .checking:
-            return "Suche nach Updates …"
+            return localized("updatePolicy.statusLine.checking", "Checking for updates …")
         case .upToDate:
-            return "OpenZonr ist aktuell"
+            return localized("updatePolicy.statusLine.upToDate", "OpenZonr is up to date")
         case let .downloading(version):
-            return "Update \(version) wird geladen …"
+            return localized("updatePolicy.statusLine.downloading", "Downloading update %@ …", version)
         case let .readyToInstall(version):
-            return "Update \(version) liegt bereit"
+            return localized("updatePolicy.statusLine.readyToInstall", "Update %@ is ready", version)
         case .installing:
-            return "Update wird installiert …"
+            return localized("updatePolicy.statusLine.installing", "Installing update …")
         case let .failed(message):
-            return "Update fehlgeschlagen: \(message)"
+            return localized("updatePolicy.statusLine.failed", "Update failed: %@", message)
         }
     }
 
-    /// Die Aufschrift des Installieren-Knopfs — oder `nil`, solange nichts
-    /// bereitliegt und der Knopf deshalb gar nicht erst erscheint.
+    /// The install button's caption — or `nil` while nothing is ready and
+    /// the button therefore does not appear at all.
     static func installTitle(for state: UpdateState) -> String? {
         guard case let .readyToInstall(version) = state else { return nil }
-        return "Installieren und neu starten (\(version))"
+        return localized("updatePolicy.installTitle", "Install and Relaunch (%@)", version)
     }
 }

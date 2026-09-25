@@ -115,13 +115,13 @@ struct UpdatePolicyTests {
     @Test("Ein bereitliegendes Update nennt seine Fassung")
     func readyStateNamesTheVersion() {
         let line = UpdatePolicy.statusLine(for: .readyToInstall(version: "0.2.0"))
-        #expect(line == "Update 0.2.0 liegt bereit")
+        #expect(line == "Update 0.2.0 is ready")
     }
 
     @Test("Ein Fehler wird beim Namen genannt")
     func failureShowsTheReason() {
-        let line = UpdatePolicy.statusLine(for: .failed("Keine Verbindung"))
-        #expect(line == "Update fehlgeschlagen: Keine Verbindung")
+        let line = UpdatePolicy.statusLine(for: .failed("No connection"))
+        #expect(line == "Update failed: No connection")
     }
 
     @Test("Jeder Zustand ausser Ruhe hat eine Zeile", arguments: [
@@ -139,7 +139,7 @@ struct UpdatePolicyTests {
     @Test("Der Installieren-Knopf erscheint nur, wenn etwas bereitliegt")
     func installTitleOnlyWhenReady() {
         #expect(UpdatePolicy.installTitle(for: .readyToInstall(version: "0.2.0"))
-            == "Installieren und neu starten (0.2.0)")
+            == "Install and Relaunch (0.2.0)")
         #expect(UpdatePolicy.installTitle(for: .idle) == nil)
         #expect(UpdatePolicy.installTitle(for: .checking) == nil)
         #expect(UpdatePolicy.installTitle(for: .downloading(version: "0.2.0")) == nil)
