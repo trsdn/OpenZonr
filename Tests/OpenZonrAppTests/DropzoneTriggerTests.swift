@@ -46,13 +46,13 @@ struct DropzoneTriggerTests {
     func customRuleHasNoChoice() {
         let settings = DropzoneSettings(activation: .showsWhile(.option))
         #expect(DropzoneTrigger.current(settings) == nil)
-        #expect(DropzoneTrigger.customLabel(settings) == "Nur mit gehaltener ⌥-Taste")
+        #expect(DropzoneTrigger.customLabel(settings) == "Only While Holding ⌥")
         #expect(DropzoneTrigger.customRow(settings)?.isActive == true)
-        #expect(DropzoneTrigger.customRow(settings)?.label == "Nur mit gehaltener ⌥-Taste (aus der Datei)")
+        #expect(DropzoneTrigger.customRow(settings)?.label == "Only While Holding ⌥ (from the file)")
 
         let inverse = DropzoneSettings(activation: .showsUnless(.shift))
         #expect(DropzoneTrigger.current(inverse) == nil)
-        #expect(DropzoneTrigger.customLabel(inverse) == "Bei jedem Ziehen ausser mit ⇧")
+        #expect(DropzoneTrigger.customLabel(inverse) == "Every Drag Except With ⇧")
     }
 
     @Test("Ausgeschaltet verschwindet eine Regel aus der Datei nicht aus dem Menü")
@@ -66,8 +66,8 @@ struct DropzoneTriggerTests {
         let row = DropzoneTrigger.customRow(settings)
         #expect(row?.isActive == false)
         // Beide Tatsachen in einem Satz: es ist aus, und die Regel steht noch da.
-        #expect(row?.label.contains("Nur mit gehaltener ⌥-Taste") == true)
-        #expect(row?.label.contains("zurzeit aus") == true)
+        #expect(row?.label.contains("Only While Holding ⌥") == true)
+        #expect(row?.label.contains("currently off") == true)
     }
 
     @Test("Eine ausdrückbare Regel bekommt keine eigene Zeile — auch nicht ausgeschaltet")
@@ -97,20 +97,20 @@ struct DropzoneTriggerTests {
 
     @Test("Die Elternzeile zeigt den Zustand, ohne dass man sie aufklappt")
     func rowTitleShowsState() {
-        #expect(DropzoneTrigger.rowTitle(nil) == "Zonen beim Ziehen")
-        #expect(DropzoneTrigger.rowTitle(DropzoneSettings()) == "Zonen beim Ziehen: nur mit ⌘")
+        #expect(DropzoneTrigger.rowTitle(nil) == "Zones While Dragging")
+        #expect(DropzoneTrigger.rowTitle(DropzoneSettings()) == "Zones While Dragging: only with ⌘")
         #expect(
             DropzoneTrigger.rowTitle(DropzoneSettings(activation: .showsUnless(.none)))
-                == "Zonen beim Ziehen: bei jedem Ziehen"
+                == "Zones While Dragging: every drag"
         )
-        #expect(DropzoneTrigger.rowTitle(DropzoneSettings(enabled: false)) == "Zonen beim Ziehen: aus")
+        #expect(DropzoneTrigger.rowTitle(DropzoneSettings(enabled: false)) == "Zones While Dragging: off")
         #expect(
             DropzoneTrigger.rowTitle(DropzoneSettings(activation: .showsWhile(.option)))
-                == "Zonen beim Ziehen: nur mit ⌥"
+                == "Zones While Dragging: only with ⌥"
         )
         #expect(
             DropzoneTrigger.rowTitle(DropzoneSettings(activation: .showsUnless(.shift)))
-                == "Zonen beim Ziehen: bei jedem Ziehen ausser mit ⇧"
+                == "Zones While Dragging: every drag except with ⇧"
         )
     }
 
@@ -157,8 +157,8 @@ struct DropzoneTriggerTests {
 
     @Test("Die Beschriftungen sagen, wann die Zonen kommen")
     func labels() {
-        #expect(DropzoneTrigger.everyDrag.label == "Bei jedem Ziehen")
-        #expect(DropzoneTrigger.commandHeld.label == "Nur mit gehaltener ⌘-Taste")
-        #expect(DropzoneTrigger.off.label == "Aus")
+        #expect(DropzoneTrigger.everyDrag.label == "Every Drag")
+        #expect(DropzoneTrigger.commandHeld.label == "Only While Holding ⌘")
+        #expect(DropzoneTrigger.off.label == "Off")
     }
 }

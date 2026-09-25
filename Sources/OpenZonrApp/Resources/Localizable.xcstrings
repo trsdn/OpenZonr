@@ -199,6 +199,160 @@
         }
       }
     },
+    "dropzoneTrigger.customLabel.everyDragExcept": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every Drag Except With %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customLabel.onlyWhileHolding": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only While Holding %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customRow.active": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (from the file)"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customRow.inactive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file says “%@” — currently off, turn back on here"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customShortLabel.everyDragExcept": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every drag except with %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customShortLabel.onlyWith": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only with %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.label.commandHeld": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only While Holding ⌘"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.label.everyDrag": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every Drag"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.label.off": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.rowTitle.base": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zones While Dragging"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.rowTitle.withState": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.shortLabel.commandHeld": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only with ⌘"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.shortLabel.everyDrag": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every drag"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.shortLabel.off": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "off"
+          }
+        }
+      }
+    },
     "editorLayer.title.activation": {
       "extractionState": "extracted_with_value",
       "localizations": {
@@ -426,6 +580,105 @@
           "stringUnit": {
             "state": "translated",
             "value": "Login item removed."
+          }
+        }
+      }
+    },
+    "menuStatus.action.explain": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What to Do? …"
+          }
+        }
+      }
+    },
+    "menuStatus.action.grantAccess": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grant Access …"
+          }
+        }
+      }
+    },
+    "menuStatus.line.active.noName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready"
+          }
+        }
+      }
+    },
+    "menuStatus.line.active.withName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready — Setup “%@”"
+          }
+        }
+      }
+    },
+    "menuStatus.line.needsConfiguration.notSetUp": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing set up yet"
+          }
+        }
+      }
+    },
+    "menuStatus.line.needsConfiguration.unreadable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The settings cannot be read"
+          }
+        }
+      }
+    },
+    "menuStatus.line.needsPermission": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access is missing — without it OpenZonr cannot move windows"
+          }
+        }
+      }
+    },
+    "menuStatus.line.noProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No setup matches the connected screens"
+          }
+        }
+      }
+    },
+    "menuStatus.line.paused": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused — nothing is placed automatically"
           }
         }
       }
