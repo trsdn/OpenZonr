@@ -49,12 +49,12 @@ struct ZoneEditor: View {
             } else {
                 ContentUnavailableMessage(
                     symbol: "rectangle.3.group",
-                    title: "Kein Layout",
-                    message: """
-                    Für diese Kombination aus Profil und Bildschirm ist kein Layout \
-                    hinterlegt. Wähle ein anderes Profil oder lege im Bildschirm ein \
-                    Layout an.
-                    """
+                    title: localized("zoneEditor.noLayout.title", "No Layout"),
+                    message: localized(
+                        "zoneEditor.noLayout.message",
+                        "No layout is stored for this combination of profile and display. Choose "
+                            + "a different profile or add a layout to the display."
+                    )
                 )
             }
         }
@@ -66,14 +66,14 @@ struct ZoneEditor: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Picker("Profil", selection: $profile) {
+            Picker(localized("zoneEditor.profilePicker", "Profile"), selection: $profile) {
                 ForEach(document.configuration.profiles) { profile in
                     Text(profile.name).tag(ProfileID?.some(profile.id))
                 }
             }
             .frame(maxWidth: 240)
 
-            Picker("Bildschirm", selection: $display) {
+            Picker(localized("zoneEditor.displayPicker", "Display"), selection: $display) {
                 ForEach(document.configuration.displays) { descriptor in
                     Text(descriptor.displayName).tag(DisplayAlias?.some(descriptor.alias))
                 }
@@ -81,17 +81,16 @@ struct ZoneEditor: View {
             .frame(maxWidth: 280)
 
             if let display, let profile, let id = document.configuration.layoutID(forDisplay: display, inProfile: profile) {
-                Text("Layout: \(id.rawValue)")
+                Text(localized("zoneEditor.layoutLabel", "Layout: %@", id.rawValue))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 templatesMenu(display: display, layout: id)
             }
             Spacer()
 
-            // Der Ebenenumschalter. Rechts aussen, weil er den Zustand der
-            // ganzen Leinwand bestimmt und nicht zu einer einzelnen Zone
-            // gehört.
-            Picker("Ebene", selection: $layer) {
+            // The layer switch. Far right, because it decides the state of
+            // the whole canvas rather than belonging to a single zone.
+            Picker(localized("zoneEditor.layerPicker", "Layer"), selection: $layer) {
                 ForEach(EditorLayer.allCases) { value in
                     Text(value.title).tag(value)
                 }
@@ -99,7 +98,13 @@ struct ZoneEditor: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(maxWidth: 240)
-            .help("Zielrahmen: wohin das Fenster kommt. Trefferfläche: wo losgelassen werden muss.")
+            .help(
+                localized(
+                    "zoneEditor.layerPicker.help",
+                    "Target frame: where the window ends up. Activation area: where you have to "
+                        + "release it."
+                )
+            )
         }
         .padding(10)
         .sheet(item: $pendingTemplate) { pending in
@@ -119,7 +124,7 @@ struct ZoneEditor: View {
     /// Menü mit den Vorlagen. Klicken ersetzt die Zonen des Layouts, zeigt
     /// aber vorher, welche Bindungen dadurch ins Leere zeigen würden.
     private func templatesMenu(display: DisplayAlias, layout: LayoutID) -> some View {
-        Menu("Vorlage anwenden") {
+        Menu(localized("zoneEditor.applyTemplateMenu", "Apply Template")) {
             ForEach(LayoutTemplate.allCases, id: \.rawValue) { template in
                 Button(template.displayName) {
                     let preview = document.configuration.previewApplying(
@@ -138,7 +143,13 @@ struct ZoneEditor: View {
         }
         .menuStyle(.borderlessButton)
         .frame(maxWidth: 180)
-        .help("Ersetzt die Zonen dieses Layouts. Bindungen auf verschwundene Zonen werden vor der Anwendung ausgewiesen.")
+        .help(
+            localized(
+                "zoneEditor.applyTemplateMenu.help",
+                "Replaces this layout's zones. Bindings to zones that disappear are shown before "
+                    + "the application."
+            )
+        )
     }
 
     // MARK: - Canvas
@@ -289,12 +300,13 @@ struct ZoneEditor: View {
         }
         guard layer == .target else { return }
 
-        // Dieselbe Namensvergabe wie „Zone hinzufügen"; zwei Wege, eine Zone
-        // anzulegen, dürfen nicht zwei Arten von Kennung erzeugen.
-        let id = document.configuration.availableZoneID(basedOn: "Neue Zone", layout: layout.id, display: display)
+        // Same naming as "add zone"; two ways to create a zone must not
+        // produce two kinds of identifier.
+        let defaultName = localized("zoneEditor.newZone.defaultName", "New Zone")
+        let id = document.configuration.availableZoneID(basedOn: defaultName, layout: layout.id, display: display)
         document.apply {
             $0.adding(
-                zone: Zone(id: id, name: "Neue Zone", frame: rect),
+                zone: Zone(id: id, name: defaultName, frame: rect),
                 layout: layout.id,
                 display: display
             )
@@ -342,11 +354,13 @@ struct ZoneEditor: View {
         case .measured:
             if let size = aspect.visibleSize {
                 let pts = "\(Int(size.width.rounded())) × \(Int(size.height.rounded())) pt"
-                return "\(ratio) · sichtbar \(pts) · gemessen"
+                return localized("zoneEditor.aspectBadge.measuredWithSize", "%@ · visible %@ · measured", ratio, pts)
             }
-            return "\(ratio) · gemessen"
+            return localized("zoneEditor.aspectBadge.measured", "%@ · measured", ratio)
         case .estimated:
-            return "\(ratio) · Bildschirm nicht angeschlossen, Seitenverhältnis geschätzt"
+            return localized(
+                "zoneEditor.aspectBadge.estimated", "%@ · display not connected, aspect ratio estimated", ratio
+            )
         }
     }
 
@@ -377,7 +391,7 @@ struct ZoneEditor: View {
                 Button {
                     addZone(layout: layout, display: display)
                 } label: { Image(systemName: "plus") }
-                    .help("Zone hinzufügen")
+                    .help(localized("zoneEditor.addZone.help", "Add Zone"))
                 Button {
                     if let selection {
                         document.apply { $0.removingZone(selection, layout: layout.id, display: display) }
@@ -385,12 +399,17 @@ struct ZoneEditor: View {
                     selection = nil
                 } label: { Image(systemName: "minus") }
                     .disabled(selection == nil)
-                    .help("Zone entfernen — Bindungen darauf bleiben stehen und werden gemeldet")
+                    .help(
+                        localized(
+                            "zoneEditor.removeZone.help",
+                            "Remove zone — bindings to it stay and are reported"
+                        )
+                    )
 
-                // Nur auf der Trefferflächen-Ebene, und nur wenn es etwas zu
-                // entfernen gibt. Ohne diesen Weg liesse sich eine einmal
-                // gezeichnete Trefferfläche nie wieder loswerden — danach ist
-                // sie wieder der Zielrahmen.
+                // Only on the activation-area layer, and only when there is
+                // something to remove. Without this, a once-drawn activation
+                // area could never be undone — afterwards it is the target
+                // frame again.
                 if layer == .activation {
                     Button {
                         if let selection {
@@ -400,7 +419,12 @@ struct ZoneEditor: View {
                         }
                     } label: { Image(systemName: "arrow.uturn.backward") }
                         .disabled(selectedZoneHasNoActivationArea(in: layout))
-                        .help("Trefferfläche entfernen — danach gilt wieder der Zielrahmen")
+                        .help(
+                            localized(
+                                "zoneEditor.removeActivationArea.help",
+                                "Remove Activation Area — the target frame applies again afterwards"
+                            )
+                        )
                 }
                 Spacer()
             }
@@ -432,12 +456,13 @@ struct ZoneEditor: View {
     }
 
     private func addZone(layout: OpenZonrCore.Layout, display: DisplayAlias) {
-        let id = document.configuration.availableZoneID(basedOn: "Neue Zone", layout: layout.id, display: display)
+        let defaultName = localized("zoneEditor.newZone.defaultName", "New Zone")
+        let id = document.configuration.availableZoneID(basedOn: defaultName, layout: layout.id, display: display)
         document.apply {
             $0.adding(
                 zone: Zone(
                     id: id,
-                    name: "Neue Zone",
+                    name: defaultName,
                     frame: RelativeRect(x: 0.25, y: 0.25, width: 0.5, height: 0.5)
                 ),
                 layout: layout.id,
@@ -655,7 +680,7 @@ private struct ZoneForm: View {
 
     var body: some View {
         Form {
-            TextField("Name", text: Binding(
+            TextField(localized("zoneEditor.nameField", "Name"), text: Binding(
                 get: { zone.name },
                 set: { name in
                     var edited = zone
@@ -663,7 +688,7 @@ private struct ZoneForm: View {
                     document.apply { $0.updating(zone: edited, layout: layout, display: display) }
                 }
             ))
-            LabeledContent("Kennung") {
+            LabeledContent(localized("zoneEditor.idField", "Identifier")) {
                 Text(zone.id.rawValue)
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -673,8 +698,8 @@ private struct ZoneForm: View {
                 field("y", \.y, dimension: .height)
             }
             HStack {
-                field("Breite", \.width, dimension: .width)
-                field("Höhe", \.height, dimension: .height)
+                field(localized("zoneEditor.widthField", "Width"), \.width, dimension: .width)
+                field(localized("zoneEditor.heightField", "Height"), \.height, dimension: .height)
             }
             FieldFindings(
                 path: .zoneFrame(zone.id, layout: layout, display: display),
@@ -831,25 +856,37 @@ private struct TemplatePreviewSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Vorlage \(pending.template.displayName) anwenden")
+            Text(localized("zoneEditor.templateSheet.title", "Apply Template %@", pending.template.displayName))
                 .font(.headline)
 
-            Text("Ersetzt die Zonen des Layouts \(pending.layout.rawValue) auf \(pending.display.rawValue).")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            Text(
+                localized(
+                    "zoneEditor.templateSheet.subtitle",
+                    "Replaces layout %@'s zones on %@.",
+                    pending.layout.rawValue, pending.display.rawValue
+                )
+            )
+            .font(.callout)
+            .foregroundStyle(.secondary)
 
             if pending.preview.danglingBindings.isEmpty {
-                Text("Keine Bindungen zeigen danach ins Leere.")
+                Text(localized("zoneEditor.templateSheet.noDanglingBindings", "No bindings will point at nothing afterwards."))
                     .foregroundStyle(.secondary)
             } else {
-                Text("Danach hängende Bindungen:")
+                Text(localized("zoneEditor.templateSheet.danglingBindingsHeader", "Bindings that would dangle afterwards:"))
                     .font(.subheadline)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(Array(pending.preview.danglingBindings.enumerated()), id: \.offset) { _, binding in
                             HStack {
-                                Text("Profil \(binding.profile.rawValue) · Rolle \(binding.role.rawValue) → Zone \(binding.zone.rawValue)")
-                                    .font(.system(.caption, design: .monospaced))
+                                Text(
+                                    localized(
+                                        "zoneEditor.templateSheet.danglingBinding",
+                                        "Profile %@ · Role %@ → Zone %@",
+                                        binding.profile.rawValue, binding.role.rawValue, binding.zone.rawValue
+                                    )
+                                )
+                                .font(.system(.caption, design: .monospaced))
                                 Spacer()
                             }
                         }
@@ -862,9 +899,9 @@ private struct TemplatePreviewSheet: View {
 
             HStack {
                 Spacer()
-                Button("Abbrechen", role: .cancel, action: onCancel)
+                Button(localized("zoneEditor.templateSheet.cancelButton", "Cancel"), role: .cancel, action: onCancel)
                     .keyboardShortcut(.cancelAction)
-                Button("Anwenden", action: onConfirm)
+                Button(localized("zoneEditor.templateSheet.applyButton", "Apply"), action: onConfirm)
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
             }

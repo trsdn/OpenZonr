@@ -2454,6 +2454,303 @@
         }
       }
     },
+    "zoneEditor.addZone.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Zone"
+          }
+        }
+      }
+    },
+    "zoneEditor.applyTemplateMenu": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply Template"
+          }
+        }
+      }
+    },
+    "zoneEditor.applyTemplateMenu.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replaces this layout's zones. Bindings to zones that disappear are shown before the application."
+          }
+        }
+      }
+    },
+    "zoneEditor.aspectBadge.estimated": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · display not connected, aspect ratio estimated"
+          }
+        }
+      }
+    },
+    "zoneEditor.aspectBadge.measured": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · measured"
+          }
+        }
+      }
+    },
+    "zoneEditor.aspectBadge.measuredWithSize": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · visible %@ · measured"
+          }
+        }
+      }
+    },
+    "zoneEditor.displayPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display"
+          }
+        }
+      }
+    },
+    "zoneEditor.heightField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Height"
+          }
+        }
+      }
+    },
+    "zoneEditor.idField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifier"
+          }
+        }
+      }
+    },
+    "zoneEditor.layerPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layer"
+          }
+        }
+      }
+    },
+    "zoneEditor.layerPicker.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target frame: where the window ends up. Activation area: where you have to release it."
+          }
+        }
+      }
+    },
+    "zoneEditor.layoutLabel": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout: %@"
+          }
+        }
+      }
+    },
+    "zoneEditor.nameField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "zoneEditor.newZone.defaultName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Zone"
+          }
+        }
+      }
+    },
+    "zoneEditor.noLayout.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No layout is stored for this combination of profile and display. Choose a different profile or add a layout to the display."
+          }
+        }
+      }
+    },
+    "zoneEditor.noLayout.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Layout"
+          }
+        }
+      }
+    },
+    "zoneEditor.profilePicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile"
+          }
+        }
+      }
+    },
+    "zoneEditor.removeActivationArea.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Activation Area — the target frame applies again afterwards"
+          }
+        }
+      }
+    },
+    "zoneEditor.removeZone.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove zone — bindings to it stay and are reported"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.applyButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.cancelButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.danglingBinding": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile %@ · Role %@ → Zone %@"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.danglingBindingsHeader": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bindings that would dangle afterwards:"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.noDanglingBindings": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No bindings will point at nothing afterwards."
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.subtitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replaces layout %@'s zones on %@."
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply Template %@"
+          }
+        }
+      }
+    },
+    "zoneEditor.widthField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Width"
+          }
+        }
+      }
+    },
     "zoomButtonMenu.missingBundleIdentifier": {
       "extractionState": "extracted_with_value",
       "localizations": {
