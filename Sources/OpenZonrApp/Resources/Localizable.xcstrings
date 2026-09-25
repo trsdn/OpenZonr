@@ -67,6 +67,303 @@
         }
       }
     },
+    "appModel.apply.objection.editorSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " The change is in the editor, but not saved."
+          }
+        }
+      }
+    },
+    "appModel.apply.objection.noEditorSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Nothing was changed."
+          }
+        }
+      }
+    },
+    "appModel.apply.pinFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin failed: %@"
+          }
+        }
+      }
+    },
+    "appModel.apply.success.editorSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " — entered in the editor, not yet saved."
+          }
+        }
+      }
+    },
+    "appModel.guardSentence.noActiveProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No profile is active — without a profile, there is no way to know what “here” means."
+          }
+        }
+      }
+    },
+    "appModel.guardSentence.noConfigurationLoaded": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No configuration is loaded."
+          }
+        }
+      }
+    },
+    "appModel.log.configurationLoaded": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration loaded: %@"
+          }
+        }
+      }
+    },
+    "appModel.log.configurationSummary": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld displays, %lld profiles, %lld active rules"
+          }
+        }
+      }
+    },
+    "appModel.log.dragOutcome": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag result: %@"
+          }
+        }
+      }
+    },
+    "appModel.log.launched": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr — menu bar app started."
+          }
+        }
+      }
+    },
+    "appModel.log.loadFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to load: %@"
+          }
+        }
+      }
+    },
+    "appModel.log.signature": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signature: %@"
+          }
+        }
+      }
+    },
+    "appModel.log.updateNotInstalled": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update not installed — window observation continues."
+          }
+        }
+      }
+    },
+    "appModel.log.windowObservationPausedForUpdate": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Window observation paused for update swap."
+          }
+        }
+      }
+    },
+    "appModel.pinFrontmostWindow.noZoneUnderWindow": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no zone of profile “%@” under this window."
+          }
+        }
+      }
+    },
+    "appModel.saveFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save failed."
+          }
+        }
+      }
+    },
+    "appModel.status.headline.active": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        }
+      }
+    },
+    "appModel.status.headline.needsConfiguration": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Configuration"
+          }
+        }
+      }
+    },
+    "appModel.status.headline.needsPermission": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Permission"
+          }
+        }
+      }
+    },
+    "appModel.status.headline.noProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Profile Matches"
+          }
+        }
+      }
+    },
+    "appModel.status.headline.paused": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.degraded": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trust granted, but no real windows readable"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.inconclusive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No app reachable to check"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.noProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld profiles in the configuration"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.notTrusted": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility not granted"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.pinnedSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (by hand)"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.profile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile: %@%@"
+          }
+        }
+      }
+    },
     "appPresence.title.background": {
       "extractionState": "extracted_with_value",
       "localizations": {
