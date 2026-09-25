@@ -60,7 +60,7 @@ struct MenuContent: View {
 
         Divider()
 
-        Toggle("Fenster automatisch platzieren", isOn: Binding(
+        Toggle(localized("menuContent.autoPlaceToggle", "Place Windows Automatically"), isOn: Binding(
             get: { !model.isPaused },
             set: { model.isPaused = !$0 }
         ))
@@ -72,14 +72,14 @@ struct MenuContent: View {
             Text(sentence)
         }
         if let problem = model.dropzones.problem {
-            Text("Ziehen ist nicht aktiv: \(problem)")
+            Text(localized("menuContent.dropzonesNotActive", "Dragging is not active: %@", problem))
         }
 
         Divider()
 
         pinEntry
 
-        Button("Zonen und Regeln bearbeiten …") { showEditorWindow() }
+        Button(localized("menuContent.editZonesAndRulesButton", "Edit Zones and Rules …")) { showEditorWindow() }
             .disabled(model.configuration == nil)
 
         Divider()
@@ -88,7 +88,7 @@ struct MenuContent: View {
 
         Divider()
 
-        Button("OpenZonr beenden") { NSApp.terminate(nil) }
+        Button(localized("menuContent.quitButton", "Quit OpenZonr")) { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
 
@@ -161,9 +161,9 @@ struct MenuContent: View {
     @ViewBuilder
     private var setupMenu: some View {
         if model.availableProfiles.isEmpty {
-            Text("Keine Setups eingerichtet")
+            Text(localized("menuContent.noSetupsConfigured", "No Setups Configured"))
         } else {
-            Section("Setup") {
+            Section(localized("menuContent.setupSection", "Setup")) {
                 Button {
                     model.selectProfile(nil)
                 } label: {
@@ -171,7 +171,8 @@ struct MenuContent: View {
                     // marker is part of the title. Ugly in code, unambiguous on
                     // screen — and unlike a disabled item it stays clickable, so
                     // "back to automatic" is always one click away.
-                    Text(marker(active: model.profileState?.isPinned == false) + "Automatisch")
+                    Text(marker(active: model.profileState?.isPinned == false)
+                        + localized("menuContent.automaticSetup", "Automatic"))
                 }
                 Divider()
                 ForEach(model.availableProfiles) { profile in
@@ -200,8 +201,10 @@ struct MenuContent: View {
     /// Zeiger auskommt.
     @ViewBuilder
     private var pinEntry: some View {
-        Button("Aktuelles Fenster festhalten") { model.pinFrontmostWindow() }
-            .disabled(isBlocked)
+        Button(localized("menuContent.pinFrontmostWindowButton", "Pin Frontmost Window Here")) {
+            model.pinFrontmostWindow()
+        }
+        .disabled(isBlocked)
 
         if let message = model.lastPinMessage {
             Text(message)
@@ -233,7 +236,7 @@ struct MenuContent: View {
     /// Update-Einstellungen sind Dinge, die man einmal tut und dann nie wieder.
     @ViewBuilder
     private var moreMenu: some View {
-        Menu("Mehr") {
+        Menu(localized("menuContent.moreMenu", "More")) {
             setupMenu
 
             Divider()
@@ -242,22 +245,26 @@ struct MenuContent: View {
 
             Divider()
 
-            Button("Konfiguration neu laden") { model.reloadConfiguration() }
-            Button("Status und Berechtigung …") { showStatusWindow() }
+            Button(localized("menuContent.reloadConfigButton", "Reload Configuration")) {
+                model.reloadConfiguration()
+            }
+            Button(localized("menuContent.statusAndPermissionButton", "Status and Permission …")) {
+                showStatusWindow()
+            }
 
             Divider()
 
-            Toggle("Bei Anmeldung starten", isOn: Binding(
+            Toggle(localized("menuContent.launchAtLoginToggle", "Start at Login"), isOn: Binding(
                 get: { model.launchesAtLogin },
                 set: { model.launchesAtLogin = $0 }
             ))
 
             Divider()
 
-            Button("Nach Updates suchen …") { checkForUpdates() }
+            Button(localized("menuContent.checkForUpdatesButton", "Check for Updates …")) { checkForUpdates() }
                 .disabled(model.updates.isBusy || model.updates.hasPreparedUpdate)
 
-            Toggle("Automatisch nach Updates suchen", isOn: Binding(
+            Toggle(localized("menuContent.autoCheckForUpdatesToggle", "Automatically Check for Updates"), isOn: Binding(
                 get: { model.updates.automaticChecksEnabled },
                 set: { model.updates.automaticChecksEnabled = $0 }
             ))
@@ -286,7 +293,7 @@ struct MenuContent: View {
             Text(line)
             if let title = banner.installTitle {
                 Button(title) { installUpdate() }
-                Button("Später") { Task { await updates.dismiss() } }
+                Button(localized("menuContent.laterButton", "Later")) { Task { await updates.dismiss() } }
             }
         }
     }
@@ -300,19 +307,23 @@ struct MenuContent: View {
             await updates.check(userInitiated: true)
             switch updates.state {
             case .upToDate:
-                present(title: "OpenZonr ist aktuell", message: "Es läuft die neueste Fassung.")
+                present(
+                    title: localized("menuContent.upToDate.title", "OpenZonr Is Up to Date"),
+                    message: localized("menuContent.upToDate.message", "The newest version is running.")
+                )
             case let .failed(message):
-                present(title: "Update-Suche fehlgeschlagen", message: message)
+                present(title: localized("menuContent.checkFailed.title", "Update Check Failed"), message: message)
             case let .readyToInstall(version):
                 NSApp.activate(ignoringOtherApps: true)
                 let alert = NSAlert()
-                alert.messageText = "OpenZonr \(version) liegt bereit"
-                alert.informativeText = """
-                    OpenZonr hält die Fensterbeobachtung an, tauscht sich aus und startet neu. \
-                    Für ein paar Sekunden wird kein Fenster platziert.
-                    """
-                alert.addButton(withTitle: "Installieren und neu starten")
-                alert.addButton(withTitle: "Später")
+                alert.messageText = localized("menuContent.readyToInstall.title", "OpenZonr %@ Is Ready", version)
+                alert.informativeText = localized(
+                    "menuContent.readyToInstall.message",
+                    "OpenZonr pauses window observation, swaps itself out and relaunches. No window "
+                        + "will be placed for a few seconds."
+                )
+                alert.addButton(withTitle: localized("menuContent.installAndRelaunchButton", "Install and Relaunch"))
+                alert.addButton(withTitle: localized("menuContent.laterButton", "Later"))
                 if alert.runModal() == .alertFirstButtonReturn { installUpdate() }
             case .idle, .checking, .downloading, .installing:
                 break
@@ -320,13 +331,16 @@ struct MenuContent: View {
         }
     }
 
-    /// Anhalten und tauschen — die Reihenfolge steckt in
-    /// ``AppModel/installUpdate()``, damit sie prüfbar ist.
+    /// Pause, then swap — the order lives in ``AppModel/installUpdate()``, so
+    /// it is testable.
     private func installUpdate() {
         Task {
             if await model.installUpdate() { return }
             if case let .failed(message) = model.updates.state {
-                present(title: "Update konnte nicht installiert werden", message: message)
+                present(
+                    title: localized("menuContent.installFailed.title", "Update Could Not Be Installed"),
+                    message: message
+                )
             }
         }
     }
@@ -336,7 +350,7 @@ struct MenuContent: View {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: localized("menuContent.okButton", "OK"))
         alert.runModal()
     }
 
@@ -348,17 +362,17 @@ struct MenuContent: View {
     @ViewBuilder
     private var recentPlacements: some View {
         if model.records.isEmpty {
-            Text("Noch keine Platzierung")
+            Text(localized("menuContent.noPlacementsYet", "No Placements Yet"))
         } else {
-            Section("Zuletzt platziert") {
+            Section(localized("menuContent.recentlyPlacedSection", "Recently Placed")) {
                 ForEach(model.records.prefix(8)) { record in
                     Text("\(record.applicationName) → \(record.target ?? "—") · \(record.summary)")
                 }
                 Divider()
-                Button("Alle anzeigen …") { showActivityWindow() }
+                Button(localized("menuContent.showAllButton", "Show All …")) { showActivityWindow() }
             }
         }
-        Button("Letzte Platzierungen …") { showActivityWindow() }
+        Button(localized("menuContent.recentPlacementsButton", "Recent Placements …")) { showActivityWindow() }
     }
 
     // MARK: - Windows
@@ -367,7 +381,7 @@ struct MenuContent: View {
         model.refreshPermission(probe: true)
         PanelPresenter.shared.show(
             id: "status",
-            title: "OpenZonr — Status und Berechtigung",
+            title: localized("statusWindow.panelTitle", "OpenZonr — Status and Permission"),
             size: NSSize(width: 620, height: 560)
         ) {
             StatusWindow(model: model)
@@ -377,7 +391,7 @@ struct MenuContent: View {
     private func showActivityWindow() {
         PanelPresenter.shared.show(
             id: "activity",
-            title: "OpenZonr — Letzte Platzierungen",
+            title: localized("menuContent.activityWindowTitle", "OpenZonr — Recent Placements"),
             size: NSSize(width: 720, height: 480)
         ) {
             ActivityWindow(model: model)
@@ -388,7 +402,7 @@ struct MenuContent: View {
         guard let document = model.editorDocument() else { return }
         PanelPresenter.shared.show(
             id: "editor",
-            title: "OpenZonr — Zonen und Regeln",
+            title: localized("menuContent.editorWindowTitle", "OpenZonr — Zones and Rules"),
             size: NSSize(width: 900, height: 620)
         ) {
             EditorWindow(document: document)

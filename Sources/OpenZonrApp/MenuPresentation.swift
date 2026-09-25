@@ -27,8 +27,8 @@ enum MenuStatus {
 
         var title: String {
             switch self {
-            case .grantAccess: return "Zugriff freigeben …"
-            case .explain: return "Was ist zu tun? …"
+            case .grantAccess: return localized("menuStatus.action.grantAccess", "Grant Access …")
+            case .explain: return localized("menuStatus.action.explain", "What to Do? …")
             }
         }
     }
@@ -64,33 +64,48 @@ enum MenuStatus {
         switch status {
         case .needsPermission:
             return Line(
-                title: "Zugriff fehlt — ohne ihn kann OpenZonr keine Fenster bewegen",
+                title: localized(
+                    "menuStatus.line.needsPermission",
+                    "Access is missing — without it OpenZonr cannot move windows"
+                ),
                 action: .grantAccess
             )
         case .needsConfiguration:
             return Line(
                 title: hasProblem
-                    ? "Die Einstellungen lassen sich nicht lesen"
-                    : "Noch nichts eingerichtet",
+                    ? localized("menuStatus.line.needsConfiguration.unreadable", "The settings cannot be read")
+                    : localized("menuStatus.line.needsConfiguration.notSetUp", "Nothing set up yet"),
                 action: .explain
             )
         case .noProfile:
             return Line(
-                title: "Kein Setup passt zu den angeschlossenen Bildschirmen",
+                title: localized(
+                    "menuStatus.line.noProfile",
+                    "No setup matches the connected screens"
+                ),
                 action: .explain
             )
         case .paused:
-            return Line(title: "Pausiert — es wird nichts automatisch platziert", action: nil)
+            return Line(
+                title: localized("menuStatus.line.paused", "Paused — nothing is placed automatically"),
+                action: nil
+            )
         case .active:
             if isPaused {
-                // Kann im Modell nicht vorkommen; die Entscheidung gehört
-                // trotzdem hierher und nicht in die Ansicht.
-                return Line(title: "Pausiert — es wird nichts automatisch platziert", action: nil)
+                // Cannot occur in the model; the decision still belongs here
+                // and not in the view.
+                return Line(
+                    title: localized("menuStatus.line.paused", "Paused — nothing is placed automatically"),
+                    action: nil
+                )
             }
             guard let profileName, !profileName.isEmpty else {
-                return Line(title: "Bereit", action: nil)
+                return Line(title: localized("menuStatus.line.active.noName", "Ready"), action: nil)
             }
-            return Line(title: "Bereit — Setup „\(profileName)“", action: nil)
+            return Line(
+                title: localized("menuStatus.line.active.withName", "Ready — Setup “%@”", profileName),
+                action: nil
+            )
         }
     }
 
@@ -136,19 +151,19 @@ enum DropzoneTrigger: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .everyDrag: return "Bei jedem Ziehen"
-        case .commandHeld: return "Nur mit gehaltener ⌘-Taste"
-        case .off: return "Aus"
+        case .everyDrag: return localized("dropzoneTrigger.label.everyDrag", "Every Drag")
+        case .commandHeld: return localized("dropzoneTrigger.label.commandHeld", "Only While Holding ⌘")
+        case .off: return localized("dropzoneTrigger.label.off", "Off")
         }
     }
 
-    /// Dieselbe Aussage für die Elternzeile, wo sie hinter einem Doppelpunkt
-    /// steht: „Zonen beim Ziehen: nur mit ⌘“.
+    /// Same statement for the parent row, where it sits after a colon:
+    /// "Zones while dragging: only with ⌘".
     var shortLabel: String {
         switch self {
-        case .everyDrag: return "bei jedem Ziehen"
-        case .commandHeld: return "nur mit ⌘"
-        case .off: return "aus"
+        case .everyDrag: return localized("dropzoneTrigger.shortLabel.everyDrag", "every drag")
+        case .commandHeld: return localized("dropzoneTrigger.shortLabel.commandHeld", "only with ⌘")
+        case .off: return localized("dropzoneTrigger.shortLabel.off", "off")
         }
     }
 
@@ -190,10 +205,14 @@ enum DropzoneTrigger: String, CaseIterable, Identifiable, Sendable {
     /// Untermenü läge er eine Ebene tiefer, und das wäre ein Rückschritt genau
     /// in der Frage, um die es hier geht.
     static func rowTitle(_ settings: DropzoneSettings?) -> String {
-        let base = "Zonen beim Ziehen"
+        let base = localized("dropzoneTrigger.rowTitle.base", "Zones While Dragging")
         guard let settings else { return base }
-        if let current = current(settings) { return "\(base): \(current.shortLabel)" }
-        return "\(base): \(customShortLabel(settings.activation))"
+        if let current = current(settings) {
+            return localized("dropzoneTrigger.rowTitle.withState", "%@: %@", base, current.shortLabel)
+        }
+        return localized(
+            "dropzoneTrigger.rowTitle.withState", "%@: %@", base, customShortLabel(settings.activation)
+        )
     }
 
     /// Die Zeile für eine Regel aus der Datei, die keine der drei Wahlen ist —
@@ -206,11 +225,18 @@ enum DropzoneTrigger: String, CaseIterable, Identifiable, Sendable {
     static func customRow(_ settings: DropzoneSettings) -> CustomRow? {
         guard expressing(settings.activation) == nil else { return nil }
         if settings.enabled {
-            return CustomRow(label: "\(customLabel(settings)) (aus der Datei)", isActive: true)
+            return CustomRow(
+                label: localized("dropzoneTrigger.customRow.active", "%@ (from the file)", customLabel(settings)),
+                isActive: true
+            )
         }
-        // Beide Tatsachen in einem Satz: es ist aus, und die Regel steht noch da.
+        // Both facts in one sentence: it is off, and the rule is still there.
         return CustomRow(
-            label: "In der Datei steht „\(customLabel(settings))“ — zurzeit aus, hier wieder einschalten",
+            label: localized(
+                "dropzoneTrigger.customRow.inactive",
+                "The file says “%@” — currently off, turn back on here",
+                customLabel(settings)
+            ),
             isActive: false
         )
     }
@@ -237,11 +263,15 @@ enum DropzoneTrigger: String, CaseIterable, Identifiable, Sendable {
     private static func customShortLabel(_ activation: DropzoneActivationRule) -> String {
         switch activation {
         case let .showsWhile(modifier):
-            guard let symbol = modifier.symbol else { return "bei jedem Ziehen" }
-            return "nur mit \(symbol)"
+            guard let symbol = modifier.symbol else {
+                return localized("dropzoneTrigger.shortLabel.everyDrag", "every drag")
+            }
+            return localized("dropzoneTrigger.customShortLabel.onlyWith", "only with %@", symbol)
         case let .showsUnless(modifier):
-            guard let symbol = modifier.symbol else { return "bei jedem Ziehen" }
-            return "bei jedem Ziehen ausser mit \(symbol)"
+            guard let symbol = modifier.symbol else {
+                return localized("dropzoneTrigger.shortLabel.everyDrag", "every drag")
+            }
+            return localized("dropzoneTrigger.customShortLabel.everyDragExcept", "every drag except with %@", symbol)
         }
     }
 
@@ -266,11 +296,15 @@ enum DropzoneTrigger: String, CaseIterable, Identifiable, Sendable {
     static func customLabel(_ settings: DropzoneSettings) -> String {
         switch settings.activation {
         case let .showsWhile(modifier):
-            guard let symbol = modifier.symbol else { return "Bei jedem Ziehen" }
-            return "Nur mit gehaltener \(symbol)-Taste"
+            guard let symbol = modifier.symbol else {
+                return localized("dropzoneTrigger.label.everyDrag", "Every Drag")
+            }
+            return localized("dropzoneTrigger.customLabel.onlyWhileHolding", "Only While Holding %@", symbol)
         case let .showsUnless(modifier):
-            guard let symbol = modifier.symbol else { return "Bei jedem Ziehen" }
-            return "Bei jedem Ziehen ausser mit \(symbol)"
+            guard let symbol = modifier.symbol else {
+                return localized("dropzoneTrigger.label.everyDrag", "Every Drag")
+            }
+            return localized("dropzoneTrigger.customLabel.everyDragExcept", "Every Drag Except With %@", symbol)
         }
     }
 }

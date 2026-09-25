@@ -58,7 +58,10 @@ public struct CompiledRuleSet: Sendable {
                         UnusableRule(
                             rule: rule.id,
                             pattern: pattern,
-                            reason: "Der reguläre Ausdruck konnte nicht übersetzt werden."
+                            reason: L.string(
+                                "compiledRuleSet.unusableRule.reason",
+                                "The regular expression could not be compiled."
+                            )
                         )
                     )
                     continue

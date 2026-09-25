@@ -108,7 +108,11 @@ final class ZoomButtonMenu: NSObject, NSMenuDelegate {
             visibleFrames: visibleFrames
         ) else {
             model.reportPinFailure(
-                "Das Fenster von „\(window.applicationName)“ liegt auf keinem konfigurierten Bildschirm."
+                localized(
+                    "zoomButtonMenu.windowOnNoConfiguredDisplay",
+                    "“%@”'s window is not on any configured display.",
+                    window.applicationName
+                )
             )
             return
         }
@@ -121,7 +125,11 @@ final class ZoomButtonMenu: NSObject, NSMenuDelegate {
 
         guard !zones.isEmpty else {
             model.reportPinFailure(
-                "Für den Bildschirm „\(displayAlias)“ gibt es im Profil „\(profile.name)“ keine Zonen."
+                localized(
+                    "zoomButtonMenu.noZonesForDisplay",
+                    "There are no zones for display “%@” in profile “%@”.",
+                    displayAlias.rawValue, profile.name
+                )
             )
             return
         }
@@ -156,7 +164,7 @@ final class ZoomButtonMenu: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         let hint = NSMenuItem(
-            title: "⌥ + Klick: als Regel festhalten",
+            title: localized("zoomButtonMenu.optionClickHint", "⌥ + Click: save as rule"),
             action: nil,
             keyEquivalent: ""
         )
@@ -210,7 +218,7 @@ private final class ZoomButtonMenuItem: NSMenuItem {
     }
 
     required init(coder: NSCoder) {
-        fatalError("Nicht aus dem Interface Builder zu laden.")
+        fatalError("Not loadable from Interface Builder.")
     }
 
     @objc func chosen(_ sender: NSMenuItem) {
@@ -226,7 +234,11 @@ private final class ZoomButtonMenuItem: NSMenuItem {
             engine.place(dropped: window.element, application: application, into: zone.placement)
         } else {
             model.reportPinFailure(
-                "Fenster von „\(applicationName)“ ist nicht mehr erreichbar; nichts wurde platziert."
+                localized(
+                    "zoomButtonMenu.windowNoLongerReachable",
+                    "“%@”'s window is no longer reachable; nothing was placed.",
+                    applicationName
+                )
             )
             return
         }
@@ -242,7 +254,11 @@ private final class ZoomButtonMenuItem: NSMenuItem {
 
         guard let bundleIdentifier, !bundleIdentifier.isEmpty else {
             model.reportPinFailure(
-                "„\(applicationName)“ meldet keine Bundle-Kennung; ohne sie lässt sich keine Regel schreiben."
+                localized(
+                    "zoomButtonMenu.missingBundleIdentifier",
+                    "“%@” reports no bundle identifier; without it, no rule can be written.",
+                    applicationName
+                )
             )
             return
         }

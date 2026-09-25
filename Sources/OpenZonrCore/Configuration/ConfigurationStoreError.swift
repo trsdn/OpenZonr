@@ -41,17 +41,41 @@ public enum ConfigurationStoreError: Error, Hashable, Sendable, CustomStringConv
     public var description: String {
         switch self {
         case let .unreadable(url, underlying):
-            return "Konfiguration \(url.path) ist nicht lesbar: \(underlying)"
+            return L.string(
+                "configurationStoreError.unreadable",
+                "Configuration %@ is not readable: %@",
+                url.path, underlying
+            )
         case let .invalidJSON(url, underlying):
-            return "Konfiguration \(url.path) ist kein gültiges JSON: \(underlying)"
+            return L.string(
+                "configurationStoreError.invalidJSON",
+                "Configuration %@ is not valid JSON: %@",
+                url.path, underlying
+            )
         case let .unsupportedVersion(found, supported):
-            return "Konfiguration hat Version \(found), diese Version von OpenZonr kennt höchstens \(supported)."
+            return L.string(
+                "configurationStoreError.unsupportedVersion",
+                "The configuration has version %lld; this version of OpenZonr knows at most %lld.",
+                found, supported
+            )
         case let .missingMigrationStep(from, to):
-            return "Für die Migration von Version \(from) nach \(to) existiert kein Schritt."
+            return L.string(
+                "configurationStoreError.missingMigrationStep",
+                "There is no migration step from version %lld to %lld.",
+                from, to
+            )
         case let .malformedVersion(url):
-            return "Konfiguration \(url.path) enthält kein gültiges Feld \"version\"."
+            return L.string(
+                "configurationStoreError.malformedVersion",
+                "Configuration %@ has no valid \"version\" field.",
+                url.path
+            )
         case let .writeFailed(url, underlying):
-            return "Konfiguration \(url.path) konnte nicht geschrieben werden: \(underlying)"
+            return L.string(
+                "configurationStoreError.writeFailed",
+                "Configuration %@ could not be written: %@",
+                url.path, underlying
+            )
         }
     }
 }

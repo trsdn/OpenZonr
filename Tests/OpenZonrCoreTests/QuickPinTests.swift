@@ -356,7 +356,7 @@ struct QuickPinTests {
         let report = ConfigurationValidator().validate(configuration)
 
         let objection = try #require(QuickPin.objection(to: outcome, report: report))
-        #expect(objection.contains("überdeckt"))
+        #expect(objection.contains("shadowed"))
     }
 
     @Test("Eine Überdeckung an einer fremden Regel geht den Vorgang nichts an")

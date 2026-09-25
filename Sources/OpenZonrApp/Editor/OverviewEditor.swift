@@ -35,8 +35,11 @@ struct OverviewEditor: View {
             } else {
                 ContentUnavailableMessage(
                     symbol: "rectangle.3.group",
-                    title: "Kein Profil gewählt",
-                    message: "Wähle oben ein Profil aus, um seine Regel-zu-Zone-Übersicht zu sehen."
+                    title: localized("overviewEditor.noProfile.title", "No Profile Selected"),
+                    message: localized(
+                        "overviewEditor.noProfile.message",
+                        "Choose a profile above to see its rule-to-zone overview."
+                    )
                 )
             }
         }
@@ -52,14 +55,16 @@ struct OverviewEditor: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Picker("Profil", selection: $profileID) {
+            Picker(selection: $profileID) {
                 ForEach(document.configuration.profiles) { profile in
                     Text(profile.name).tag(ProfileID?.some(profile.id))
                 }
+            } label: {
+                Text(localized("overviewEditor.profilePicker", "Profile"))
             }
             .frame(maxWidth: 260)
             Spacer()
-            Text("Was geht in welche Zone?")
+            Text(localized("overviewEditor.subtitle", "What goes into which zone?"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -142,7 +147,7 @@ private struct Canvas: View {
         return VStack(alignment: .leading, spacing: 8) {
             notMeasuredNote
             if items.isEmpty || displayHeight <= 0 {
-                Text("Für dieses Profil ist kein Layout beschrieben.")
+                Text(localized("overviewEditor.noLayout", "No layout is described for this profile."))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
@@ -162,10 +167,18 @@ private struct Canvas: View {
 
     @ViewBuilder
     private var notMeasuredNote: some View {
-        Text("Nicht gemessen: die räumliche Anordnung (links/rechts/oben/unten). Gezeigt ist das Größenverhältnis, so wie es der Zoneneditor seit #18 verwendet. Regel-zu-Zone-Zuordnung ist gerechnet, nicht geraten. Überlappende Zonen stehen auf getrennten Ebenen untereinander — zwei Rechtecke am selben Ort könnten sonst nicht beide beschriftet werden.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+        Text(
+            localized(
+                "overviewEditor.notMeasuredNote",
+                "Not measured: the spatial arrangement (left/right/top/bottom). Shown is the size "
+                    + "ratio, the same way the zone editor has used it since #18. Rule-to-zone "
+                    + "assignment is computed, not guessed. Overlapping zones sit on separate layers, "
+                    + "stacked — two rectangles in the same place could otherwise not both be labeled."
+            )
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     struct Item: Identifiable {
@@ -198,7 +211,7 @@ private struct DisplayCard: View {
             // ``ZoneLayering`` und ist headless geprüft.
             ForEach(Array(layers.enumerated()), id: \.offset) { index, zones in
                 if layers.count > 1 {
-                    Text("Ebene \(index + 1) von \(layers.count)")
+                    Text(localized("overviewEditor.layerCaption", "Layer %lld of %lld", index + 1, layers.count))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .padding(.top, index == 0 ? 0 : 6)
@@ -234,14 +247,20 @@ private struct DisplayCard: View {
                 switch item.aspect.source {
                 case .measured:
                     if let size = item.aspect.visibleSize {
-                        Text(String(format: "· %.0f × %.0f pt (gemessen)", size.width, size.height))
+                        let pt = String(format: "%.0f × %.0f pt", size.width, size.height)
+                        Text(localized("overviewEditor.displaySize.measured", "· %@ (measured)", pt))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 case .estimated:
-                    Text("· Bildschirm nicht angeschlossen — 16:10 geschätzt")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        localized(
+                            "overviewEditor.displaySize.estimated",
+                            "· Display not connected — estimated 16:10"
+                        )
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
         }
@@ -294,13 +313,13 @@ private struct ZoneCell: View {
                         Text(zone.zone.name)
                             .font(.caption.weight(.semibold))
                         if isFallback {
-                            Text("(Auffang)")
+                            Text(localized("overviewEditor.zoneCell.fallback", "(fallback)"))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     if zone.isEmpty {
-                        Text("keine Regel zeigt hierher")
+                        Text(localized("overviewEditor.zoneCell.noRule", "no rule points here"))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .italic()
@@ -331,6 +350,6 @@ private struct ZoneCell: View {
         if let bundle = label.bundleIdentifier {
             return "\(label.name) — \(bundle)"
         }
-        return "\(label.name) (jede App)"
+        return localized("overviewEditor.zoneCell.everyApp", "%@ (every app)", label.name)
     }
 }

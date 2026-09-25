@@ -27,13 +27,28 @@ public enum WindowRejectionReason: Hashable, Sendable, CustomStringConvertible {
     public var description: String {
         switch self {
         case let .notOnApplicationLayer(layer):
-            return "Fenster liegt auf Ebene \(layer) statt auf Ebene 0 und ist damit Systemoberfläche."
+            return L.string(
+                "windowRejectionReason.notOnApplicationLayer",
+                "Window is on layer %lld instead of layer 0, so it is system chrome.",
+                layer
+            )
         case let .disallowedSubrole(subrole):
-            return "Subrole \(subrole ?? "(keine)") ist nicht freigegeben."
+            return L.string(
+                "windowRejectionReason.disallowedSubrole",
+                "Subrole %@ is not allowed.",
+                subrole ?? L.string("windowRejectionReason.disallowedSubrole.none", "(none)")
+            )
         case let .tooSmall(actual, minimum):
-            return "Fenster \(actual.width)×\(actual.height) unterschreitet die Mindestgröße \(minimum.width)×\(minimum.height)."
+            return L.string(
+                "windowRejectionReason.tooSmall",
+                "Window %g×%g is below the minimum size %g×%g.",
+                actual.width, actual.height, minimum.width, minimum.height
+            )
         case .notFirstWindowAfterLaunch:
-            return "Nicht das erste Fenster nach dem App-Start."
+            return L.string(
+                "windowRejectionReason.notFirstWindowAfterLaunch",
+                "Not the first window after the app launched."
+            )
         }
     }
 }

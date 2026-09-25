@@ -97,26 +97,58 @@ public enum CompetingWindowManagers {
         var lines: [String] = []
         if !overlays.isEmpty {
             let names = overlays.map(\.name).joined(separator: ", ")
-            lines.append("""
-            \(names) \(overlays.count == 1 ? "läuft" : "laufen") parallel und \
-            \(overlays.count == 1 ? "blendet" : "blenden") beim Ziehen ebenfalls Zonen ein. \
-            Beide Werkzeuge reagieren auf dasselbe Loslassen, und wer zuletzt schreibt, \
-            entscheidet über die Fensterlage — das ist nicht vorhersagbar.
-            """)
-            lines.append("""
-            OpenZonr streitet sich darum nicht: es meldet den Fall und lässt die \
-            Entscheidung beim Nutzer. Für ein eindeutiges Ergebnis entweder \
-            \(names) beenden oder die Dropzones von OpenZonr abschalten \
-            (defaults.dropzones.enabled = false).
-            """)
+            if overlays.count == 1 {
+                lines.append(
+                    L.string(
+                        "competingWindowManagers.overlayWarning.singular",
+                        "%@ is running alongside and also shows zones while dragging. "
+                            + "Both tools react to the same release, and whichever writes last "
+                            + "decides the window's position — that is not predictable.",
+                        names
+                    )
+                )
+            } else {
+                lines.append(
+                    L.string(
+                        "competingWindowManagers.overlayWarning.plural",
+                        "%@ are running alongside and also show zones while dragging. "
+                            + "Both tools react to the same release, and whichever writes last "
+                            + "decides the window's position — that is not predictable.",
+                        names
+                    )
+                )
+            }
+            lines.append(
+                L.string(
+                    "competingWindowManagers.overlayAdvice",
+                    "OpenZonr does not fight over this: it reports the situation and leaves the "
+                        + "decision to the user. For a clear result, either quit %@ or turn off "
+                        + "OpenZonr's dropzones (defaults.dropzones.enabled = false).",
+                    names
+                )
+            )
         }
         if !others.isEmpty {
-            lines.append("""
-            Außerdem \(others.count == 1 ? "läuft" : "laufen") \
-            \(others.map(\.name).joined(separator: ", ")): \
-            \(others.count == 1 ? "greift" : "greifen") auf dieselbe Accessibility-API zu und \
-            kann eine Platzierung nachträglich überschreiben.
-            """)
+            let names = others.map(\.name).joined(separator: ", ")
+            if others.count == 1 {
+                lines.append(
+                    L.string(
+                        "competingWindowManagers.othersWarning.singular",
+                        "%@ is also running: it uses the same Accessibility API and can "
+                            + "overwrite a placement afterwards.",
+                        names
+                    )
+                )
+            } else {
+                lines.append(
+                    L.string(
+                        "competingWindowManagers.othersWarning.plural",
+                        "%@ are also running: they use the same Accessibility API and can "
+                            + "overwrite a placement afterwards.",
+                        names
+                    )
+                )
+            }
         }
         return lines.joined(separator: "\n\n")
     }

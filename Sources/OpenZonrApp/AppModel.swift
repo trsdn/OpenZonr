@@ -43,11 +43,12 @@ final class AppModel {
 
         var headline: String {
             switch self {
-            case .needsPermission: return "Keine Berechtigung"
-            case .needsConfiguration: return "Keine Konfiguration"
-            case .noProfile: return "Kein Profil passt"
-            case .paused: return "Pausiert"
-            case .active: return "Aktiv"
+            case .needsPermission: return localized("appModel.status.headline.needsPermission", "No Permission")
+            case .needsConfiguration:
+                return localized("appModel.status.headline.needsConfiguration", "No Configuration")
+            case .noProfile: return localized("appModel.status.headline.noProfile", "No Profile Matches")
+            case .paused: return localized("appModel.status.headline.paused", "Paused")
+            case .active: return localized("appModel.status.headline.active", "Active")
             }
         }
     }
@@ -86,8 +87,13 @@ final class AppModel {
     /// zwei davon die Sätze auseinandergeschrieben hatten und nur eine
     /// Kollation im Review es merkte.
     enum GuardSentence {
-        static let noConfigurationLoaded = "Es ist keine Konfiguration geladen."
-        static let noActiveProfile = "Kein Profil ist aktiv — ohne Profil ist nicht bekannt, was „hier“ bedeutet."
+        static let noConfigurationLoaded = localized(
+            "appModel.guardSentence.noConfigurationLoaded", "No configuration is loaded."
+        )
+        static let noActiveProfile = localized(
+            "appModel.guardSentence.noActiveProfile",
+            "No profile is active — without a profile, there is no way to know what “here” means."
+        )
     }
 
     var isPaused = false {
@@ -174,8 +180,8 @@ final class AppModel {
             }
         }
 
-        Log.info("OpenZonr — Menüleisten-App gestartet.")
-        Log.detail("Signatur: \(signing.summary)")
+        Log.info(localized("appModel.log.launched", "OpenZonr — menu bar app started."))
+        Log.detail(localized("appModel.log.signature", "Signature: %@", signing.summary))
         loginItemProblem = LoginItem.lastProblem
 
         reloadConfiguration()
@@ -293,8 +299,14 @@ final class AppModel {
             configuration = loaded
             configurationProblem = nil
             reconcileEditor(with: loaded, bytes: bytes)
-            Log.info("Konfiguration geladen: \(configurationURL.path)")
-            Log.info("\(loaded.displays.count) Displays, \(loaded.profiles.count) Profile, \(loaded.rules.filter(\.enabled).count) aktive Regeln")
+            Log.info(localized("appModel.log.configurationLoaded", "Configuration loaded: %@", configurationURL.path))
+            Log.info(
+                localized(
+                    "appModel.log.configurationSummary",
+                    "%lld displays, %lld profiles, %lld active rules",
+                    loaded.displays.count, loaded.profiles.count, loaded.rules.filter(\.enabled).count
+                )
+            )
         } catch let error as CommandError {
             configuration = nil
             configurationProblem = error.description
@@ -304,9 +316,10 @@ final class AppModel {
             configurationProblem = error.description
             Log.warn(error.description)
         } catch {
+            let message = localized("appModel.log.loadFailed", "Failed to load: %@", "\(error)")
             configuration = nil
-            configurationProblem = "Fehler beim Laden: \(error)"
-            Log.warn("Fehler beim Laden: \(error)")
+            configurationProblem = message
+            Log.warn(message)
         }
         if configuration == nil { reconcileEditor(with: nil, bytes: bytes) }
 
@@ -464,7 +477,7 @@ final class AppModel {
                     return c
                 }
             }
-            lastPinMessage = writer.saveProblem ?? "Speichern fehlgeschlagen."
+            lastPinMessage = writer.saveProblem ?? localized("appModel.saveFailed", "Save failed.")
             lastPinFailed = true
             return
         }
@@ -487,7 +500,9 @@ final class AppModel {
         // Ausdruck als `@autoclosure` entgegen und wertet ihn nur aus, wenn es
         // einen Empfänger gibt. Das hier läuft je Geste, also auf einem Weg,
         // der nichts umsonst tun soll.
-        Log.detail("Zug-Ergebnis: \(DragOutcomeWording.sentence(for: outcome) ?? "—")")
+        Log.detail(
+            localized("appModel.log.dragOutcome", "Drag result: %@", DragOutcomeWording.sentence(for: outcome) ?? "—")
+        )
     }
 
     /// Vergisst den letzten Zug.
@@ -622,15 +637,19 @@ final class AppModel {
         isStoppedForUpdate = true
         stopEngine()
         dropzones.stop()
-        Log.info("Fensterbeobachtung für den Update-Tausch angehalten.")
+        Log.info(localized("appModel.log.windowObservationPausedForUpdate", "Window observation paused for update swap."))
     }
 
-    /// Nimmt die Arbeit wieder auf, wenn der Tausch nicht stattgefunden hat.
+    /// Resumes work when the swap did not happen.
     private func resumeAfterFailedInstall() {
         isStoppedForUpdate = false
         refreshPermission(probe: true)
         if windowAccess.isUsable { dropzones.restart() }
-        Log.info("Update nicht installiert — Fensterbeobachtung läuft weiter.")
+        Log.info(
+            localized(
+                "appModel.log.updateNotInstalled", "Update not installed — window observation continues."
+            )
+        )
     }
 
     /// Hält die eigene Arbeit an und tauscht dann das Bundle.
@@ -770,7 +789,11 @@ final class AppModel {
             profile: profile.id,
             visibleFrames: frames
         ) else {
-            lastPinMessage = "Unter diesem Fenster liegt keine Zone des Profils „\(profile.name)“."
+            lastPinMessage = localized(
+                "appModel.pinFrontmostWindow.noZoneUnderWindow",
+                "There is no zone of profile “%@” under this window.",
+                profile.name
+            )
             return
         }
 
@@ -812,8 +835,11 @@ final class AppModel {
                 // the finding is visible at the field; without it the short-lived
                 // document is simply dropped.
                 lastPinMessage = objection + (hasEditorSession
-                    ? " Die Änderung steht im Editor, ist aber nicht gesichert."
-                    : " Nichts wurde geändert.")
+                    ? localized(
+                        "appModel.apply.objection.editorSuffix",
+                        " The change is in the editor, but not saved."
+                    )
+                    : localized("appModel.apply.objection.noEditorSuffix", " Nothing was changed."))
                 Log.warn(objection)
                 return false
             }
@@ -821,13 +847,15 @@ final class AppModel {
             if hasEditorSession {
                 // The editor is open: put the change in front of the user
                 // instead of writing behind their back over their edits.
-                lastPinMessage = outcome.summary + " — im Editor eingetragen, noch nicht gesichert."
+                lastPinMessage = outcome.summary + localized(
+                    "appModel.apply.success.editorSuffix", " — entered in the editor, not yet saved."
+                )
                 lastPinFailed = false
                 return true
             }
 
             guard session.save() else {
-                lastPinMessage = session.saveProblem ?? "Speichern fehlgeschlagen."
+                lastPinMessage = session.saveProblem ?? localized("appModel.saveFailed", "Save failed.")
                 return false
             }
             Log.success(outcome.summary)
@@ -838,7 +866,7 @@ final class AppModel {
             lastPinMessage = error.description
             return false
         } catch {
-            lastPinMessage = "Festhalten fehlgeschlagen: \(error)"
+            lastPinMessage = localized("appModel.apply.pinFailed", "Pin failed: %@", "\(error)")
             return false
         }
     }
@@ -880,22 +908,26 @@ final class AppModel {
         case .needsPermission:
             switch windowAccess {
             case .degraded:
-                return "Vertrauen erteilt, aber keine echten Fenster lesbar"
+                return localized("appModel.statusDetail.degraded", "Trust granted, but no real windows readable")
             case .notTrusted:
-                return "Bedienungshilfen nicht freigegeben"
+                return localized("appModel.statusDetail.notTrusted", "Accessibility not granted")
             case .inconclusive:
-                return "Keine App zum Prüfen erreichbar"
+                return localized("appModel.statusDetail.inconclusive", "No app reachable to check")
             case .granted:
                 return "—"
             }
         case .needsConfiguration:
             return configurationURL.lastPathComponent
         case .noProfile:
-            return "\(availableProfiles.count) Profile in der Konfiguration"
+            return localized(
+                "appModel.statusDetail.noProfile", "%lld profiles in the configuration", availableProfiles.count
+            )
         case .paused, .active:
             guard let profile = activeProfile else { return "—" }
-            let pinned = profileState?.isPinned == true ? " (von Hand)" : ""
-            return "Profil: \(profile.name)\(pinned)"
+            let pinned = profileState?.isPinned == true
+                ? localized("appModel.statusDetail.pinnedSuffix", " (by hand)")
+                : ""
+            return localized("appModel.statusDetail.profile", "Profile: %@%@", profile.name, pinned)
         }
     }
 }

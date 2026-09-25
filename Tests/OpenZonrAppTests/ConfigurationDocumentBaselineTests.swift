@@ -48,7 +48,7 @@ struct ConfigurationDocumentBaselineTests {
         #expect(document.save() == false)
 
         #expect(document.hasExternalChange)
-        #expect(document.saveProblem?.contains("außerhalb") == true)
+        #expect(document.saveProblem?.contains("outside") == true)
         #expect(try diskRoles(temp.url).contains("extra"))
         // Die eigene Änderung ist nicht verloren.
         #expect(document.configuration.defaults.dropzones.enabled == true)

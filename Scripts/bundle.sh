@@ -47,9 +47,11 @@
 #     Der Broker kennt dafür nur einen Namen und benutzt ihn für beides.
 #     Die Bedienungshilfen-Freigabe hängt an Bundle-Identifier und Team (siehe
 #     die Designated Requirement oben), nicht am Namen der Binärdatei.
-#   * AppUpdater_AppUpdater.bundle liegt unter Contents/Resources. AppUpdater
-#     bringt es als SwiftPM-Ressourcenbündel mit; ohne die Kopie fehlt es einem
-#     lokal gebauten Bundle, und der Unterschied fiele erst beim Update auf.
+#   * AppUpdater_AppUpdater.bundle, OpenZonr_OpenZonrApp.bundle und
+#     OpenZonr_OpenZonrCore.bundle liegen unter Contents/Resources. Die
+#     letzten beiden tragen die übersetzten Oberflächentexte seit #83; ohne
+#     die Kopie fehlt eines einem lokal gebauten Bundle, und der Unterschied
+#     fiele erst beim Gebrauch der Übersetzung auf.
 #
 # Eine Stelle läuft seit Issue #55 bewusst auseinander: das App-Icon. Hier wird
 # Resources/AppIcon.icns nach Contents/Resources kopiert, `assemble_menu_bar_swiftpm`
@@ -91,6 +93,23 @@ BINARY="$BIN_DIR/$PRODUCT"
 RESOURCE_BUNDLE="$BIN_DIR/AppUpdater_AppUpdater.bundle"
 [ -d "$RESOURCE_BUNDLE" ] || { echo "Ressourcenbündel fehlt: $RESOURCE_BUNDLE" >&2; exit 1; }
 
+# Zwei Ressourcenbündel tragen die übersetzten Oberflächentexte
+# (Localizable.xcstrings, von SwiftPM nach <locale>.lproj/Localizable.strings
+# übersetzt) — eines je Ziel, das ein eigenes hat: OpenZonrApp für Menü,
+# Editor und Statusfenster, OpenZonrCore für Prüfbefunde und
+# Zug-Ergebnissätze. Fehlt eines, läuft die App weiter — sie zeigt dann für
+# genau diesen Teil überall die englischen Quelltexte, und niemandem fiele
+# auf, dass die Übersetzung nicht ausgeliefert wurde. Deshalb hier laut
+# abbrechen.
+#
+# Dieselben Bündel müssen im Broker-Profil unter `nested_resource_bundles`
+# stehen, sonst fehlen sie genau im veröffentlichten Bundle und nur dort.
+APP_RESOURCE_BUNDLE="$BIN_DIR/OpenZonr_OpenZonrApp.bundle"
+[ -d "$APP_RESOURCE_BUNDLE" ] || { echo "Ressourcenbündel fehlt: $APP_RESOURCE_BUNDLE" >&2; exit 1; }
+
+CORE_RESOURCE_BUNDLE="$BIN_DIR/OpenZonr_OpenZonrCore.bundle"
+[ -d "$CORE_RESOURCE_BUNDLE" ] || { echo "Ressourcenbündel fehlt: $CORE_RESOURCE_BUNDLE" >&2; exit 1; }
+
 # Das App-Icon liegt als erzeugte Datei im Repo (Scripts/make-icon.swift).
 # Info.plist verweist mit CFBundleIconFile darauf; fehlt die Datei, zeigt macOS
 # stumm das Platzhalter-Icon — also lieber hier abbrechen.
@@ -102,6 +121,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/$PRODUCT"
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
+cp -R "$APP_RESOURCE_BUNDLE" "$APP/Contents/Resources/"
+cp -R "$CORE_RESOURCE_BUNDLE" "$APP/Contents/Resources/"
 # Vor dem Signieren, sonst siegelt die Signatur ein Bundle ohne Icon und
 # `codesign --verify --deep --strict` schlägt hinterher fehl.
 cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"

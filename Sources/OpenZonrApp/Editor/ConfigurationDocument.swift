@@ -74,8 +74,11 @@ final class ConfigurationDocument {
     /// Laufzeit-Konfiguration nachzieht.
     var onExternalChange: (() -> Void)?
 
-    static let externalChangeMessage =
-        "Die Konfigurationsdatei wurde außerhalb des Editors geändert. „Verwerfen“ übernimmt die Datei, „Trotzdem sichern“ überschreibt sie."
+    static let externalChangeMessage = localized(
+        "configurationDocument.externalChangeMessage",
+        "The configuration file was changed outside the editor. “Discard” adopts the file, "
+            + "“Save Anyway” overwrites it."
+    )
 
     static func bytes(at url: URL) -> Data? { try? Data(contentsOf: url) }
 
@@ -194,7 +197,7 @@ final class ConfigurationDocument {
             saveState = .failed(error.description)
             return false
         } catch {
-            saveState = .failed("Speichern fehlgeschlagen: \(error)")
+            saveState = .failed(localized("configurationDocument.saveFailed", "Save failed: %@", "\(error)"))
             return false
         }
     }

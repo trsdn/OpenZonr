@@ -1,115 +1,128 @@
 import Testing
 @testable import OpenZonrCore
 
-/// Der Satz, der im Menü steht, wenn ein Zug vorbei ist.
+/// The sentence shown in the menu once a drag is over.
 ///
-/// Er ist die einzige Rückmeldung über das Ziehen, die ein Nutzer je zu sehen
-/// bekommt — und der einzige Hinweis, den der offene Fehler „die Zonen kommen
-/// nicht mit ⌘" hinterlässt. Ein falscher Satz führt die Suche in die falsche
-/// Richtung, deshalb steht jede Formulierung hier einzeln.
-@Suite("Letzter Zug — der Satz im Menü")
+/// It is the only feedback about a drag a user ever sees — and the only clue
+/// left by the open bug "zones don't come with ⌘". A wrong sentence sends the
+/// search in the wrong direction, so every wording is pinned down here
+/// individually.
+///
+/// The expected text is the English `value` each `L.string(...)` call
+/// carries in `DragOutcome.swift` — there is no German catalog entry for
+/// these keys yet, so the English fallback is exactly what runs today,
+/// regardless of locale. Once a German translation is added, this file needs
+/// no change: it tests the (source-language) wording `L.string` produces
+/// when nothing overrides it, not a specific locale.
+@Suite("Last drag — the sentence in the menu")
 struct DragOutcomeWordingTests {
 
-    @Test("Ohne beobachteten Zug gibt es keine Zeile")
+    @Test("No observed drag means no line")
     func noOutcomeNoLine() {
         #expect(DragOutcomeWording.sentence(for: nil) == nil)
     }
 
-    @Test("Zonen gesehen")
+    @Test("Zones seen")
     func shown() {
-        #expect(DragOutcomeWording.sentence(for: .zonesShown) == "Letzter Zug: Zonen wurden angezeigt.")
+        #expect(DragOutcomeWording.sentence(for: .zonesShown) == "Last drag: zones were shown.")
     }
 
-    @Test("Der Fall aus dem offenen Fehler: ⌘ war nicht gedrückt")
+    @Test("The case from the open bug: ⌘ was not held down")
     func awaitingCommand() {
         #expect(
             DragOutcomeWording.sentence(for: .zonesHidden(.awaitingModifier(.command)))
-                == "Letzter Zug: keine Zonen — ⌘ war nicht gedrückt."
+                == "Last drag: no zones — ⌘ was not held down."
         )
     }
 
-    @Test("Die alte Polarität: Taste hat die Zonen unterdrückt")
+    @Test("The old polarity: the key suppressed the zones")
     func suppressed() {
         #expect(
             DragOutcomeWording.sentence(for: .zonesHidden(.suppressed(.option)))
-                == "Letzter Zug: keine Zonen — ⌥ war gedrückt."
+                == "Last drag: no zones — ⌥ was held down."
         )
     }
 
-    @Test("Abgeschaltet nennt den Menüeintrag, nicht das Feld in der Datei")
+    @Test("Disabled names the menu entry, not the field in the file")
     func disabled() {
         #expect(
             DragOutcomeWording.sentence(for: .zonesHidden(.disabled))
-                == "Letzter Zug: keine Zonen — „Zonen beim Ziehen“ steht auf „Aus“."
+                == "Last drag: no zones — “Zones while dragging” is set to “Off”."
         )
     }
 
-    @Test("Zu kurz gezogen — ohne Zahlen")
+    @Test("Too short a drag — no numbers")
     func belowThreshold() {
         #expect(
             DragOutcomeWording.sentence(for: .zonesHidden(.belowThreshold(travelled: 3, required: 12)))
-                == "Letzter Zug: keine Zonen — es wurde zu kurz gezogen."
+                == "Last drag: no zones — the drag was too short."
         )
     }
 
-    @Test("Eine Taste ohne Symbol lässt keine Lücke im Satz")
+    @Test("A key with no symbol leaves no gap in the sentence")
     func noneModifier() {
         #expect(
             DragOutcomeWording.sentence(for: .zonesHidden(.awaitingModifier(.none)))
-                == "Letzter Zug: keine Zonen."
+                == "Last drag: no zones."
         )
     }
 
-    @Test("Kein Setup aktiv")
+    @Test("No setup active")
     func noSetup() {
         #expect(
             DragOutcomeWording.sentence(for: .noSetupActive)
-                == "Letzter Zug: keine Zonen — für die angeschlossenen Bildschirme ist kein Setup aktiv."
+                == "Last drag: no zones — no setup is active for the connected screens."
         )
     }
 
-    @Test("Kein Fenster unter dem Zeiger")
+    @Test("No window under the pointer")
     func noWindow() {
         #expect(
             DragOutcomeWording.sentence(for: .noWindowFound)
-                == "Letzter Zug: kein Fenster unter dem Zeiger erkannt."
+                == "Last drag: no window detected under the pointer."
         )
     }
 
-    @Test("Kein Bewegungsbeleg — die zwei Gründe klingen verschieden")
+    @Test("No movement evidence — the two reasons sound different")
     func noEvidence() {
         #expect(
             DragOutcomeWording.sentence(for: .noMovementEvidence(.budgetExhausted))
-                == "Letzter Zug: Bewegung nicht als Fensterzug erkannt."
+                == "Last drag: movement not recognized as a window drag."
         )
         #expect(
             DragOutcomeWording.sentence(for: .noMovementEvidence(.resizedInstead))
-                == "Letzter Zug: das Fenster wurde in der Grösse geändert, nicht bewegt."
+                == "Last drag: the window was resized, not moved."
         )
     }
 
-    @Test("Losgelassen, bevor der Beleg da war")
+    @Test("Released before the evidence arrived")
     func released() {
         #expect(
             DragOutcomeWording.sentence(for: .releasedBeforeEvidence)
-                == "Letzter Zug: losgelassen, bevor sich das Fenster bewegt hat."
+                == "Last drag: released before the window moved."
         )
     }
 
-    @Test("Ein Abbruch nennt seinen Grund")
+    /// The reason text itself is a plain test fixture, not real
+    /// `EventTapDragTracker` output — that source is still German and not
+    /// migrated yet (see the comment on `.cancelled` in `DragOutcome.swift`),
+    /// so a real cancellation sentence can currently read as English glued to
+    /// a German clause. This test only pins down that the reason is embedded
+    /// verbatim, in English, since its own fixture is English.
+    @Test("A cancellation names its reason")
     func cancelled() {
         #expect(
-            DragOutcomeWording.sentence(for: .cancelled(reason: "Der Tap wurde abgeschaltet."))
-                == "Letzter Zug: abgebrochen — Der Tap wurde abgeschaltet."
+            DragOutcomeWording.sentence(for: .cancelled(reason: "The tap was disabled."))
+                == "Last drag: cancelled — The tap was disabled."
         )
     }
 
-    @Test("Ein `show`, das als `hidden` verpackt ankommt, lügt nicht")
+    @Test("A `show` arriving wrapped as `hidden` does not lie")
     func hiddenShowIsStillShown() {
-        #expect(DragOutcomeWording.sentence(for: .zonesHidden(.show)) == "Letzter Zug: Zonen wurden angezeigt.")
+        #expect(DragOutcomeWording.sentence(for: .zonesHidden(.show)) == "Last drag: zones were shown.")
     }
 
-    @Test("Jedes Tastensymbol steht für genau eine Taste")
+    @Test("Every key symbol stands for exactly one key")
     func symbols() {
         #expect(DropzoneModifier.command.symbol == "⌘")
         #expect(DropzoneModifier.option.symbol == "⌥")

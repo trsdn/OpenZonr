@@ -1,7 +1,7 @@
 import AppKit
 import OpenZonrCore
 
-/// „Diese App immer hier öffnen?“ — asked next to the window that was just
+/// "Always open this app here?" — asked next to the window that was just
 /// dropped, and easy to ignore.
 ///
 /// An `NSAlert` was the obvious choice and is wrong here: it activates the app,
@@ -97,9 +97,17 @@ private final class OfferView: NSView {
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
 
-        let yes = NSButton(title: "Immer hier", target: self, action: #selector(accept))
+        let yes = NSButton(
+            title: localized("dropOfferPanel.acceptButton", "Always here"),
+            target: self,
+            action: #selector(accept)
+        )
         yes.keyEquivalent = "\r"
-        let no = NSButton(title: "Nur diesmal", target: self, action: #selector(decline))
+        let no = NSButton(
+            title: localized("dropOfferPanel.declineButton", "Just this once"),
+            target: self,
+            action: #selector(decline)
+        )
         for button in [yes, no] {
             button.bezelStyle = .rounded
             button.translatesAutoresizingMaskIntoConstraints = false

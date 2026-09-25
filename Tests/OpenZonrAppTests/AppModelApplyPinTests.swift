@@ -77,8 +77,8 @@ struct AppModelApplyPinTests {
 
         #expect(ok == true)
         #expect(model.lastPinFailed == false)
-        #expect(model.lastPinMessage?.contains("im Editor eingetragen") == true)
-        #expect(model.lastPinMessage?.contains("nicht gesichert") == true)
+        #expect(model.lastPinMessage?.contains("entered in the editor") == true)
+        #expect(model.lastPinMessage?.contains("not yet saved") == true)
 
         // Datei bleibt Byte für Byte wie vorher — anders als ohne Editor,
         // wo `save()` durchläuft.
@@ -132,14 +132,14 @@ struct AppModelApplyPinTests {
         #expect(ok == false)
         #expect(model.lastPinFailed == true)
         #expect(model.lastPinMessage != nil)
-        // Der Satz sagt „Die Konfiguration hätte danach einen Fehler …"
-        // (siehe `QuickPin.objection`) — nicht „Regel angelegt".
-        #expect(model.lastPinMessage?.contains("Fehler") == true)
-        #expect(model.lastPinMessage?.contains("Regel „Neu → Links“ angelegt") == false,
-                "Bei Einspruch darf keine Erfolgszusammenfassung erscheinen.")
+        // The sentence reads "The configuration would then have an error …"
+        // (see `QuickPin.objection`, localized since #83) — not "Rule created".
+        #expect(model.lastPinMessage?.contains("error") == true)
+        #expect(model.lastPinMessage?.contains("Rule “Neu → Links” created") == false,
+                "An objection must not also show a success summary.")
         // Editor ist offen: Nachricht weist darauf hin, dass die Änderung im
         // Editor steht, aber nicht gesichert ist.
-        #expect(model.lastPinMessage?.contains("nicht gesichert") == true)
+        #expect(model.lastPinMessage?.contains("not saved") == true)
     }
 
     /// Ohne offene Editor-Session, aber mit Einspruch: der Satz sagt
@@ -189,7 +189,7 @@ struct AppModelApplyPinTests {
 
         #expect(ok == false)
         #expect(model.lastPinFailed == true)
-        #expect(model.lastPinMessage?.contains("Nichts wurde geändert") == true)
+        #expect(model.lastPinMessage?.contains("Nothing was changed") == true)
     }
 
     /// Einspruch mit offener Editor-Session: die Menüzeile weist auf den
@@ -228,8 +228,8 @@ struct AppModelApplyPinTests {
 
         #expect(ok == false)
         #expect(model.lastPinFailed == true)
-        #expect(model.lastPinMessage?.contains("Editor") == true)
-        #expect(model.lastPinMessage?.contains("nicht gesichert") == true)
+        #expect(model.lastPinMessage?.contains("editor") == true)
+        #expect(model.lastPinMessage?.contains("not saved") == true)
     }
 
     /// `QuickPin.Failure` — z. B. leere Bundle-ID — bubblet als Meldung durch.

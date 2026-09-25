@@ -1,0 +1,1568 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "competingWindowManagers.othersWarning.plural": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ are also running: they use the same Accessibility API and can overwrite a placement afterwards."
+          }
+        }
+      }
+    },
+    "competingWindowManagers.othersWarning.singular": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is also running: it uses the same Accessibility API and can overwrite a placement afterwards."
+          }
+        }
+      }
+    },
+    "competingWindowManagers.overlayAdvice": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr does not fight over this: it reports the situation and leaves the decision to the user. For a clear result, either quit %@ or turn off OpenZonr's dropzones (defaults.dropzones.enabled = false)."
+          }
+        }
+      }
+    },
+    "competingWindowManagers.overlayWarning.plural": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ are running alongside and also show zones while dragging. Both tools react to the same release, and whichever writes last decides the window's position — that is not predictable."
+          }
+        }
+      }
+    },
+    "competingWindowManagers.overlayWarning.singular": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is running alongside and also shows zones while dragging. Both tools react to the same release, and whichever writes last decides the window's position — that is not predictable."
+          }
+        }
+      }
+    },
+    "compiledRuleSet.unusableRule.reason": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The regular expression could not be compiled."
+          }
+        }
+      }
+    },
+    "configurationStoreError.invalidJSON": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration %@ is not valid JSON: %@"
+          }
+        }
+      }
+    },
+    "configurationStoreError.malformedVersion": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration %@ has no valid \"version\" field."
+          }
+        }
+      }
+    },
+    "configurationStoreError.missingMigrationStep": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no migration step from version %lld to %lld."
+          }
+        }
+      }
+    },
+    "configurationStoreError.unreadable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration %@ is not readable: %@"
+          }
+        }
+      }
+    },
+    "configurationStoreError.unsupportedVersion": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The configuration has version %lld; this version of OpenZonr knows at most %lld."
+          }
+        }
+      }
+    },
+    "configurationStoreError.writeFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration %@ could not be written: %@"
+          }
+        }
+      }
+    },
+    "dragOutcome.cancelled": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cancelled — %@"
+          }
+        }
+      }
+    },
+    "dragOutcome.hidden.awaitingModifier": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no zones — %@ was not held down."
+          }
+        }
+      }
+    },
+    "dragOutcome.hidden.belowThreshold": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no zones — the drag was too short."
+          }
+        }
+      }
+    },
+    "dragOutcome.hidden.disabled": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no zones — “Zones while dragging” is set to “Off”."
+          }
+        }
+      }
+    },
+    "dragOutcome.hidden.noZones": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no zones."
+          }
+        }
+      }
+    },
+    "dragOutcome.hidden.suppressed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no zones — %@ was held down."
+          }
+        }
+      }
+    },
+    "dragOutcome.lastDrag": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last drag: %@"
+          }
+        }
+      }
+    },
+    "dragOutcome.noMovementEvidence.budgetExhausted": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "movement not recognized as a window drag."
+          }
+        }
+      }
+    },
+    "dragOutcome.noMovementEvidence.resizedInstead": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the window was resized, not moved."
+          }
+        }
+      }
+    },
+    "dragOutcome.noSetupActive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no zones — no setup is active for the connected screens."
+          }
+        }
+      }
+    },
+    "dragOutcome.noWindowFound": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no window detected under the pointer."
+          }
+        }
+      }
+    },
+    "dragOutcome.releasedBeforeEvidence": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "released before the window moved."
+          }
+        }
+      }
+    },
+    "dragOutcome.zonesHiddenWithoutReason": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no zones — the reason was not recorded."
+          }
+        }
+      }
+    },
+    "dragOutcome.zonesShown": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zones were shown."
+          }
+        }
+      }
+    },
+    "dropRuleOffer.alreadyPinned": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” already points at %@; there is nothing to decide."
+          }
+        }
+      }
+    },
+    "dropRuleOffer.missingBundleIdentifier": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” reports no bundle identifier; without it, no rule can be written."
+          }
+        }
+      }
+    },
+    "dropRuleOffer.offerSwitchedOff": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The offer after a drop is switched off in the configuration."
+          }
+        }
+      }
+    },
+    "dropRuleOffer.pinImpossible": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No rule could be written from this drop: %@"
+          }
+        }
+      }
+    },
+    "dropRuleOffer.question": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always open “%@” in %@ (%@)?"
+          }
+        }
+      }
+    },
+    "dropzoneActivation.explanation.awaitingModifier": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hold %@ for the zones to appear."
+          }
+        }
+      }
+    },
+    "dropzoneActivation.explanation.belowThreshold": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only %lld of %lld points dragged so far."
+          }
+        }
+      }
+    },
+    "dropzoneActivation.explanation.disabled": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dropzones are switched off in the configuration."
+          }
+        }
+      }
+    },
+    "dropzoneActivation.explanation.show": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zones are shown."
+          }
+        }
+      }
+    },
+    "dropzoneActivation.explanation.suppressed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ held down — dragging freely."
+          }
+        }
+      }
+    },
+    "dropzoneActivationRule.decodingError.missingField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An activation field with neither showsWhile nor showsUnless is not an offer: it leaves open when the zones appear. Allowed forms: {\"showsWhile\": \"command\"} or {\"showsUnless\": \"option\"}."
+          }
+        }
+      }
+    },
+    "dropzoneModifier.label.command": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command (⌘)"
+          }
+        }
+      }
+    },
+    "dropzoneModifier.label.control": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control (⌃)"
+          }
+        }
+      }
+    },
+    "dropzoneModifier.label.none": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "none"
+          }
+        }
+      }
+    },
+    "dropzoneModifier.label.option": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Option (⌥)"
+          }
+        }
+      }
+    },
+    "dropzoneModifier.label.shift": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shift (⇧)"
+          }
+        }
+      }
+    },
+    "dropzoneSuspension.explanation.paused": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placement is paused."
+          }
+        }
+      }
+    },
+    "dropzoneSuspension.explanation.switchedOff": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dropzones are switched off in the configuration."
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.aspectRatio": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aspect ratio %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.bundleIdentifier": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bundle identifier (%@)"
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.everyWindow": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every window (not only the first)"
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.maximumSize": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "maximum size %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.minimumSize": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "minimum size %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.onlyFirstWindow": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only the first window after the app launches"
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.roles": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "role (AX): %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.subroles": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "subrole (AX): %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.caveat.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "window title (pattern %@)"
+          }
+        }
+      }
+    },
+    "dryRunPreview.noMatch": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — no rule applies."
+          }
+        }
+      }
+    },
+    "dryRunPreview.reason.displayNotConnected": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "display %@ is not currently connected"
+          }
+        }
+      }
+    },
+    "dryRunPreview.reason.invalidShare": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "invalid zone share (%lld slots, index %lld)"
+          }
+        }
+      }
+    },
+    "dryRunPreview.reason.noActiveProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no active profile for the connected screens"
+          }
+        }
+      }
+    },
+    "dryRunPreview.reason.unknownDisplay": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unknown display %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.reason.unknownLayout": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unknown layout %@ for %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.reason.unknownZone": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unknown zone %@ in %@ on %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.rulePriority": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rule “%@” (priority %lld)"
+          }
+        }
+      }
+    },
+    "dryRunPreview.wouldGoTo": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "would go to %@ on %@"
+          }
+        }
+      }
+    },
+    "dryRunPreview.wouldGoToRole": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "would go into role “%@”"
+          }
+        }
+      }
+    },
+    "geometry.rect.nonPositiveHeight": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The zone's height must be greater than 0."
+          }
+        }
+      }
+    },
+    "geometry.rect.nonPositiveWidth": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The zone's width must be greater than 0."
+          }
+        }
+      }
+    },
+    "geometry.rect.overflowHorizontal": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The zone extends past the visible area horizontally."
+          }
+        }
+      }
+    },
+    "geometry.rect.overflowVertical": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The zone extends past the visible area vertically."
+          }
+        }
+      }
+    },
+    "geometry.rect.valueOutOfRange": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Value %g is outside the allowed range 0 to 1."
+          }
+        }
+      }
+    },
+    "geometry.zoneShare.slotIndexOutOfRange": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slot index %lld is outside the %lld slots."
+          }
+        }
+      }
+    },
+    "geometry.zoneShare.tooFewSlots": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A zone share needs at least two slots."
+          }
+        }
+      }
+    },
+    "identifierUniqueness.duplicateDisplayAlias": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display alias %@ is used more than once."
+          }
+        }
+      }
+    },
+    "identifierUniqueness.duplicateLayoutID": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout %@ is used more than once on display %@."
+          }
+        }
+      }
+    },
+    "identifierUniqueness.duplicateProfileID": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile ID %@ is used more than once."
+          }
+        }
+      }
+    },
+    "identifierUniqueness.duplicateRoleID": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Role ID %@ is used more than once."
+          }
+        }
+      }
+    },
+    "identifierUniqueness.duplicateRuleID": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule ID %@ is used more than once."
+          }
+        }
+      }
+    },
+    "identifierUniqueness.duplicateZoneID": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone %@ is used more than once in layout %@."
+          }
+        }
+      }
+    },
+    "layoutTemplate.displayName.fifths": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fifths"
+          }
+        }
+      }
+    },
+    "layoutTemplate.displayName.halves": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halves"
+          }
+        }
+      }
+    },
+    "layoutTemplate.displayName.quarters": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quarters"
+          }
+        }
+      }
+    },
+    "layoutTemplate.displayName.thirds": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thirds"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.center": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Center"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.fifth.1": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First fifth"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.fifth.2": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Second fifth"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.fifth.3": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Third fifth"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.fifth.4": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fourth fifth"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.fifth.5": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fifth fifth"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.left": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.quarter.1": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First quarter"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.quarter.2": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Second quarter"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.quarter.3": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Third quarter"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.quarter.4": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fourth quarter"
+          }
+        }
+      }
+    },
+    "layoutTemplate.zone.right": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right"
+          }
+        }
+      }
+    },
+    "localizationTests.probe": {
+      "comment": "Not user-facing. Exists only so LocalizationTests can prove the resource-bundle plumbing (Bundle.module -> OpenZonr_OpenZonrCore.bundle -> de.lproj) against a real compiled entry, without coupling to product wording that might change for unrelated reasons.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de-Probe"
+          }
+        }
+      }
+    },
+    "pattern.invalidTitlePattern": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The window title pattern is invalid: %@"
+          }
+        }
+      }
+    },
+    "policy.aspectRatioInverted": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The minimum aspect ratio is greater than the maximum."
+          }
+        }
+      }
+    },
+    "policy.aspectRatioNonPositive.maximum": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The maximum aspect ratio must be greater than 0."
+          }
+        }
+      }
+    },
+    "policy.aspectRatioNonPositive.minimum": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The minimum aspect ratio must be greater than 0."
+          }
+        }
+      }
+    },
+    "policy.negativeDuration": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A duration must not be negative."
+          }
+        }
+      }
+    },
+    "policy.nonPositiveWindowSize.height": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The window height must be greater than 0."
+          }
+        }
+      }
+    },
+    "policy.nonPositiveWindowSize.width": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The window width must be greater than 0."
+          }
+        }
+      }
+    },
+    "policy.retryAttemptsTooLow": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The number of placement attempts must be at least 1."
+          }
+        }
+      }
+    },
+    "profileFingerprint.duplicate": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This fingerprint collides with profile %@."
+          }
+        }
+      }
+    },
+    "profileFingerprint.empty": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A profile fingerprint must contain at least one display."
+          }
+        }
+      }
+    },
+    "profileFingerprint.unknownDisplay": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The profile fingerprint refers to the unknown display %@."
+          }
+        }
+      }
+    },
+    "quickPin.failure.missingBundleIdentifier": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The app reports no bundle identifier; without it, no rule can be written."
+          }
+        }
+      }
+    },
+    "quickPin.failure.unknownDisplay": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display %@ is not in the configuration."
+          }
+        }
+      }
+    },
+    "quickPin.failure.unknownLayout": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No layout can be resolved for display %@."
+          }
+        }
+      }
+    },
+    "quickPin.failure.unknownProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile %@ is not in the configuration."
+          }
+        }
+      }
+    },
+    "quickPin.failure.unknownZone": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The layout of %@ has no zone %@."
+          }
+        }
+      }
+    },
+    "quickPin.objection.shadowedRuleSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ The window would keep opening somewhere else."
+          }
+        }
+      }
+    },
+    "quickPin.objection.wouldError": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The configuration would then have an error: %@"
+          }
+        }
+      }
+    },
+    "quickPin.role.autoCreatedSummary": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatically created for “%@”."
+          }
+        }
+      }
+    },
+    "quickPin.rule.createdSummary": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule “%@” created, priority %lld."
+          }
+        }
+      }
+    },
+    "quickPin.rule.retargetedSummary": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule “%@” now points at %@ (%@)."
+          }
+        }
+      }
+    },
+    "referenceIntegrity.unknownDefaultLayout": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The default layout %@ does not exist on display %@."
+          }
+        }
+      }
+    },
+    "referenceIntegrity.unknownDisplayInBinding.profileLayouts": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile %@ refers to the unknown display %@."
+          }
+        }
+      }
+    },
+    "referenceIntegrity.unknownDisplayInBinding.roleBinding": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This role binding refers to the unknown display %@."
+          }
+        }
+      }
+    },
+    "referenceIntegrity.unknownLayoutInProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display %@ has no layout %@."
+          }
+        }
+      }
+    },
+    "referenceIntegrity.unknownRoleInRule": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule %@ refers to the unknown role %@."
+          }
+        }
+      }
+    },
+    "referenceIntegrity.unknownZoneInBinding": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout %@ on display %@ has no zone %@."
+          }
+        }
+      }
+    },
+    "ruleCriteria.criterion.aspectRatio": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aspect ratio"
+          }
+        }
+      }
+    },
+    "ruleCriteria.criterion.bundleIdentifier": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bundle identifier"
+          }
+        }
+      }
+    },
+    "ruleCriteria.criterion.maximumSize": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "maximum size"
+          }
+        }
+      }
+    },
+    "ruleCriteria.criterion.minimumSize": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "minimum size"
+          }
+        }
+      }
+    },
+    "ruleCriteria.criterion.onlyFirstWindowAfterLaunch": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "first window after launch"
+          }
+        }
+      }
+    },
+    "ruleCriteria.criterion.roles": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "role (AX)"
+          }
+        }
+      }
+    },
+    "ruleCriteria.criterion.subroles": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "subrole (AX)"
+          }
+        }
+      }
+    },
+    "ruleCriteria.criterion.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "window title"
+          }
+        }
+      }
+    },
+    "ruleHygiene.shadowedRule": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule %@ is fully shadowed by rule %@."
+          }
+        }
+      }
+    },
+    "ruleHygiene.unusedRole": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No rule uses role %@."
+          }
+        }
+      }
+    },
+    "windowRejectionReason.disallowedSubrole": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subrole %@ is not allowed."
+          }
+        }
+      }
+    },
+    "windowRejectionReason.disallowedSubrole.none": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(none)"
+          }
+        }
+      }
+    },
+    "windowRejectionReason.notFirstWindowAfterLaunch": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not the first window after the app launched."
+          }
+        }
+      }
+    },
+    "windowRejectionReason.notOnApplicationLayer": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Window is on layer %lld instead of layer 0, so it is system chrome."
+          }
+        }
+      }
+    },
+    "windowRejectionReason.tooSmall": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Window %g×%g is below the minimum size %g×%g."
+          }
+        }
+      }
+    },
+    "zoneReachability.activationAreaDetached": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The activation area of zone “%@” does not overlap its own target frame. Allowed — this is how a zone is triggered from a screen edge — but more often a mistake."
+          }
+        }
+      }
+    },
+    "zoneReachability.zoneUnreachable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone “%@” is unreachable: its activation area is fully covered by smaller zones on the same layer. Give it its own “activationArea” that sits free."
+          }
+        }
+      }
+    },
+    "zoneResolutionFailure.invalidShare": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid zone share: %lld slots, index %lld."
+          }
+        }
+      }
+    },
+    "zoneResolutionFailure.missingVisibleFrame": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display %@ has no visible frame."
+          }
+        }
+      }
+    },
+    "zoneResolutionFailure.unknownDisplay": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown display %@."
+          }
+        }
+      }
+    },
+    "zoneResolutionFailure.unknownLayout": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display %@ has no layout %@."
+          }
+        }
+      }
+    },
+    "zoneResolutionFailure.unknownZone": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout %@ on display %@ has no zone %@."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

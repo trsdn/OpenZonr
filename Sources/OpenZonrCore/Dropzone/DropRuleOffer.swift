@@ -31,13 +31,28 @@ public enum DropRuleOffer {
         public var description: String {
             switch self {
             case let .missingBundleIdentifier(name):
-                return "„\(name)“ meldet keine Bundle-Kennung; ohne sie lässt sich keine Regel schreiben."
+                return L.string(
+                    "dropRuleOffer.missingBundleIdentifier",
+                    "“%@” reports no bundle identifier; without it, no rule can be written.",
+                    name
+                )
             case .offerSwitchedOff:
-                return "Das Angebot nach dem Ablegen ist in der Konfiguration abgeschaltet."
+                return L.string(
+                    "dropRuleOffer.offerSwitchedOff",
+                    "The offer after a drop is switched off in the configuration."
+                )
             case let .alreadyPinned(name, zone):
-                return "„\(name)“ zeigt bereits auf \(zone); es gibt nichts zu entscheiden."
+                return L.string(
+                    "dropRuleOffer.alreadyPinned",
+                    "“%@” already points at %@; there is nothing to decide.",
+                    name, zone
+                )
             case let .pinImpossible(reason):
-                return "Aus dem Ablegen ließe sich keine Regel schreiben: \(reason)"
+                return L.string(
+                    "dropRuleOffer.pinImpossible",
+                    "No rule could be written from this drop: %@",
+                    reason
+                )
             }
         }
     }
@@ -128,10 +143,14 @@ public enum DropRuleOffer {
 
     /// The question, with the place named.
     ///
-    /// Naming the zone is the point: "Diese App immer hier öffnen?" leaves the
-    /// user guessing what "hier" resolved to when zones overlap, and a rule
+    /// Naming the zone is the point: "Always open this app here?" leaves the
+    /// user guessing what "here" resolved to when zones overlap, and a rule
     /// written from a misunderstanding is worse than no rule.
     public static func question(for window: DroppedWindow, zone: Dropzone) -> String {
-        "„\(window.applicationName)“ immer in \(zone.name) (\(zone.display)) öffnen?"
+        L.string(
+            "dropRuleOffer.question",
+            "Always open “%@” in %@ (%@)?",
+            window.applicationName, zone.name, zone.display.rawValue
+        )
     }
 }

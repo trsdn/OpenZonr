@@ -3,32 +3,32 @@ import Foundation
 import Observation
 import OpenZonrMac
 
-/// Sucht in den GitHub Releases nach einem neueren OpenZonr und tauscht das
-/// Bundle an Ort und Stelle aus.
+/// Looks for a newer OpenZonr in the GitHub Releases and swaps the bundle in
+/// place.
 ///
-/// Darunter liegt [AppUpdater](https://github.com/mxcl/AppUpdater). Es nimmt
-/// nur ein Release-Anhängsel, das genau `OpenZonr-<semver>.dmg` heisst und
-/// darin genau eine App mit dem Dateinamen der installierten trägt — und nur,
-/// wenn deren Developer-ID-Team, Signatur-Identifier und Bundle-Identifier mit
-/// denen der laufenden App übereinstimmen.
+/// [AppUpdater](https://github.com/mxcl/AppUpdater) sits underneath. It only
+/// accepts a release asset named exactly `OpenZonr-<semver>.dmg`, containing
+/// exactly one app with the installed one's file name — and only when its
+/// Developer ID team, signing identifier and bundle identifier match those
+/// of the running app.
 ///
-/// **Ohne `GitHubAttestationPolicy`.** Zwei Gründe, beide gemessen anderswo:
-/// der Notarisierungs-Broker baut das Release in seinem eigenen Repository, es
-/// gibt also gar keine Provenienz aus `trsdn/OpenZonr`, gegen die geprüft
-/// werden könnte; und bei `swift build`-Produkten sucht AppUpdaters
-/// `Bundle.module` nie in `Contents/Resources`, sodass eine Prüfung in einem
-/// `fatalError` endet (trsdn/OpenWritr#31). Eine Attestierung zu verlangen
-/// würde also jedes echte Release ablehnen und dabei noch abstürzen. Die
-/// Prüfungen auf Developer ID, Team und Bundle-Identifier bleiben.
+/// **Without `GitHubAttestationPolicy`.** Two reasons, both measured
+/// elsewhere: the notarization broker builds the release in its own
+/// repository, so there is no provenance from `trsdn/OpenZonr` to check
+/// against; and for `swift build` products, AppUpdater's `Bundle.module`
+/// never looks in `Contents/Resources`, so a check ends in a `fatalError`
+/// (trsdn/OpenWritr#31). Requiring an attestation would therefore reject
+/// every real release, and crash while doing it. The checks on Developer
+/// ID, team and bundle identifier stay.
 @Observable
 @MainActor
 final class UpdateManager {
 
-    /// Was die Menüleiste anzeigt.
+    /// What the menu bar displays.
     private(set) var state: UpdateState = .idle
 
-    /// Der Schalter „Automatisch nach Updates suchen“. Voreingestellt an,
-    /// gesichert in den Voreinstellungen.
+    /// The "Automatically check for updates" switch. On by default, saved
+    /// in the preferences.
     var automaticChecksEnabled: Bool {
         didSet {
             guard automaticChecksEnabled != oldValue else { return }
@@ -53,9 +53,9 @@ final class UpdateManager {
 
     var hasPreparedUpdate: Bool { preparedUpdate != nil }
 
-    // MARK: - Automatische Suche
+    // MARK: - Automatic checking
 
-    /// Beginnt, stündlich nachzusehen, ob die Tagesfrist abgelaufen ist.
+    /// Starts checking hourly whether the daily deadline has passed.
     func startAutomaticChecks() {
         automaticCheckTask?.cancel()
         guard automaticChecksEnabled else {
@@ -64,9 +64,8 @@ final class UpdateManager {
         }
         automaticCheckTask = Task { [weak self] in
             while !Task.isCancelled {
-                // Ist das Modell weg, ist auch die Schleife fertig. Ein blosses
-                // `if let self` würde stattdessen bis in alle Ewigkeit stündlich
-                // schlafen und nichts tun.
+                // If the model is gone, the loop is done too. A bare `if let
+                // self` would instead sleep hourly forever and do nothing.
                 guard let self else { return }
                 if self.isAutomaticCheckDue {
                     await self.check(userInitiated: false)
@@ -81,8 +80,8 @@ final class UpdateManager {
         automaticCheckTask = nil
     }
 
-    /// Wann zuletzt automatisch gesucht wurde — gesichert in den
-    /// Voreinstellungen, siehe ``UpdatePolicy/lastAutomaticCheckKey``.
+    /// When the last automatic check ran — saved in the preferences, see
+    /// ``UpdatePolicy/lastAutomaticCheckKey``.
     var lastAutomaticCheck: Date? {
         get {
             UpdatePolicy.lastAutomaticCheck(
@@ -96,20 +95,19 @@ final class UpdateManager {
         UpdatePolicy.isCheckDue(lastCheck: lastAutomaticCheck, now: Date())
     }
 
-    // MARK: - Suchen, installieren, verwerfen
+    // MARK: - Checking, installing, discarding
 
-    /// Sucht nach einem neueren Release und lädt und prüft es gleich mit, damit
-    /// das Installieren ein einziger Klick bleibt.
+    /// Checks for a newer release and downloads and verifies it right away,
+    /// so installing stays a single click.
     ///
-    /// Eine gescheiterte Hintergrundsuche wird nur protokolliert — offline zu
-    /// sein ist keine Meldung wert. Eine Suche, die der Nutzer angestossen hat,
-    /// antwortet immer.
+    /// A failed background check is only logged — being offline is not worth
+    /// a message. A check the user triggered always responds.
     func check(userInitiated: Bool) async {
         guard !isBusy, preparedUpdate == nil else { return }
-        // Auch die Hintergrundsuche macht sich als „beschäftigt“ kenntlich.
-        // Täte sie es nicht, liefe eine Suche des Nutzers daneben her, beide
-        // kämen bis zum Vorbereiten, und die zweite Zuweisung würde das schon
-        // geladene Update verlieren — samt seinem entpackten Verzeichnis.
+        // The background check also marks itself as "busy". Without that, a
+        // user-triggered check could run alongside it, both would reach the
+        // preparation step, and the second assignment would lose the already
+        // downloaded update — unpacked directory and all.
         state = .checking
         if !userInitiated { lastAutomaticCheck = Date() }
 
@@ -118,11 +116,11 @@ final class UpdateManager {
                 state = userInitiated ? .upToDate : .idle
                 return
             }
-            Log.info("Update verfügbar: \(update.version)")
+            Log.info(localized("updateManager.updateAvailable", "Update available: %@", update.version))
             state = .downloading(version: update.version)
             let prepared = try await update.prepareInstallation()
-            // Gürtel und Hosenträger: kommt hier trotz der Wache oben schon
-            // etwas Vorbereitetes an, wird es aufgeräumt statt vergessen.
+            // Belt and braces: if something prepared already arrives here
+            // despite the guard above, it is cleaned up rather than forgotten.
             if let stale = preparedUpdate {
                 preparedUpdate = nil
                 await stale.discard()
@@ -132,20 +130,21 @@ final class UpdateManager {
         } catch is CancellationError {
             state = .idle
         } catch {
-            Log.warn("Update-Suche fehlgeschlagen: \(error.localizedDescription)")
+            Log.warn(
+                localized("updateManager.checkFailed", "Update check failed: %@", error.localizedDescription)
+            )
             state = userInitiated ? .failed(error.localizedDescription) : .idle
         }
     }
 
-    /// Tauscht das Bundle aus und startet die App neu. Im Erfolgsfall kehrt das
-    /// hier nie zurück. `false` heisst: die Installation ist gescheitert und die
-    /// App läuft weiter — der Aufrufer darf wieder aufnehmen, was er angehalten
-    /// hat.
+    /// Swaps the bundle and relaunches the app. On success, this never
+    /// returns. `false` means: the installation failed and the app keeps
+    /// running — the caller may resume whatever it paused.
     ///
-    /// Angehalten wird *vor* diesem Aufruf, nicht hier: was OpenZonr anhalten
-    /// muss, weiss ``AppModel`` (siehe ``AppModel/installUpdate()``), und ein
-    /// Updater, der in die Fensterbeobachtung greift, wäre eine zweite
-    /// Buchhaltung derselben Sache.
+    /// Pausing happens *before* this call, not here: what OpenZonr needs to
+    /// pause is ``AppModel``'s business (see ``AppModel/installUpdate()``),
+    /// and an updater that reaches into window observation would be a second
+    /// bookkeeping of the same thing.
     @discardableResult
     func installAndRelaunch() async -> Bool {
         guard let prepared = preparedUpdate else { return false }
@@ -157,10 +156,14 @@ final class UpdateManager {
             try await prepared.installAndRelaunch()
             return true
         } catch {
-            Log.warn("Update-Installation fehlgeschlagen: \(error.localizedDescription)")
-            // Der entpackte Download ist nach einem gescheiterten Tausch nichts
-            // mehr wert und läge sonst bis zum Neustart im Temporärverzeichnis.
-            // Die nächste Suche findet das Release ohnehin wieder.
+            Log.warn(
+                localized(
+                    "updateManager.installFailed", "Update installation failed: %@", error.localizedDescription
+                )
+            )
+            // The unpacked download is worthless after a failed swap and
+            // would otherwise sit in the temporary directory until the next
+            // restart. The next check finds the release again anyway.
             await prepared.discard()
             state = .failed(error.localizedDescription)
             startAutomaticChecks()
@@ -168,7 +171,7 @@ final class UpdateManager {
         }
     }
 
-    /// Wirft das geladene Update weg. Die nächste Suche findet es wieder.
+    /// Discards the downloaded update. The next check finds it again.
     func dismiss() async {
         if let prepared = preparedUpdate {
             preparedUpdate = nil

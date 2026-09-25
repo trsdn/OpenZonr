@@ -29,15 +29,31 @@ public enum ZoneResolutionFailure: Error, Hashable, Sendable, CustomStringConver
     public var description: String {
         switch self {
         case let .unknownDisplay(alias):
-            return "Unbekanntes Display \(alias)."
+            return L.string("zoneResolutionFailure.unknownDisplay", "Unknown display %@.", alias.rawValue)
         case let .unknownLayout(layout, display):
-            return "Display \(display) kennt kein Layout \(layout)."
+            return L.string(
+                "zoneResolutionFailure.unknownLayout",
+                "Display %@ has no layout %@.",
+                display.rawValue, layout.rawValue
+            )
         case let .unknownZone(zone, layout, display):
-            return "Layout \(layout) auf Display \(display) enthält keine Zone \(zone)."
+            return L.string(
+                "zoneResolutionFailure.unknownZone",
+                "Layout %@ on display %@ has no zone %@.",
+                layout.rawValue, display.rawValue, zone.rawValue
+            )
         case let .missingVisibleFrame(alias):
-            return "Für Display \(alias) liegt kein sichtbarer Frame vor."
+            return L.string(
+                "zoneResolutionFailure.missingVisibleFrame",
+                "Display %@ has no visible frame.",
+                alias.rawValue
+            )
         case let .invalidShare(share):
-            return "Ungültige Zonenteilung: \(share.slots) Slots, Index \(share.slotIndex)."
+            return L.string(
+                "zoneResolutionFailure.invalidShare",
+                "Invalid zone share: %lld slots, index %lld.",
+                share.slots, share.slotIndex
+            )
         }
     }
 }

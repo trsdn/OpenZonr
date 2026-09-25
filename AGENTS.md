@@ -85,9 +85,25 @@ flow by hand, and say in the pull request what you tried.
 
 ## Conventions
 
-- The user interface, `docs/`, code comments and the changelog are written in
-  German, and new text there follows that. This file and the standard's
-  own files are English.
+- The **user interface is bilingual**: English source strings with a German
+  translation, via a String Catalog per target
+  (`Sources/OpenZonrCore/Resources/Localizable.xcstrings`,
+  `Sources/OpenZonrApp/Resources/Localizable.xcstrings`) looked up through
+  `L.string(...)` (`OpenZonrCore`) or `localized(...)`/`Text(localized:)`
+  (`OpenZonrApp`) — never a bare string literal shown to the user. Which
+  language actually displays follows the user's chosen language or the
+  system language; see `Scripts/check-localization-keys.py` for the
+  missing/orphaned-key check. This replaces the German-only UI the project
+  started with (tracked as issue #83; not yet complete for every screen).
+- **Code comments, identifiers, commit messages, pull requests and issues
+  are written in English**, including inside files whose surrounding legacy
+  content is still German — that legacy German is being translated
+  file-by-file (issue #82), not a model to copy in new text. `docs/` is the
+  one exception still pending: its prose (and several of its file names)
+  remain German for now; treat it the same way once it is scheduled.
+  Conversation with the maintainer can stay in whatever language they use;
+  only what is written *into the repository* follows this rule. This file
+  and the standard's own files are English.
 - Commits follow Conventional Commits, `type(scope): description`, as in the
   existing history.
 - User-visible changes get an entry under `[Unreleased]` in `CHANGELOG.md`. The

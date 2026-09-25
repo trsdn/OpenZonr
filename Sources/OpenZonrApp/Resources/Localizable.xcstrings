@@ -1,0 +1,2811 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "activityWindow.clearButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
+          }
+        }
+      }
+    },
+    "activityWindow.emptyBody": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every window a rule matched appears here. Launch an app that a rule exists for — windows that were never a candidate are deliberately left out."
+          }
+        }
+      }
+    },
+    "activityWindow.emptyTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Placements Yet"
+          }
+        }
+      }
+    },
+    "activityWindow.entryCount": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld entries"
+          }
+        }
+      }
+    },
+    "activityWindow.showLogToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Log"
+          }
+        }
+      }
+    },
+    "activityWindow.windowTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”"
+          }
+        }
+      }
+    },
+    "appModel.apply.objection.editorSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " The change is in the editor, but not saved."
+          }
+        }
+      }
+    },
+    "appModel.apply.objection.noEditorSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Nothing was changed."
+          }
+        }
+      }
+    },
+    "appModel.apply.pinFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin failed: %@"
+          }
+        }
+      }
+    },
+    "appModel.apply.success.editorSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " — entered in the editor, not yet saved."
+          }
+        }
+      }
+    },
+    "appModel.guardSentence.noActiveProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No profile is active — without a profile, there is no way to know what “here” means."
+          }
+        }
+      }
+    },
+    "appModel.guardSentence.noConfigurationLoaded": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No configuration is loaded."
+          }
+        }
+      }
+    },
+    "appModel.log.configurationLoaded": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration loaded: %@"
+          }
+        }
+      }
+    },
+    "appModel.log.configurationSummary": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld displays, %lld profiles, %lld active rules"
+          }
+        }
+      }
+    },
+    "appModel.log.dragOutcome": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag result: %@"
+          }
+        }
+      }
+    },
+    "appModel.log.launched": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr — menu bar app started."
+          }
+        }
+      }
+    },
+    "appModel.log.loadFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to load: %@"
+          }
+        }
+      }
+    },
+    "appModel.log.signature": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signature: %@"
+          }
+        }
+      }
+    },
+    "appModel.log.updateNotInstalled": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update not installed — window observation continues."
+          }
+        }
+      }
+    },
+    "appModel.log.windowObservationPausedForUpdate": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Window observation paused for update swap."
+          }
+        }
+      }
+    },
+    "appModel.pinFrontmostWindow.noZoneUnderWindow": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no zone of profile “%@” under this window."
+          }
+        }
+      }
+    },
+    "appModel.saveFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save failed."
+          }
+        }
+      }
+    },
+    "appModel.status.headline.active": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        }
+      }
+    },
+    "appModel.status.headline.needsConfiguration": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Configuration"
+          }
+        }
+      }
+    },
+    "appModel.status.headline.needsPermission": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Permission"
+          }
+        }
+      }
+    },
+    "appModel.status.headline.noProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Profile Matches"
+          }
+        }
+      }
+    },
+    "appModel.status.headline.paused": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.degraded": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trust granted, but no real windows readable"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.inconclusive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No app reachable to check"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.noProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld profiles in the configuration"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.notTrusted": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility not granted"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.pinnedSuffix": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (by hand)"
+          }
+        }
+      }
+    },
+    "appModel.statusDetail.profile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile: %@%@"
+          }
+        }
+      }
+    },
+    "appPresence.title.background": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background Only"
+          }
+        }
+      }
+    },
+    "appPresence.title.dock": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock Icon"
+          }
+        }
+      }
+    },
+    "appPresence.title.menuBar": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menu Bar"
+          }
+        }
+      }
+    },
+    "configurationDocument.externalChangeMessage": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The configuration file was changed outside the editor. “Discard” adopts the file, “Save Anyway” overwrites it."
+          }
+        }
+      }
+    },
+    "configurationDocument.saveFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save failed: %@"
+          }
+        }
+      }
+    },
+    "dropOfferPanel.acceptButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always here"
+          }
+        }
+      }
+    },
+    "dropOfferPanel.declineButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Just this once"
+          }
+        }
+      }
+    },
+    "dropzoneController.dragCancelled.log": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag cancelled: %@"
+          }
+        }
+      }
+    },
+    "dropzoneController.dragCancelled.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The drag was cancelled: %@"
+          }
+        }
+      }
+    },
+    "dropzoneController.noRuleOffer": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No rule offer: %@"
+          }
+        }
+      }
+    },
+    "dropzoneController.notActive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dropzones are not active: %@"
+          }
+        }
+      }
+    },
+    "dropzoneController.pinBadgeHadNoEffect": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin badge had no effect: %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customLabel.everyDragExcept": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every Drag Except With %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customLabel.onlyWhileHolding": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only While Holding %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customRow.active": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (from the file)"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customRow.inactive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file says “%@” — currently off, turn back on here"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customShortLabel.everyDragExcept": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every drag except with %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.customShortLabel.onlyWith": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only with %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.label.commandHeld": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only While Holding ⌘"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.label.everyDrag": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every Drag"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.label.off": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.rowTitle.base": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zones While Dragging"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.rowTitle.withState": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.shortLabel.commandHeld": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only with ⌘"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.shortLabel.everyDrag": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every drag"
+          }
+        }
+      }
+    },
+    "dropzoneTrigger.shortLabel.off": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "off"
+          }
+        }
+      }
+    },
+    "editorLayer.title.activation": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activation Area"
+          }
+        }
+      }
+    },
+    "editorLayer.title.target": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target Frame"
+          }
+        }
+      }
+    },
+    "editorWindow.discardButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard"
+          }
+        }
+      }
+    },
+    "editorWindow.saveAnywayButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Anyway"
+          }
+        }
+      }
+    },
+    "editorWindow.saveAnywayButton.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overwrites the externally changed file with this editor's state"
+          }
+        }
+      }
+    },
+    "editorWindow.saveButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    "editorWindow.saveButton.help.unusable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are errors the configuration cannot work with"
+          }
+        }
+      }
+    },
+    "editorWindow.saveButton.help.usable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writes the configuration atomically through ConfigurationStore"
+          }
+        }
+      }
+    },
+    "editorWindow.status.savedAt": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved at %@"
+          }
+        }
+      }
+    },
+    "editorWindow.status.unsavedChanges": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsaved Changes"
+          }
+        }
+      }
+    },
+    "editorWindow.tab.overview": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overview"
+          }
+        }
+      }
+    },
+    "editorWindow.tab.roles": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roles & Profiles"
+          }
+        }
+      }
+    },
+    "editorWindow.tab.rules": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rules"
+          }
+        }
+      }
+    },
+    "editorWindow.tab.zones": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zones"
+          }
+        }
+      }
+    },
+    "localizationTests.probe": {
+      "comment": "Not user-facing. Exists only so LocalizationTests can prove the resource-bundle plumbing (Bundle.module -> OpenZonr_OpenZonrApp.bundle -> de.lproj) against a real compiled entry, without coupling to product wording that might change for unrelated reasons.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de-Probe"
+          }
+        }
+      }
+    },
+    "loginItem.actionRegistered": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "registered"
+          }
+        }
+      }
+    },
+    "loginItem.actionRemoved": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "removed"
+          }
+        }
+      }
+    },
+    "loginItem.registered": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login item registered."
+          }
+        }
+      }
+    },
+    "loginItem.registrationFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login item could not be %@: %@\n\nMost common reason: the bundle is not signed, or it sits in a place launchd does not accept. Scripts/bundle.sh signs it; the login item additionally needs the app in /Applications."
+          }
+        }
+      }
+    },
+    "loginItem.requiresApproval": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login item is registered, but not yet approved by the system. Enable it in System Settings → General → Login Items → OpenZonr."
+          }
+        }
+      }
+    },
+    "loginItem.unregistered": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login item removed."
+          }
+        }
+      }
+    },
+    "menuContent.activityWindowTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr — Recent Placements"
+          }
+        }
+      }
+    },
+    "menuContent.autoCheckForUpdatesToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatically Check for Updates"
+          }
+        }
+      }
+    },
+    "menuContent.autoPlaceToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Place Windows Automatically"
+          }
+        }
+      }
+    },
+    "menuContent.automaticSetup": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic"
+          }
+        }
+      }
+    },
+    "menuContent.checkFailed.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Check Failed"
+          }
+        }
+      }
+    },
+    "menuContent.checkForUpdatesButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for Updates …"
+          }
+        }
+      }
+    },
+    "menuContent.dropzonesNotActive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dragging is not active: %@"
+          }
+        }
+      }
+    },
+    "menuContent.editZonesAndRulesButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Zones and Rules …"
+          }
+        }
+      }
+    },
+    "menuContent.editorWindowTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr — Zones and Rules"
+          }
+        }
+      }
+    },
+    "menuContent.installAndRelaunchButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install and Relaunch"
+          }
+        }
+      }
+    },
+    "menuContent.installFailed.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Could Not Be Installed"
+          }
+        }
+      }
+    },
+    "menuContent.laterButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        }
+      }
+    },
+    "menuContent.launchAtLoginToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start at Login"
+          }
+        }
+      }
+    },
+    "menuContent.moreMenu": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More"
+          }
+        }
+      }
+    },
+    "menuContent.noPlacementsYet": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Placements Yet"
+          }
+        }
+      }
+    },
+    "menuContent.noSetupsConfigured": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Setups Configured"
+          }
+        }
+      }
+    },
+    "menuContent.okButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "menuContent.pinFrontmostWindowButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin Frontmost Window Here"
+          }
+        }
+      }
+    },
+    "menuContent.quitButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit OpenZonr"
+          }
+        }
+      }
+    },
+    "menuContent.readyToInstall.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr pauses window observation, swaps itself out and relaunches. No window will be placed for a few seconds."
+          }
+        }
+      }
+    },
+    "menuContent.readyToInstall.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr %@ Is Ready"
+          }
+        }
+      }
+    },
+    "menuContent.recentPlacementsButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent Placements …"
+          }
+        }
+      }
+    },
+    "menuContent.recentlyPlacedSection": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recently Placed"
+          }
+        }
+      }
+    },
+    "menuContent.reloadConfigButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload Configuration"
+          }
+        }
+      }
+    },
+    "menuContent.setupSection": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setup"
+          }
+        }
+      }
+    },
+    "menuContent.showAllButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show All …"
+          }
+        }
+      }
+    },
+    "menuContent.statusAndPermissionButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status and Permission …"
+          }
+        }
+      }
+    },
+    "menuContent.upToDate.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The newest version is running."
+          }
+        }
+      }
+    },
+    "menuContent.upToDate.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr Is Up to Date"
+          }
+        }
+      }
+    },
+    "menuStatus.action.explain": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What to Do? …"
+          }
+        }
+      }
+    },
+    "menuStatus.action.grantAccess": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grant Access …"
+          }
+        }
+      }
+    },
+    "menuStatus.line.active.noName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready"
+          }
+        }
+      }
+    },
+    "menuStatus.line.active.withName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready — Setup “%@”"
+          }
+        }
+      }
+    },
+    "menuStatus.line.needsConfiguration.notSetUp": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing set up yet"
+          }
+        }
+      }
+    },
+    "menuStatus.line.needsConfiguration.unreadable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The settings cannot be read"
+          }
+        }
+      }
+    },
+    "menuStatus.line.needsPermission": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access is missing — without it OpenZonr cannot move windows"
+          }
+        }
+      }
+    },
+    "menuStatus.line.noProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No setup matches the connected screens"
+          }
+        }
+      }
+    },
+    "menuStatus.line.paused": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused — nothing is placed automatically"
+          }
+        }
+      }
+    },
+    "overviewEditor.displaySize.estimated": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· Display not connected — estimated 16:10"
+          }
+        }
+      }
+    },
+    "overviewEditor.displaySize.measured": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· %@ (measured)"
+          }
+        }
+      }
+    },
+    "overviewEditor.layerCaption": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layer %lld of %lld"
+          }
+        }
+      }
+    },
+    "overviewEditor.noLayout": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No layout is described for this profile."
+          }
+        }
+      }
+    },
+    "overviewEditor.noProfile.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a profile above to see its rule-to-zone overview."
+          }
+        }
+      }
+    },
+    "overviewEditor.noProfile.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Profile Selected"
+          }
+        }
+      }
+    },
+    "overviewEditor.notMeasuredNote": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not measured: the spatial arrangement (left/right/top/bottom). Shown is the size ratio, the same way the zone editor has used it since #18. Rule-to-zone assignment is computed, not guessed. Overlapping zones sit on separate layers, stacked — two rectangles in the same place could otherwise not both be labeled."
+          }
+        }
+      }
+    },
+    "overviewEditor.profilePicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile"
+          }
+        }
+      }
+    },
+    "overviewEditor.subtitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What goes into which zone?"
+          }
+        }
+      }
+    },
+    "overviewEditor.zoneCell.everyApp": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (every app)"
+          }
+        }
+      }
+    },
+    "overviewEditor.zoneCell.fallback": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(fallback)"
+          }
+        }
+      }
+    },
+    "overviewEditor.zoneCell.noRule": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no rule points here"
+          }
+        }
+      }
+    },
+    "roleEditor.addRole.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Role"
+          }
+        }
+      }
+    },
+    "roleEditor.fallbackExplanation": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where windows go that no rule matches."
+          }
+        }
+      }
+    },
+    "roleEditor.idField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifier"
+          }
+        }
+      }
+    },
+    "roleEditor.nameField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "roleEditor.newRole.defaultName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Role"
+          }
+        }
+      }
+    },
+    "roleEditor.noRole.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A role is a named place — “Mail”, “Notes”. Where that place is is up to each profile to decide."
+          }
+        }
+      }
+    },
+    "roleEditor.noRole.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Role Selected"
+          }
+        }
+      }
+    },
+    "roleEditor.removeBinding.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Binding"
+          }
+        }
+      }
+    },
+    "roleEditor.removeRole.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove role — rules that use it stay and are reported as a finding"
+          }
+        }
+      }
+    },
+    "roleEditor.section.fallbackPerProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallback Rule per Profile"
+          }
+        }
+      }
+    },
+    "roleEditor.section.role": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Role"
+          }
+        }
+      }
+    },
+    "roleEditor.section.whereIsIt": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where Is It?"
+          }
+        }
+      }
+    },
+    "roleEditor.summaryField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note"
+          }
+        }
+      }
+    },
+    "roleEditor.summaryField.prompt": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is this place for?"
+          }
+        }
+      }
+    },
+    "roleEditor.zoneTargetPicker.unknownZone": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (unknown)"
+          }
+        }
+      }
+    },
+    "roleEditor.zoneTargetPicker.unset": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "— not set —"
+          }
+        }
+      }
+    },
+    "ruleDryRunLine.genericSubject": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A window"
+          }
+        }
+      }
+    },
+    "ruleDryRunLine.uncheckedHeader": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not checked — the rule checks this, but it is only decided once the window is open:"
+          }
+        }
+      }
+    },
+    "ruleEditor.activeToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        }
+      }
+    },
+    "ruleEditor.addRule.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.bundleIdentifierField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundle Identifier"
+          }
+        }
+      }
+    },
+    "ruleEditor.evaluateEarlier.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evaluate Earlier"
+          }
+        }
+      }
+    },
+    "ruleEditor.evaluateLater.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evaluate Later"
+          }
+        }
+      }
+    },
+    "ruleEditor.focusPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus"
+          }
+        }
+      }
+    },
+    "ruleEditor.focusPicker.activate": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring Window Forward"
+          }
+        }
+      }
+    },
+    "ruleEditor.focusPicker.leaveAsIs": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave Foreground Unchanged"
+          }
+        }
+      }
+    },
+    "ruleEditor.heightField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Height"
+          }
+        }
+      }
+    },
+    "ruleEditor.idField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifier"
+          }
+        }
+      }
+    },
+    "ruleEditor.list.header": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evaluation order — the first matching rule wins"
+          }
+        }
+      }
+    },
+    "ruleEditor.minimumSizeField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimum Size"
+          }
+        }
+      }
+    },
+    "ruleEditor.nameField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "ruleEditor.newRule.defaultName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.noRule.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A rule describes which windows belong where. For the ordinary case, “Pin Frontmost Window Here” in the menu is enough — this is for the cases that is not enough for."
+          }
+        }
+      }
+    },
+    "ruleEditor.noRule.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Rule Selected"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First Window After Launch"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.defaultOption": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default (%@)"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.every": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.everyWindow": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every Window"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.firstOnly": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only the First"
+          }
+        }
+      }
+    },
+    "ruleEditor.onlyFirstWindowPicker.onlyFirst": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "only first"
+          }
+        }
+      }
+    },
+    "ruleEditor.placingPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When Placing"
+          }
+        }
+      }
+    },
+    "ruleEditor.placingPicker.move": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Window"
+          }
+        }
+      }
+    },
+    "ruleEditor.placingPicker.suggest": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only Suggest"
+          }
+        }
+      }
+    },
+    "ruleEditor.priorityField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Priority"
+          }
+        }
+      }
+    },
+    "ruleEditor.removeRule.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.roleField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Role"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.findingsForThisRule": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Findings for This Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.rule": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.whatWouldHappen": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What Would Happen Now?"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.whenDoesItApply": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When Does It Apply?"
+          }
+        }
+      }
+    },
+    "ruleEditor.section.whereTo": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where To?"
+          }
+        }
+      }
+    },
+    "ruleEditor.subtitle.everyApp": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "every app"
+          }
+        }
+      }
+    },
+    "ruleEditor.titlePatternField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Title Pattern"
+          }
+        }
+      }
+    },
+    "ruleEditor.widthField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Width"
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is the insidious case: macOS reports trust but delivers no real windows. Every app answers AXWindows with only a stand-in of role AXApplication. Relying on AXIsProcessTrusted() silently does nothing in this situation."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded.step1": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings → Privacy & Security → Accessibility."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded.step2": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove the existing entry for OpenZonr — merely re-checking the box is not enough."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded.step3": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add the same bundle again and enable it — the path is below under “Code Signature”; a second copy elsewhere does not help."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.degraded.step4": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If the state reappears afterwards, the signature is almost always the cause — see below."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.granted": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access works: at least one app delivers a real window with a readable position. That is the check that counts — AXIsProcessTrusted() alone does not predict it."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.inconclusive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No ordinary app was reachable to check access against. Open any program with a window and check again."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr is not on the list of programs allowed to use Accessibility. Without that entry, no tool can read or move a window."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted.step1": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click “Request Permission” — macOS then shows the system dialog once."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted.step2": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If no dialog appears: open System Settings → Privacy & Security → Accessibility."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted.step3": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click “+” there and add exactly this bundle — the path is below under “Code Signature”. “Show in Finder” has it ready to drag in."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.notTrusted.step4": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn the switch on. OpenZonr then checks again on its own."
+          }
+        }
+      }
+    },
+    "statusWindow.accessibility.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility"
+          }
+        }
+      }
+    },
+    "statusWindow.activeProfile": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active profile: %@ (%@)"
+          }
+        }
+      }
+    },
+    "statusWindow.configuration.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration"
+          }
+        }
+      }
+    },
+    "statusWindow.observedApplications": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld observed apps"
+          }
+        }
+      }
+    },
+    "statusWindow.openSystemSettingsButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
+          }
+        }
+      }
+    },
+    "statusWindow.panelTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr — Status and Permission"
+          }
+        }
+      }
+    },
+    "statusWindow.presence.backgroundWarning": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With no icon and no Dock presence, no click leads back here anymore. Opening the app again brings this window back — that is the way back."
+          }
+        }
+      }
+    },
+    "statusWindow.presence.explanation": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takes effect after the app restarts. The Accessibility permission is bound to the bundle and its path; switching it at runtime is unmeasured, and a lost grant could not be restored from here."
+          }
+        }
+      }
+    },
+    "statusWindow.presence.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presence"
+          }
+        }
+      }
+    },
+    "statusWindow.recheckButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Again"
+          }
+        }
+      }
+    },
+    "statusWindow.reloadButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload"
+          }
+        }
+      }
+    },
+    "statusWindow.requestPermissionButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request Permission"
+          }
+        }
+      }
+    },
+    "statusWindow.revealInFinderButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show in Finder"
+          }
+        }
+      }
+    },
+    "statusWindow.signature.explanation": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The signature binds to the bundle identifier and team rather than to the checksum. The grant therefore applies to this bundle at this path and usually survives a rebuild there — but not a move. If it does become invalid after a rebuild, the only fix is: remove the entry and add it again."
+          }
+        }
+      }
+    },
+    "statusWindow.signature.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code Signature"
+          }
+        }
+      }
+    },
+    "updateManager.checkFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update check failed: %@"
+          }
+        }
+      }
+    },
+    "updateManager.installFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update installation failed: %@"
+          }
+        }
+      }
+    },
+    "updateManager.updateAvailable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update available: %@"
+          }
+        }
+      }
+    },
+    "updatePolicy.installTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install and Relaunch (%@)"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.checking": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for updates …"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.downloading": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading update %@ …"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.failed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update failed: %@"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.installing": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installing update …"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.readyToInstall": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update %@ is ready"
+          }
+        }
+      }
+    },
+    "updatePolicy.statusLine.upToDate": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr is up to date"
+          }
+        }
+      }
+    },
+    "validationSeverity.label.error": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error"
+          }
+        }
+      }
+    },
+    "validationSeverity.label.warning": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warning"
+          }
+        }
+      }
+    },
+    "zoneEditor.addZone.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Zone"
+          }
+        }
+      }
+    },
+    "zoneEditor.applyTemplateMenu": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply Template"
+          }
+        }
+      }
+    },
+    "zoneEditor.applyTemplateMenu.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replaces this layout's zones. Bindings to zones that disappear are shown before the application."
+          }
+        }
+      }
+    },
+    "zoneEditor.aspectBadge.estimated": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · display not connected, aspect ratio estimated"
+          }
+        }
+      }
+    },
+    "zoneEditor.aspectBadge.measured": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · measured"
+          }
+        }
+      }
+    },
+    "zoneEditor.aspectBadge.measuredWithSize": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · visible %@ · measured"
+          }
+        }
+      }
+    },
+    "zoneEditor.displayPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display"
+          }
+        }
+      }
+    },
+    "zoneEditor.heightField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Height"
+          }
+        }
+      }
+    },
+    "zoneEditor.idField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifier"
+          }
+        }
+      }
+    },
+    "zoneEditor.layerPicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layer"
+          }
+        }
+      }
+    },
+    "zoneEditor.layerPicker.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target frame: where the window ends up. Activation area: where you have to release it."
+          }
+        }
+      }
+    },
+    "zoneEditor.layoutLabel": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout: %@"
+          }
+        }
+      }
+    },
+    "zoneEditor.nameField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "zoneEditor.newZone.defaultName": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Zone"
+          }
+        }
+      }
+    },
+    "zoneEditor.noLayout.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No layout is stored for this combination of profile and display. Choose a different profile or add a layout to the display."
+          }
+        }
+      }
+    },
+    "zoneEditor.noLayout.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Layout"
+          }
+        }
+      }
+    },
+    "zoneEditor.profilePicker": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile"
+          }
+        }
+      }
+    },
+    "zoneEditor.removeActivationArea.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Activation Area — the target frame applies again afterwards"
+          }
+        }
+      }
+    },
+    "zoneEditor.removeZone.help": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove zone — bindings to it stay and are reported"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.applyButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.cancelButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.danglingBinding": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile %@ · Role %@ → Zone %@"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.danglingBindingsHeader": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bindings that would dangle afterwards:"
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.noDanglingBindings": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No bindings will point at nothing afterwards."
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.subtitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replaces layout %@'s zones on %@."
+          }
+        }
+      }
+    },
+    "zoneEditor.templateSheet.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply Template %@"
+          }
+        }
+      }
+    },
+    "zoneEditor.widthField": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Width"
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.missingBundleIdentifier": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” reports no bundle identifier; without it, no rule can be written."
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.noZonesForDisplay": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no zones for display “%@” in profile “%@”."
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.optionClickHint": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ + Click: save as rule"
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.windowNoLongerReachable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”'s window is no longer reachable; nothing was placed."
+          }
+        }
+      }
+    },
+    "zoomButtonMenu.windowOnNoConfiguredDisplay": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”'s window is not on any configured display."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

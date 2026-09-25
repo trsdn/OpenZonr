@@ -1,26 +1,26 @@
 import OpenZonrCore
 import SwiftUI
 
-/// Welche der beiden Rechtecke einer Zone der Editor gerade bearbeitet.
+/// Which of a zone's two rectangles the editor is currently editing.
 ///
-/// Eine Zone trägt seit den Trefferflächen zwei Rechtecke: wohin das Fenster
-/// kommt (``Zone/frame``) und wo losgelassen werden muss
-/// (``Zone/activationArea``). Beide gleichzeitig ziehbar zu machen hiesse, bei
-/// jedem Griff raten zu müssen, welches gemeint ist. Statt dessen: eine
-/// Leinwand, ein Umschalter, und die jeweils andere Ebene bleibt blass
-/// sichtbar — der Abstand zwischen beiden ist bei Randauslösung der ganze
-/// Punkt und darf nicht unsichtbar sein.
-/// Der Name des Koordinatenraums der Leinwand.
+/// A zone has carried two rectangles since the activation areas landed:
+/// where the window ends up (``Zone/frame``) and where the release has to
+/// happen (``Zone/activationArea``). Making both draggable at once would mean
+/// guessing, at every grip, which one is meant. Instead: one canvas, one
+/// toggle, and the other layer stays faintly visible — the gap between the
+/// two is the whole point at an edge trigger and must not be invisible.
+/// The name of the canvas's coordinate space.
 ///
-/// Gesten am Zonengriff **müssen** in diesem Raum messen und nicht in `.local`.
-/// Der Griff sitzt unten rechts in einem Stapel, dessen Grösse aus dem
-/// laufenden Zug berechnet wird: misst die Geste im eigenen View, wächst der
-/// View mit der Geste, der Griff wandert unter dem Zeiger weg und die
-/// Translation wird gegen einen bewegten Ursprung gemessen. Das Ergebnis
-/// schwingt, statt dem Zeiger zu folgen — vom Nutzer gemeldet als „bewegt sich
-/// nicht mit meinem Cursor" und „springt ständig hin und her".
+/// Gestures on the zone grip **must** measure in this space, not in
+/// `.local`. The grip sits bottom-right in a stack whose size is computed
+/// from the running drag: if the gesture measured in its own view, the view
+/// would grow with the gesture, the grip would wander out from under the
+/// pointer, and the translation would be measured against a moving origin.
+/// The result oscillates instead of following the pointer — reported by a
+/// user as "doesn't move with my cursor" and "keeps jumping back and forth".
 ///
-/// Die Leinwand bewegt sich nicht. Deshalb misst hier alles gegen sie.
+/// The canvas itself does not move. That is why everything here measures
+/// against it.
 enum ZoneCanvas {
     static let space = "zoneCanvas"
 }
@@ -33,16 +33,16 @@ enum EditorLayer: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .target: return "Zielrahmen"
-        case .activation: return "Trefferfläche"
+        case .target: return localized("editorLayer.title.target", "Target Frame")
+        case .activation: return localized("editorLayer.title.activation", "Activation Area")
         }
     }
 }
 
-/// Die blasse Kontur der Ebene, die gerade **nicht** bearbeitet wird.
+/// The faint outline of the layer that is currently **not** being edited.
 ///
-/// Reine Zeichnung, kein Treffertest — sie liegt unter den Griffen und darf
-/// keine Geste abfangen.
+/// Pure drawing, no hit testing — it sits below the grips and must not
+/// intercept a gesture.
 struct GhostRects: View {
 
     let rects: [RelativeRect]
@@ -69,33 +69,33 @@ struct GhostRects: View {
     }
 }
 
-/// Die Streich-Geste: über Zellen ziehen ergibt ein Rechteck.
+/// The sweep gesture: dragging across cells yields a rectangle.
 ///
-/// Liegt **unter** den Zonengriffen, damit ein Zug auf einer bestehenden Zone
-/// weiterhin diese Zone bewegt und nicht daneben eine neue aufzieht. Die Geste
-/// beginnt also nur auf freier Fläche.
+/// Sits **below** the zone grips, so a drag on an existing zone keeps
+/// moving that zone instead of sweeping a new one next to it. The gesture
+/// therefore only starts on free space.
 ///
-/// Die Rechnung selbst liegt in ``GridSweep`` und ist headless geprüft — hier
-/// bleibt nur, die Punkte einzusammeln und die Vorschau zu zeichnen.
+/// The computation itself lives in ``GridSweep`` and is tested headless —
+/// what's left here is collecting the points and drawing the preview.
 struct GridSweepSurface: View {
 
     let canvas: CGSize
-    /// Die Rechtecke, die bereits belegt sind — auf ihnen beginnt **kein**
-    /// Aufziehen.
+    /// The rectangles that are already occupied — **no** sweep starts on
+    /// them.
     ///
-    /// Ohne diese Grenze fängt die Fläche auch Gesten ab, die auf einer Zone
-    /// beginnen: der Griff verschiebt oder skaliert die Zone, und am Ende
-    /// bestimmt das Aufziehen dieselbe Zone noch einmal neu. Zwei
-    /// Schreibvorgänge pro Geste, die gegeneinander laufen — sichtbar als
-    /// Rahmen, der wild hin und her springt. Vom Nutzer im Gebrauch gemeldet.
+    /// Without this boundary, the surface would also catch gestures that
+    /// start on a zone: the grip moves or resizes the zone, and at the end
+    /// the sweep redefines the same zone once more. Two writes per gesture,
+    /// racing each other — visible as a frame that jumps wildly back and
+    /// forth. Reported by a user in actual use.
     let occupied: [RelativeRect]
     let onSweepChanged: (Bool) -> Void
     let onSweep: (RelativeRect) -> Void
 
     @State private var start: CGPoint?
     @State private var current: CGPoint?
-    /// Wahr, wenn die laufende Geste auf einer Zone begann und deshalb nicht
-    /// als Aufziehen zählt.
+    /// `true` when the running gesture started on a zone and therefore does
+    /// not count as a sweep.
     @State private var abandoned = false
 
     var body: some View {
@@ -117,13 +117,13 @@ struct GridSweepSurface: View {
         }
         .frame(width: canvas.width, height: canvas.height)
         .gesture(
-            // minimumDistance 0, weil ein Klick ohne Bewegung eine einzelne
-            // Zelle ergeben soll — der schnellste Weg zu einer kleinen Zone.
+            // minimumDistance 0, because a click with no movement should
+            // yield a single cell — the fastest way to a small zone.
             DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     if start == nil {
-                        // Einmal am Anfang entscheiden, nicht bei jedem Schritt:
-                        // wer auf einer Zone losdrückt, will sie bewegen.
+                        // Decide once at the start, not on every step:
+                        // pressing down on a zone means moving it.
                         abandoned = isOccupied(value.startLocation)
                         guard !abandoned else { return }
                         start = value.startLocation
@@ -148,11 +148,11 @@ struct GridSweepSurface: View {
         )
     }
 
-    /// Liegt der Punkt auf einer bereits belegten Fläche?
+    /// Does the point lie on an already-occupied area?
     ///
-    /// Dieselbe Kantenregel wie überall sonst: links und oben einschliesslich,
-    /// rechts und unten ausschliesslich — sonst gehörte die gemeinsame Kante
-    /// zweier Zonen beiden.
+    /// The same edge rule as everywhere else: left and top inclusive, right
+    /// and bottom exclusive — otherwise the shared edge of two zones would
+    /// belong to both.
     private func isOccupied(_ point: CGPoint) -> Bool {
         let x = point.x / canvas.width
         let y = point.y / canvas.height
@@ -162,9 +162,9 @@ struct GridSweepSurface: View {
         }
     }
 
-    /// Das Rechteck, das die laufende Geste aufziehen würde — schon gerastet,
-    /// damit die Vorschau zeigt, was beim Loslassen entsteht, und nicht den
-    /// ungerasteten Zwischenstand.
+    /// The rectangle the running gesture would sweep out — already
+    /// grid-snapped, so the preview shows what release would produce, not
+    /// the unsnapped intermediate state.
     private var preview: CGRect? {
         guard let start, let current,
               let rect = GridSweep.rect(from: start, to: current, canvas: canvas)

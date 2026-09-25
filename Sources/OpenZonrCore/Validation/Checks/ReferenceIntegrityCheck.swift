@@ -13,7 +13,11 @@ public struct ReferenceIntegrityCheck: ConfigurationCheck {
             findings.append(ValidationFinding(
                 code: .unknownRoleInRule,
                 path: ConfigurationPath().element("rules", rule.id).field("action").field("role"),
-                message: "Die Regel \(rule.id) verweist auf die unbekannte Rolle \(rule.action.role)."
+                message: L.string(
+                    "referenceIntegrity.unknownRoleInRule",
+                    "Rule %@ refers to the unknown role %@.",
+                    "\(rule.id)", "\(rule.action.role)"
+                )
             ))
         }
 
@@ -22,7 +26,11 @@ public struct ReferenceIntegrityCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .unknownDefaultLayout,
                     path: ConfigurationPath().element("displays", display.alias).field("defaultLayoutID"),
-                    message: "Das Standard-Layout \(display.defaultLayoutID) existiert auf Display \(display.alias) nicht."
+                    message: L.string(
+                        "referenceIntegrity.unknownDefaultLayout",
+                        "The default layout %@ does not exist on display %@.",
+                        "\(display.defaultLayoutID)", "\(display.alias)"
+                    )
                 ))
             }
         }
@@ -36,7 +44,11 @@ public struct ReferenceIntegrityCheck: ConfigurationCheck {
                     findings.append(ValidationFinding(
                         code: .unknownDisplayInBinding,
                         path: path,
-                        message: "Das Profil \(profile.id) verweist auf das unbekannte Display \(alias)."
+                        message: L.string(
+                            "referenceIntegrity.unknownDisplayInBinding.profileLayouts",
+                            "Profile %@ refers to the unknown display %@.",
+                            "\(profile.id)", "\(alias)"
+                        )
                     ))
                     continue
                 }
@@ -45,7 +57,11 @@ public struct ReferenceIntegrityCheck: ConfigurationCheck {
                     findings.append(ValidationFinding(
                         code: .unknownLayoutInProfile,
                         path: path,
-                        message: "Display \(alias) besitzt kein Layout \(layoutID)."
+                        message: L.string(
+                            "referenceIntegrity.unknownLayoutInProfile",
+                            "Display %@ has no layout %@.",
+                            "\(alias)", "\(layoutID)"
+                        )
                     ))
                 }
             }
@@ -83,7 +99,11 @@ public struct ReferenceIntegrityCheck: ConfigurationCheck {
             return [ValidationFinding(
                 code: .unknownDisplayInBinding,
                 path: displayPath,
-                message: "Die Rollenbindung verweist auf das unbekannte Display \(binding.display)."
+                message: L.string(
+                    "referenceIntegrity.unknownDisplayInBinding.roleBinding",
+                    "This role binding refers to the unknown display %@.",
+                    "\(binding.display)"
+                )
             )]
         }
 
@@ -96,7 +116,11 @@ public struct ReferenceIntegrityCheck: ConfigurationCheck {
             return [ValidationFinding(
                 code: .unknownZoneInBinding,
                 path: zonePath,
-                message: "Layout \(layoutID) auf Display \(binding.display) enthält keine Zone \(binding.zone)."
+                message: L.string(
+                    "referenceIntegrity.unknownZoneInBinding",
+                    "Layout %@ on display %@ has no zone %@.",
+                    "\(layoutID)", "\(binding.display)", "\(binding.zone)"
+                )
             )]
         }
 

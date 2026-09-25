@@ -43,11 +43,13 @@ public struct ZoneReachabilityCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .activationAreaDetached,
                     path: path.field("activationArea"),
-                    // Deutsche Anführungszeichen „…“ sind keine String-Begrenzer;
-                    // ein gerades " an dieser Stelle beendete das Literal.
-                    message: "Die Trefferfläche der Zone „\(zone.name)“ überschneidet ihren "
-                        + "eigenen Zielrahmen nicht. Erlaubt — so lässt sich eine Zone am "
-                        + "Bildschirmrand auslösen —, aber häufiger ein Versehen."
+                    message: L.string(
+                        "zoneReachability.activationAreaDetached",
+                        "The activation area of zone “%@” does not overlap its own target "
+                            + "frame. Allowed — this is how a zone is triggered from a screen "
+                            + "edge — but more often a mistake.",
+                        zone.name
+                    )
                 ))
             }
 
@@ -67,9 +69,13 @@ public struct ZoneReachabilityCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .zoneUnreachable,
                     path: path,
-                    message: "Die Zone „\(zone.name)“ ist nicht erreichbar: ihre Trefferfläche "
-                        + "wird von kleineren Zonen derselben Ebene vollständig überdeckt. "
-                        + "Gib ihr eine eigene „activationArea“, die frei liegt."
+                    message: L.string(
+                        "zoneReachability.zoneUnreachable",
+                        "Zone “%@” is unreachable: its activation area is fully covered by "
+                            + "smaller zones on the same layer. Give it its own "
+                            + "“activationArea” that sits free.",
+                        zone.name
+                    )
                 ))
             }
         }

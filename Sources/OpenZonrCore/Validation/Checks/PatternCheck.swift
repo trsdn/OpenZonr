@@ -15,7 +15,11 @@ public struct PatternCheck: ConfigurationCheck {
                 findings.append(ValidationFinding(
                     code: .invalidTitlePattern,
                     path: ConfigurationPath().element("rules", rule.id).field("match").field("titlePattern"),
-                    message: "Der reguläre Ausdruck für den Fenstertitel ist ungültig: \(error.localizedDescription)"
+                    message: L.string(
+                        "pattern.invalidTitlePattern",
+                        "The window title pattern is invalid: %@",
+                        error.localizedDescription
+                    )
                 ))
             }
         }

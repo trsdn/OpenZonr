@@ -71,46 +71,54 @@ public enum DragOutcomeWording {
     ///   Menü auch keine Zeile.
     public static func sentence(for outcome: DragOutcome?) -> String? {
         guard let outcome else { return nil }
-        return "Letzter Zug: \(tail(outcome))"
+        return L.string("dragOutcome.lastDrag", "Last drag: %@", tail(outcome))
     }
 
     private static func tail(_ outcome: DragOutcome) -> String {
         switch outcome {
         case .zonesShown:
-            return "Zonen wurden angezeigt."
+            return L.string("dragOutcome.zonesShown", "zones were shown.")
         case let .zonesHidden(activation):
             return hidden(activation)
         case .noSetupActive:
-            return "keine Zonen — für die angeschlossenen Bildschirme ist kein Setup aktiv."
+            return L.string("dragOutcome.noSetupActive", "no zones — no setup is active for the connected screens.")
         case .zonesHiddenWithoutReason:
-            return "keine Zonen — der Grund wurde nicht aufgezeichnet."
+            return L.string("dragOutcome.zonesHiddenWithoutReason", "no zones — the reason was not recorded.")
         case .noWindowFound:
-            return "kein Fenster unter dem Zeiger erkannt."
+            return L.string("dragOutcome.noWindowFound", "no window detected under the pointer.")
         case .noMovementEvidence(.budgetExhausted):
-            return "Bewegung nicht als Fensterzug erkannt."
+            return L.string("dragOutcome.noMovementEvidence.budgetExhausted", "movement not recognized as a window drag.")
         case .noMovementEvidence(.resizedInstead):
-            return "das Fenster wurde in der Grösse geändert, nicht bewegt."
+            return L.string("dragOutcome.noMovementEvidence.resizedInstead", "the window was resized, not moved.")
         case .releasedBeforeEvidence:
-            return "losgelassen, bevor sich das Fenster bewegt hat."
+            return L.string("dragOutcome.releasedBeforeEvidence", "released before the window moved.")
         case let .cancelled(reason):
-            return "abgebrochen — \(reason)"
+            // `reason` comes from EventTapDragTracker in OpenZonrMac, not yet
+            // migrated (deferred, see #83) — it is still German today, so this
+            // sentence can currently read as English glued to a German clause
+            // until that follow-up lands.
+            return L.string("dragOutcome.cancelled", "cancelled — %@", reason)
         }
     }
 
     private static func hidden(_ activation: DropzoneActivation) -> String {
         switch activation {
         case .show:
-            return "Zonen wurden angezeigt."
+            return L.string("dragOutcome.zonesShown", "zones were shown.")
         case .disabled:
-            return "keine Zonen — „Zonen beim Ziehen“ steht auf „Aus“."
+            return L.string("dragOutcome.hidden.disabled", "no zones — “Zones while dragging” is set to “Off”.")
         case let .suppressed(modifier):
-            guard let symbol = modifier.symbol else { return "keine Zonen." }
-            return "keine Zonen — \(symbol) war gedrückt."
+            guard let symbol = modifier.symbol else {
+                return L.string("dragOutcome.hidden.noZones", "no zones.")
+            }
+            return L.string("dragOutcome.hidden.suppressed", "no zones — %@ was held down.", symbol)
         case let .awaitingModifier(modifier):
-            guard let symbol = modifier.symbol else { return "keine Zonen." }
-            return "keine Zonen — \(symbol) war nicht gedrückt."
+            guard let symbol = modifier.symbol else {
+                return L.string("dragOutcome.hidden.noZones", "no zones.")
+            }
+            return L.string("dragOutcome.hidden.awaitingModifier", "no zones — %@ was not held down.", symbol)
         case .belowThreshold:
-            return "keine Zonen — es wurde zu kurz gezogen."
+            return L.string("dragOutcome.hidden.belowThreshold", "no zones — the drag was too short.")
         }
     }
 }

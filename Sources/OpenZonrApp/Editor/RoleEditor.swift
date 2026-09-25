@@ -44,13 +44,18 @@ struct RoleEditor: View {
                 Button {
                     addRole()
                 } label: { Image(systemName: "plus") }
-                    .help("Rolle hinzufügen")
+                    .help(localized("roleEditor.addRole.help", "Add Role"))
                 Button {
                     if let selection { document.apply { $0.removingRole(selection) } }
                     selection = nil
                 } label: { Image(systemName: "minus") }
                     .disabled(selection == nil)
-                    .help("Rolle entfernen — Regeln, die sie nutzen, bleiben stehen und werden als Befund gemeldet")
+                    .help(
+                        localized(
+                            "roleEditor.removeRole.help",
+                            "Remove role — rules that use it stay and are reported as a finding"
+                        )
+                    )
                 Spacer()
             }
             .buttonStyle(.borderless)
@@ -59,8 +64,9 @@ struct RoleEditor: View {
     }
 
     private func addRole() {
-        let id = document.configuration.availableRoleID(basedOn: "Neue Rolle")
-        document.apply { $0.adding(role: ZoneRole(id: id, name: "Neue Rolle")) }
+        let defaultName = localized("roleEditor.newRole.defaultName", "New Role")
+        let id = document.configuration.availableRoleID(basedOn: defaultName)
+        document.apply { $0.adding(role: ZoneRole(id: id, name: defaultName)) }
         selection = id
     }
 
@@ -72,11 +78,12 @@ struct RoleEditor: View {
         } else {
             ContentUnavailableMessage(
                 symbol: "square.grid.2x2",
-                title: "Keine Rolle gewählt",
-                message: """
-                Eine Rolle ist ein Platz mit Namen — „Mail“, „Notizen“. Wo dieser \
-                Platz liegt, entscheidet jedes Profil für sich.
-                """
+                title: localized("roleEditor.noRole.title", "No Role Selected"),
+                message: localized(
+                    "roleEditor.noRole.message",
+                    "A role is a named place — “Mail”, “Notes”. Where that place is is up to each "
+                        + "profile to decide."
+                )
             )
         }
     }
@@ -89,19 +96,19 @@ private struct RoleForm: View {
 
     var body: some View {
         Form {
-            Section("Rolle") {
-                TextField("Name", text: Binding(
+            Section(localized("roleEditor.section.role", "Role")) {
+                TextField(localized("roleEditor.nameField", "Name"), text: Binding(
                     get: { role.name },
                     set: { name in update { $0.name = name } }
                 ))
-                LabeledContent("Kennung") {
+                LabeledContent(localized("roleEditor.idField", "Identifier")) {
                     Text(role.id.rawValue)
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(.secondary)
                 }
                 OptionalTextField(
-                    title: "Notiz",
-                    prompt: "Wofür ist dieser Platz da?",
+                    title: localized("roleEditor.summaryField", "Note"),
+                    prompt: localized("roleEditor.summaryField.prompt", "What is this place for?"),
                     path: .role(role.id).field("summary"),
                     index: document.findings,
                     value: Binding(
@@ -112,14 +119,14 @@ private struct RoleForm: View {
                 FieldFindings(path: .role(role.id), index: document.findings)
             }
 
-            Section("Wo liegt sie?") {
+            Section(localized("roleEditor.section.whereIsIt", "Where Is It?")) {
                 ForEach(document.configuration.profiles) { profile in
                     BindingRow(document: document, profile: profile, role: role.id)
                 }
             }
 
-            Section("Auffangregel je Profil") {
-                Text("Wohin Fenster gehen, für die keine Regel greift.")
+            Section(localized("roleEditor.section.fallbackPerProfile", "Fallback Rule per Profile")) {
+                Text(localized("roleEditor.fallbackExplanation", "Where windows go that no rule matches."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 ForEach(document.configuration.profiles) { profile in
@@ -172,7 +179,7 @@ private struct BindingRow: View {
                         Image(systemName: "xmark.circle")
                     }
                     .buttonStyle(.borderless)
-                    .help("Bindung entfernen")
+                    .help(localized("roleEditor.removeBinding.help", "Remove Binding"))
                 }
             }
             if let index {
@@ -232,7 +239,7 @@ struct ZoneTargetPicker: View {
             }
         )) {
             if display == nil || zone == nil {
-                Text("— nicht gesetzt —").tag(Selection?.none)
+                Text(localized("roleEditor.zoneTargetPicker.unset", "— not set —")).tag(Selection?.none)
             }
             ForEach(document.configuration.displays) { descriptor in
                 if let layout = document.configuration.layout(forDisplay: descriptor.alias, inProfile: profile) {
@@ -248,7 +255,7 @@ struct ZoneTargetPicker: View {
             // keeps the picker honest instead of silently displaying the first
             // entry as if it were the stored value.
             if let display, let zone, !isKnown(display: display, zone: zone) {
-                Text("\(zone.rawValue) (unbekannt)")
+                Text(localized("roleEditor.zoneTargetPicker.unknownZone", "%@ (unknown)", zone.rawValue))
                     .tag(Selection?.some(Selection(display: display, zone: zone)))
             }
         }

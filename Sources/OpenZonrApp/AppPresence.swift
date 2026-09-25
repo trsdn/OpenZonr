@@ -28,9 +28,9 @@ public enum AppPresence: String, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .menuBar: return "Menüleiste"
-        case .dock: return "Dock-Symbol"
-        case .background: return "nur im Hintergrund"
+        case .menuBar: return localized("appPresence.title.menuBar", "Menu Bar")
+        case .dock: return localized("appPresence.title.dock", "Dock Icon")
+        case .background: return localized("appPresence.title.background", "Background Only")
         }
     }
 

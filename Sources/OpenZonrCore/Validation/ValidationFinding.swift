@@ -90,7 +90,10 @@ public struct ValidationFinding: Hashable, Sendable, CustomStringConvertible {
     public var code: ValidationCode
     /// Where in the document the problem sits.
     public var path: ConfigurationPath
-    /// Human-readable explanation. German, because it is shown to the user.
+    /// Human-readable explanation, produced by `L.string(...)` so it is
+    /// localized rather than hardcoded — see `Localization.swift`. English by
+    /// default, German where the system locale asks for it; it is shown to
+    /// the user either way.
     public var message: String
 
     /// Whether the configuration is unusable because of this finding.
