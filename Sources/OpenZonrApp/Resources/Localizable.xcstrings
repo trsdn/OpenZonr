@@ -584,6 +584,325 @@
         }
       }
     },
+    "menuContent.activityWindowTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr — Recent Placements"
+          }
+        }
+      }
+    },
+    "menuContent.autoCheckForUpdatesToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatically Check for Updates"
+          }
+        }
+      }
+    },
+    "menuContent.autoPlaceToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Place Windows Automatically"
+          }
+        }
+      }
+    },
+    "menuContent.automaticSetup": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic"
+          }
+        }
+      }
+    },
+    "menuContent.checkFailed.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Check Failed"
+          }
+        }
+      }
+    },
+    "menuContent.checkForUpdatesButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for Updates …"
+          }
+        }
+      }
+    },
+    "menuContent.dropzonesNotActive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dragging is not active: %@"
+          }
+        }
+      }
+    },
+    "menuContent.editZonesAndRulesButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Zones and Rules …"
+          }
+        }
+      }
+    },
+    "menuContent.editorWindowTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr — Zones and Rules"
+          }
+        }
+      }
+    },
+    "menuContent.installAndRelaunchButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install and Relaunch"
+          }
+        }
+      }
+    },
+    "menuContent.installFailed.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Could Not Be Installed"
+          }
+        }
+      }
+    },
+    "menuContent.laterButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        }
+      }
+    },
+    "menuContent.launchAtLoginToggle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start at Login"
+          }
+        }
+      }
+    },
+    "menuContent.moreMenu": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More"
+          }
+        }
+      }
+    },
+    "menuContent.noPlacementsYet": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Placements Yet"
+          }
+        }
+      }
+    },
+    "menuContent.noSetupsConfigured": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Setups Configured"
+          }
+        }
+      }
+    },
+    "menuContent.okButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "menuContent.pinFrontmostWindowButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin Frontmost Window Here"
+          }
+        }
+      }
+    },
+    "menuContent.quitButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit OpenZonr"
+          }
+        }
+      }
+    },
+    "menuContent.readyToInstall.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr pauses window observation, swaps itself out and relaunches. No window will be placed for a few seconds."
+          }
+        }
+      }
+    },
+    "menuContent.readyToInstall.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr %@ Is Ready"
+          }
+        }
+      }
+    },
+    "menuContent.recentPlacementsButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent Placements …"
+          }
+        }
+      }
+    },
+    "menuContent.recentlyPlacedSection": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recently Placed"
+          }
+        }
+      }
+    },
+    "menuContent.reloadConfigButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload Configuration"
+          }
+        }
+      }
+    },
+    "menuContent.setupSection": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setup"
+          }
+        }
+      }
+    },
+    "menuContent.showAllButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show All …"
+          }
+        }
+      }
+    },
+    "menuContent.statusAndPermissionButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status and Permission …"
+          }
+        }
+      }
+    },
+    "menuContent.upToDate.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The newest version is running."
+          }
+        }
+      }
+    },
+    "menuContent.upToDate.title": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr Is Up to Date"
+          }
+        }
+      }
+    },
     "menuStatus.action.explain": {
       "extractionState": "extracted_with_value",
       "localizations": {
