@@ -111,10 +111,10 @@ criteria:
   G06: pass
   G07: pass
   G08: pass
-  L01: partial
+  L01: pass
   L02: pass
   L03: pass
-  L04: partial
+  L04: pass
   L05: partial
   L06: na
   L07: fail

@@ -349,41 +349,36 @@ Scripts/bundle.sh
 open -n ~/Applications/OpenZonr.app
 ```
 
-In the menu, top to bottom:
+In the menu, top to bottom (shown here in English, the source language; a
+German translation is available too — see [Language and
+Privacy](#language-and-privacy)):
 
 - **`OpenZonr <version>`** — name and version, first in every state
   ([#56](https://github.com/trsdn/OpenZonr/issues/56)), not clickable.
 - **A status line** in plain language, with at most one button:
-  „Bereit — Setup „Schreibtisch"" ("Ready — Setup "Desk""), „Zugriff fehlt —
-  ohne ihn kann OpenZonr keine Fenster bewegen" ("Access missing — without
-  it, OpenZonr can't move any windows") with „Zugriff freigeben …" ("Grant
-  access…"), „Kein Setup passt zu den angeschlossenen Bildschirmen" ("No
-  setup matches the connected screens") with „Was ist zu tun? …" ("What now?
-  …"), „Pausiert" ("Paused").
-- **Fenster automatisch platzieren** (Automatically place windows) — halts
-  placement without quitting the app.
-- **Zonen beim Ziehen** (Zones while dragging) — „Bei jedem Ziehen" ("On
-  every drag"), „Nur mit gehaltener ⌘-Taste" ("Only while holding ⌘"), „Aus"
-  ("Off"). The checkmark sits on the state actually in effect from the
+  "Ready — Setup "Desk"", "Access is missing — without it OpenZonr cannot
+  move windows" with "Grant Access …", "No setup matches the connected
+  screens" with "What to Do? …", "Paused — nothing is placed automatically".
+- **Place Windows Automatically** — halts placement without quitting the
+  app.
+- **Zones While Dragging** — "Every Drag", "Only While Holding ⌘", "Off".
+  The checkmark sits on the state actually in effect from the
   configuration.
-- **Letzter Zug** (Last drag) — a grey sentence describing how the most
-  recently observed drag turned out („keine Zonen — ⌘ war nicht gedrückt"
-  ("no zones — ⌘ wasn't held"), „kein Fenster unter dem Zeiger erkannt" ("no
-  window detected under the pointer")). Diagnostics for when zones don't
-  appear.
-- **Aktuelles Fenster festhalten** (Pin current window) and **Zonen und
-  Regeln bearbeiten …** (Edit zones and rules…).
-- **Mehr** (More) — choose a setup by hand (applies for the session and is
+- **Last drag** — a grey sentence describing how the most recently observed
+  drag turned out ("Last drag: no zones — ⌘ was not held down.", "Last
+  drag: no window detected under the pointer."). Diagnostics for when zones
+  don't appear.
+- **Pin Frontmost Window Here** and **Edit Zones and Rules …**.
+- **More** — choose a setup by hand (applies for the session and is
   deliberately not saved), recent placements with the full log stream,
   reload configuration, status and permission, start at login (via
-  `SMAppService`), **Nach Updates suchen …** (Check for updates…) and
-  **Automatisch nach Updates suchen** (Automatically check for updates)
-  (see [Updates and Publishing](#updates-and-publishing)).
-- **OpenZonr beenden** (Quit OpenZonr).
+  `SMAppService`), **Check for Updates …** and **Automatically Check for
+  Updates** (see [Updates and Publishing](#updates-and-publishing)).
+- **Quit OpenZonr**.
 
-If an update is ready, it appears — along with „Installieren" ("Install")
-and „Später" ("Later") — at the **top** of the menu, even without anyone
-having checked; it demands a decision.
+If an update is ready, it appears — along with "Install and Relaunch" and
+"Later" — at the **top** of the menu, even without anyone having checked;
+it demands a decision.
 
 If permission is missing, a window opens once at launch that explains the
 specific state and offers the way to resolve it. That's the most common
@@ -512,9 +507,9 @@ and `assemble_openwritr` already do.
 | Signing, so the grant normally survives rebuilds | done, `Scripts/bundle.sh`; not guaranteed (Issue #35) |
 | Placement with retry loop | **done and measured on a real window**: TextEdit 1 attempt; Outlook 2 attempts once the window is actually draggable — the loop is genuinely exercised |
 | Menu bar app with autostart | built, [#8](https://github.com/trsdn/OpenZonr/issues/8) — status, setup selection, pause, autostart, recent placements; placement with the app running **re-measured** (29.08.2026), see [docs/menueleisten-app.md](docs/menueleisten-app.md) |
-| Editing rules without JSON | built, [#9](https://github.com/trsdn/OpenZonr/issues/9) — „Aktuelles Fenster festhalten" ("Pin current window") plus an editor for rules, roles, and zones; the core is measured headless, the interface not re-measured — it needs a hand on the mouse, not the grant anymore, see [docs/regel-editor.md](docs/regel-editor.md) |
+| Editing rules without JSON | built, [#9](https://github.com/trsdn/OpenZonr/issues/9) — "Pin Frontmost Window Here" plus an editor for rules, roles, and zones; the core is measured headless, the interface not re-measured — it needs a hand on the mouse, not the grant anymore, see [docs/regel-editor.md](docs/regel-editor.md) |
 | In-app updates from GitHub Releases | built, [#47](https://github.com/trsdn/OpenZonr/issues/47) — AppUpdater 4.1.2, menu entries, halting before the bundle swap; due-date logic, the default, menu text, and the "halt first, then install" order are tested. A **real run is not measured**: that requires a broker profile and a first release, both still missing |
-| Drag-and-drop dropzones | built, [#10](https://github.com/trsdn/OpenZonr/issues/10) — overlay while dragging, drop uses the same placement as the automatic path, then „immer hier öffnen?" ("always open here?"); `CGEventTap` measured against `kAXMovedNotification` (the tap reports the release, Accessibility doesn't), a real drag not re-measured — it needs a hand on the mouse, not the grant anymore, see [docs/dropzones.md](docs/dropzones.md) |
+| Drag-and-drop dropzones | built, [#10](https://github.com/trsdn/OpenZonr/issues/10) — overlay while dragging, drop uses the same placement as the automatic path, then "Always open it here?"; `CGEventTap` measured against `kAXMovedNotification` (the tap reports the release, Accessibility doesn't), a real drag not re-measured — it needs a hand on the mouse, not the grant anymore, see [docs/dropzones.md](docs/dropzones.md) |
 
 The order was chosen deliberately: signing first, so placement becomes
 measurable at all, and only then an interface. That paid off — the
@@ -543,9 +538,15 @@ They're described in [docs/tracer-bullet.md](docs/tracer-bullet.md).
 ## Language and Privacy
 
 Primary language: English. This repository, its documentation, and its
-contributor surfaces are English. The app's user interface still hardcodes
-German text — that has not changed, and proper localization is tracked in
-[#83](https://github.com/trsdn/OpenZonr/issues/83).
+contributor surfaces are English. The app's user interface is bilingual:
+English source strings with a German translation, looked up through a
+String Catalog per target
+(`Sources/OpenZonrCore/Resources/Localizable.xcstrings`,
+`Sources/OpenZonrApp/Resources/Localizable.xcstrings`); which language
+actually displays follows the user's chosen language or the system
+language. Tracked in [#83](https://github.com/trsdn/OpenZonr/issues/83) —
+`docs/` still has German prose pending its own translation
+([#82](https://github.com/trsdn/OpenZonr/issues/82)).
 
 OpenZonr collects no user data and sends none: no telemetry, no analytics,
 no crash reports. Window titles, bundle IDs, and displays stay on the
@@ -557,8 +558,8 @@ domain `com.trsdn.openzonr`. To delete: remove the
 `defaults delete com.trsdn.openzonr`. The only network connection is the
 update check against this repository's GitHub Releases
 ([Updates and Publishing](#updates-and-publishing)); it can be turned off in
-the menu via „Automatisch nach Updates suchen" ("Automatically check for
-updates"). There is no third party that receives user content.
+the menu via "Automatically Check for Updates". There is no third party
+that receives user content.
 
 ## License
 
