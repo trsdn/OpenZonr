@@ -18,10 +18,11 @@ enum LoginItem {
         case .enabled:
             return true
         case .requiresApproval:
-            lastProblem = """
-            Der Autostart ist eingetragen, aber vom System noch nicht genehmigt.
-            Systemeinstellungen → Allgemein → Anmeldeobjekte → OpenZonr aktivieren.
-            """
+            lastProblem = localized(
+                "loginItem.requiresApproval",
+                "Login item is registered, but not yet approved by the system. "
+                    + "Enable it in System Settings → General → Login Items → OpenZonr."
+            )
             return false
         case .notRegistered, .notFound:
             return false
@@ -35,24 +36,27 @@ enum LoginItem {
             if enabled {
                 try SMAppService.mainApp.register()
                 lastProblem = nil
-                Log.info("Autostart eingetragen.")
+                Log.info(localized("loginItem.registered", "Login item registered."))
             } else {
                 try SMAppService.mainApp.unregister()
                 lastProblem = nil
-                Log.info("Autostart entfernt.")
+                Log.info(localized("loginItem.unregistered", "Login item removed."))
             }
             // Registering can succeed and still land in "requires approval";
             // reading the status back is the only way to notice.
             _ = isEnabled
         } catch {
-            lastProblem = """
-            Autostart konnte nicht \(enabled ? "eingetragen" : "entfernt") werden: \
-            \(error.localizedDescription)
-
-            Häufigster Grund: das Bundle ist nicht signiert, oder es liegt an einem
-            Ort, den launchd nicht akzeptiert. Scripts/bundle.sh signiert; für den
-            Autostart gehört die App zusätzlich nach /Applications.
-            """
+            let action = enabled
+                ? localized("loginItem.actionRegistered", "registered")
+                : localized("loginItem.actionRemoved", "removed")
+            lastProblem = localized(
+                "loginItem.registrationFailed",
+                "Login item could not be %@: %@\n\n"
+                    + "Most common reason: the bundle is not signed, or it sits in a "
+                    + "place launchd does not accept. Scripts/bundle.sh signs it; the "
+                    + "login item additionally needs the app in /Applications.",
+                action, error.localizedDescription
+            )
             Log.warn(lastProblem ?? "")
         }
     }
