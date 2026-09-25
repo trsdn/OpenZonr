@@ -72,14 +72,21 @@ def find_calls(prefix: str, text: str) -> list[tuple[str, str]]:
     return results
 
 
+ESCAPE_PATTERN = re.compile(r"\\u\{([0-9a-fA-F]+)\}|\\(.)")
+SIMPLE_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", '"': '"', "'": "'", "\\": "\\"}
+
+
 def unescape(value: str) -> str:
-    # Only the escapes this codebase actually uses in a value literal.
-    return (
-        value.replace(r"\"", '"')
-        .replace(r"\u{201c}", "“")
-        .replace(r"\u{201d}", "”")
-        .replace(r"\\", "\\")
-    )
+    def replace(m: re.Match[str]) -> str:
+        if m.group(1) is not None:
+            return chr(int(m.group(1), 16))
+        return SIMPLE_ESCAPES.get(m.group(2), m.group(2))
+
+    # A single left-to-right pass, so a backslash is consumed with exactly
+    # the character after it — chaining separate str.replace() calls (the
+    # first version of this function) can misfire when one escape's output
+    # happens to contain another escape's input character.
+    return ESCAPE_PATTERN.sub(replace, value)
 
 
 def used_keys(src_dir: Path, prefix: str) -> dict[str, str]:

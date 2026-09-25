@@ -126,7 +126,7 @@ final class DropzoneController {
             problem = nil
         } catch {
             problem = "\(error)"
-            Log.warn("Dropzones sind nicht aktiv: \(error)")
+            Log.warn(localized("dropzoneController.notActive", "Dropzones are not active: %@", "\(error)"))
         }
     }
 
@@ -196,13 +196,20 @@ final class DropzoneController {
 
         case let .cancelled(reason):
             model.recordDragOutcome(.cancelled(reason: reason))
-            // Ein Abbruch trifft den Nutzer mitten in einer sichtbaren Geste:
-            // das Overlay verschwindet, und ohne Hinweis bleibt unklar warum.
-            // Deshalb geht die Meldung durch denselben Kanal wie andere
-            // sichtbare Fehler dieses Wegs (`AppModel.lastPinMessage`), nicht
-            // nur ins Protokoll. Siehe Issue #26 (Fehler C).
-            Log.detail("Zug abgebrochen: \(reason)")
-            model.reportPinFailure("Der Zug wurde abgebrochen: \(reason)")
+            // A cancellation hits the user mid-gesture, visibly: the overlay
+            // disappears, and without a hint it stays unclear why. So the
+            // message goes through the same channel as this path's other
+            // visible errors (`AppModel.lastPinMessage`), not just the log.
+            // See Issue #26 (Error C).
+            //
+            // `reason` comes from EventTapDragTracker in OpenZonrMac, not yet
+            // migrated (deferred, see #83) — it is still German today, so
+            // this sentence can currently read as English glued to a German
+            // clause until that follow-up lands.
+            Log.detail(localized("dropzoneController.dragCancelled.log", "Drag cancelled: %@", reason))
+            model.reportPinFailure(
+                localized("dropzoneController.dragCancelled.message", "The drag was cancelled: %@", reason)
+            )
             overlay.hide()
             dragged = nil
             dragContext = nil
@@ -331,10 +338,11 @@ final class DropzoneController {
         case let .success(request):
             model.apply(request, to: base)
         case let .failure(refusal):
-            // Dieselbe Stimme wie der Menüweg: eine Regel, die nicht
-            // geschrieben werden kann, muss dem Nutzer sichtbar erklärt
-            // werden — nicht nur ins Protokoll.
-            model.reportPinFailure("Anheft-Marke ohne Wirkung: \(refusal)")
+            // Same voice as the menu path: a rule that cannot be written has
+            // to be explained to the user visibly — not just into the log.
+            model.reportPinFailure(
+                localized("dropzoneController.pinBadgeHadNoEffect", "Pin badge had no effect: %@", "\(refusal)")
+            )
         }
     }
 
@@ -353,7 +361,7 @@ final class DropzoneController {
             offer = DropOffer(question: question, request: request)
             offerPanel.show(question: question, near: point) { [weak self] in self?.acceptOffer() }
         case let .failure(refusal):
-            Log.detail("Kein Regelangebot: \(refusal)")
+            Log.detail(localized("dropzoneController.noRuleOffer", "No rule offer: %@", "\(refusal)"))
         }
     }
 

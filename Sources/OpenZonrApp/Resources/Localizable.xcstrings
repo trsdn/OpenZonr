@@ -1,14 +1,303 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "localizationTests.probe" : {
-      "comment" : "Not user-facing. Exists only so LocalizationTests can prove the resource-bundle plumbing (Bundle.module -> OpenZonr_OpenZonrApp.bundle -> de.lproj) against a real compiled entry, without coupling to product wording that might change for unrelated reasons.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "de-Probe" }
+  "sourceLanguage": "en",
+  "strings": {
+    "appPresence.title.background": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background Only"
+          }
+        }
+      }
+    },
+    "appPresence.title.dock": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock Icon"
+          }
+        }
+      }
+    },
+    "appPresence.title.menuBar": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menu Bar"
+          }
+        }
+      }
+    },
+    "dropOfferPanel.acceptButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always here"
+          }
+        }
+      }
+    },
+    "dropOfferPanel.declineButton": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Just this once"
+          }
+        }
+      }
+    },
+    "dropzoneController.dragCancelled.log": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag cancelled: %@"
+          }
+        }
+      }
+    },
+    "dropzoneController.dragCancelled.message": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The drag was cancelled: %@"
+          }
+        }
+      }
+    },
+    "dropzoneController.noRuleOffer": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No rule offer: %@"
+          }
+        }
+      }
+    },
+    "dropzoneController.notActive": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dropzones are not active: %@"
+          }
+        }
+      }
+    },
+    "dropzoneController.pinBadgeHadNoEffect": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin badge had no effect: %@"
+          }
+        }
+      }
+    },
+    "editorLayer.title.activation": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activation Area"
+          }
+        }
+      }
+    },
+    "editorLayer.title.target": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target Frame"
+          }
+        }
+      }
+    },
+    "localizationTests.probe": {
+      "comment": "Not user-facing. Exists only so LocalizationTests can prove the resource-bundle plumbing (Bundle.module -> OpenZonr_OpenZonrApp.bundle -> de.lproj) against a real compiled entry, without coupling to product wording that might change for unrelated reasons.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de-Probe"
+          }
+        }
+      }
+    },
+    "loginItem.actionRegistered": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "registered"
+          }
+        }
+      }
+    },
+    "loginItem.actionRemoved": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "removed"
+          }
+        }
+      }
+    },
+    "loginItem.registered": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login item registered."
+          }
+        }
+      }
+    },
+    "loginItem.registrationFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login item could not be %@: %@\n\nMost common reason: the bundle is not signed, or it sits in a place launchd does not accept. Scripts/bundle.sh signs it; the login item additionally needs the app in /Applications."
+          }
+        }
+      }
+    },
+    "loginItem.requiresApproval": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login item is registered, but not yet approved by the system. Enable it in System Settings → General → Login Items → OpenZonr."
+          }
+        }
+      }
+    },
+    "loginItem.unregistered": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login item removed."
+          }
+        }
+      }
+    },
+    "ruleDryRunLine.genericSubject": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A window"
+          }
+        }
+      }
+    },
+    "ruleDryRunLine.uncheckedHeader": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not checked — the rule checks this, but it is only decided once the window is open:"
+          }
+        }
+      }
+    },
+    "statusWindow.panelTitle": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenZonr — Status and Permission"
+          }
+        }
+      }
+    },
+    "updateManager.checkFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update check failed: %@"
+          }
+        }
+      }
+    },
+    "updateManager.installFailed": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update installation failed: %@"
+          }
+        }
+      }
+    },
+    "updateManager.updateAvailable": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update available: %@"
+          }
+        }
+      }
+    },
+    "validationSeverity.label.error": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error"
+          }
+        }
+      }
+    },
+    "validationSeverity.label.warning": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warning"
+          }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

@@ -51,16 +51,17 @@ struct OpenZonrMenuBarApp: App {
         MenuBarExtra(isInserted: .constant(presence.showsMenuBarIcon)) {
             MenuContent(model: model)
         } label: {
-            // `accessibilityLabel` bewusst statisch, nicht mehr mit dem sich
-            // laufend ändernden Status verwoben (Issue #69). Verdacht, nicht
-            // Beweis: AppKits eigener Bedienungshilfen-Code für Statuselemente
-            // (`NSAccessibilityMockStatusBarItem`) stürzte zweimal ab, genau
-            // beim Klick auf dieses Symbol — beide Male beim Aufbau seiner
-            // Attribut-Liste. Eine Beschriftung, die bei jeder Statusänderung
-            // neu berechnet wird, gibt AppKit dafür mehr Gelegenheiten als eine
-            // feste; das Symbol selbst bleibt dynamisch, weil ein wechselndes
-            // Icon der gewöhnliche, an anderer Stelle folgenlose Fall ist. Der
-            // Status steht ohnehin als erste Zeile im aufgeklappten Menü.
+            // `accessibilityLabel` deliberately static, no longer woven
+            // together with the continuously changing status (Issue #69).
+            // Suspicion, not proof: AppKit's own accessibility code for
+            // status items (`NSAccessibilityMockStatusBarItem`) crashed
+            // twice, both times right on a click on this symbol, both times
+            // while building its attribute list. A label recomputed on
+            // every status change gives AppKit more opportunities for that
+            // than a fixed one does; the symbol itself stays dynamic,
+            // because a changing icon is the ordinary case with no fallout
+            // elsewhere. The status appears as the menu's first line anyway
+            // once it is open.
             Image(systemName: model.status.symbolName)
                 .accessibilityLabel("OpenZonr")
         }
@@ -116,7 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !hasVisibleWindows else { return true }
         PanelPresenter.shared.show(
             id: "status",
-            title: "OpenZonr — Status und Berechtigung",
+            title: localized("statusWindow.panelTitle", "OpenZonr — Status and Permission"),
             size: NSSize(width: 620, height: 560)
         ) {
             StatusWindow(model: AppModel.shared)
@@ -131,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         didPresentPermissionWindow = true
         PanelPresenter.shared.show(
             id: "status",
-            title: "OpenZonr — Status und Berechtigung",
+            title: localized("statusWindow.panelTitle", "OpenZonr — Status and Permission"),
             size: NSSize(width: 620, height: 560)
         ) {
             StatusWindow(model: model)
