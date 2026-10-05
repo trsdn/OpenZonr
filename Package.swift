@@ -25,7 +25,7 @@ let package = Package(
         // `OpenZonrApp`. `OpenZonrCore` und `OpenZonrMac` bleiben
         // abhängigkeitsfrei: sie tragen die Logik, die auch ohne Menüleiste
         // gebaut und geprüft werden muss.
-        .package(url: "https://github.com/mxcl/AppUpdater.git", exact: "4.1.2")
+        .package(url: "https://github.com/mxcl/AppUpdater.git", exact: "4.2.0")
     ],
     targets: [
         .target(
